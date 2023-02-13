@@ -1,4 +1,6 @@
 @doc raw"""
+`wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, θ::Number) where {T}`
+
 Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for a single ``(m, n, s)`` combination, using Eq. (B.1) of Mishchenko et al. (2002).
 
 ```math
@@ -43,7 +45,9 @@ end
 end
 
 @doc raw"""
-Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (and also its derivative) via upward recursion, using Eq. (B.22) of Mishchenko et al. (2002).
+`wigner_d_recursion([T=Float64,], m::Integer, n::Integer, smax::Integer, θ::Number; deriv::Bool = false) where {T}`
+
+Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (alternatively, its derivative as well) via upward recursion, using Eq. (B.22) of Mishchenko et al. (2002).
 
 ```math
 \begin{aligned}
@@ -133,6 +137,11 @@ end
     return wigner_d_recursion(Float64, m, n, smax, θ; deriv)
 end
 
+"""
+`wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer, θ::Number)`
+
+Calculate the Wigner d-function recursively, in place.
+"""
 function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer,
                              θ::Number) where {T}
     smax >= max(abs(m), abs(n)) || error("Error: smax < max(|m|, |n|)")
@@ -173,7 +182,7 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
 end
 
 @doc raw"""
-Wigner D-function ``D^j_{mn}(\theta)`` defined as:
+Calculate the Wigner D-function ``D^j_{mn}(\theta)``, which is defined as:
 
 ```math
 D_{m m^{\prime}}^{n}(\alpha, \beta, \gamma)=\mathrm{e}^{-\mathrm{i} m \alpha} d_{m m^{\prime}}^{n}(\beta) \mathrm{e}^{-\mathrm{i} m^{\prime} \gamma}
@@ -198,6 +207,11 @@ end
     return wigner_D(Float64, m, m′, n, α, β, γ)
 end
 
+"""
+`wigner_D_recursion([T=Float64,], m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)`
+
+Calculate the Wigner D-function recursively (use `wigner_d_recursion`).
+"""
 function wigner_D_recursion(::Type{T}, m::Integer, m′::Integer, nmax::Integer, α::Number,
                             β::Number,
                             γ::Number) where {T}
@@ -213,9 +227,15 @@ end
     return wigner_D_recursion(Float64, m, m′, nmax, α, β, γ)
 end
 
-function wigner_D_recursion!(d::AbstractVector{T}, m::Integer, m′::Integer, nmax::Integer,
+"""
+`wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)`
+
+Calculate the Wigner D-function recursively, in place.
+"""
+function wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Integer,
                              α::Number, β::Number,
-                             γ::Number) where {T}
+                             γ::Number) where {CT}
+    T = real(CT)
     α = T(α)
     β = T(β)
     γ = T(γ)
@@ -223,4 +243,32 @@ function wigner_D_recursion!(d::AbstractVector{T}, m::Integer, m′::Integer, nm
     factor = cis(-(m * α + m′ * γ))
     d .*= factor
     return d
+end
+
+@testitem "Wigner d-function" begin
+    using TransitionMatrices: wigner_d, wigner_d_recursion, wigner_d_recursion!
+
+    @testset "D($m, 0, n, 0.2) is correct" for m in 0:1
+        d₁ = [wigner_d(m, 0, n, 0.2) for n in max(0, m):5]
+        d₂ = wigner_d_recursion(m, 0, 5, 0.2)
+        @test all(d₁ .≈ collect(d₂))
+
+        d₃ = zeros(length(d₂))
+        wigner_d_recursion!(d₃, m, 0, 5, 0.2)
+        @test all(d₁ .≈ d₃)
+    end
+end
+
+@testitem "Wigner D-function" begin
+    using TransitionMatrices: wigner_D, wigner_D_recursion, wigner_D_recursion!
+
+    @testset "D($m, 0, n, 0.2, 0.3, 0.4) is correct" for m in 0:1
+        D₁ = [wigner_D(m, 0, n, 0.2, 0.3, 0.4) for n in max(0, m):5]
+        D₂ = wigner_D_recursion(m, 0, 5, 0.2, 0.3, 0.4)
+        @test all(D₁ .≈ collect(D₂))
+
+        D₃ = zeros(ComplexF64, length(D₂))
+        wigner_D_recursion!(D₃, m, 0, 5, 0.2, 0.3, 0.4)
+        @test all(D₁ .≈ D₃)
+    end
 end

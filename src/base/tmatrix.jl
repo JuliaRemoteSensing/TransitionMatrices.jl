@@ -53,6 +53,9 @@ function Base.axes(::AbstractTransitionMatrix{CT, N}) where {CT, N}
     ((-N):N, 1:N, (-N):N, 1:N, 1:2, 1:2)
 end
 
+"""
+Concrete type for a general T-Matrix.
+"""
 struct TransitionMatrix{CT, N, V <: AbstractArray{CT}} <: AbstractTransitionMatrix{CT, N}
     container::V
 end
@@ -63,11 +66,17 @@ function Base.getindex(tm::TransitionMatrix{CT, N}, idxs...) where {CT, N}
 end
 
 @doc raw"""
-Rotate a general T-Matrix using Eq. (5.29) of Mishchenko et al. (2002).
+`rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3})`
+
+Rotate the given T-Matrix `𝐓` by the Euler angle `rot` and generate a new T-Matrix.
+
+- For a general T-Matrix, Eq. (5.29) in Mishchenko et al. (2002) is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
 
 ```math
 T_{m n m^{\prime} n^{\prime}}^{p p′}(L ; \alpha, \beta, \gamma)=\sum_{m_1=-n}^n \sum_{m_2=-n^{\prime}}^{n^{\prime}} D_{m m_1}^n(\alpha, \beta, \gamma) T_{m_1 n m_2 n^{\prime}}^{p p′}(P) D_{m_2 m^{\prime}}^{n^{\prime}}(-\gamma,-\beta,-\alpha)\quad p,p′=1,2
 ```
+
+- For a `MieTransitionMatrix`, the underlying Mie coefficients are copied and a new `MieTransitionMatrix` will be returned.
 """
 function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {CT, N}
     # Get the Euler angle in Z-Y-Z order.
@@ -90,7 +99,9 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
     # Calculate the rotated T-Matrix
     𝐓′ = similar(𝐓)
     fill!(𝐓′, 0)
-    for (n′, m′) in OrderDegreeIterator(N)
+
+    # Enable multi-threading
+    Threads.@threads for (n′, m′) in OrderDegreeIterator(N)
         for p in 1:2, p′ in 1:2
             for (n, m) in OrderDegreeIterator(N)
                 for m₂ in (-n′):n′, m₁ in (-n):n

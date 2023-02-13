@@ -52,4 +52,6 @@ function bhmie(T, x, m; nₘₐₓ = ceil(Int, Float64(max(x + 4 * ∛x + 2, x *
     return a, b
 end
 
-bhmie(x, m; nₘₐₓ = ceil(Int, Float64(max(x + 4 * ∛x + 2, x * abs(m))))) = bhmie(Float64, x, m; nₘₐₓ = nₘₐₓ)
+function bhmie(x, m; nₘₐₓ = ceil(Int, Float64(max(x + 4 * ∛x + 2, x * abs(m)))))
+    bhmie(Float64, x, m; nₘₐₓ = nₘₐₓ)
+end

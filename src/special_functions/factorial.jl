@@ -1,7 +1,9 @@
 const FACTORIAL = Dict()
 
 """
-Calculate factorials using the Gamma function.
+`factorial([T=Float64,], n)`
+
+Calculate factorials with a global cache for every type.
 """
 function factorial(::Type{T}, n)::T where {T}
     if n <= 20
