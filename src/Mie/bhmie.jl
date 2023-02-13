@@ -26,8 +26,8 @@ function bhmie(T, x, m; nₘₐₓ = ceil(Int, Float64(max(x + 4 * ∛x + 2, x *
     x = T(x)
     m = C(m)
     y = m * x
-    d = zeros(C, nₘₐₓ)
-    for n in (nₘₐₓ - 1):-1:1
+    d = zeros(C, nₘₐₓ + 15) # Need extra terms to ensure accuracy
+    for n in (nₘₐₓ + 14):-1:1
         d[n] = (n + 1) / y - (1.0 / (d[n + 1] + (n + 1) / y))
     end
 

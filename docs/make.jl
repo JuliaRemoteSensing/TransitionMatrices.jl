@@ -16,6 +16,7 @@ makedocs(;
                                   assets = String[]),
          pages = [
              "Home" => "index.md",
+             "API" => "api.md",
          ])
 
 deploydocs(;

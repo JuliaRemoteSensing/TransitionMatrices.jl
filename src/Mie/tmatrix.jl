@@ -9,6 +9,14 @@ T_{m n m^{\prime} n^{\prime}}^{22}(P)=-\delta_{m m^{\prime}} \delta_{n n^{\prime
 \end{array}
 ```
 
+`MieTransitionMatrix{CT, N}(x::Real, m::Number)` 
+
+Generate the T-Matrix from the Mie coefficients of a homogeneous sphere.
+
+`MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number, m_mantle::Number)`
+
+Generate the T-Matrix from the Mie coefficients of a coated sphere.
+
 This struct provides the T-Matrix API for a Mie particle.
 """
 struct MieTransitionMatrix{CT, N, V <: AbstractVector{CT}} <:
@@ -17,9 +25,16 @@ struct MieTransitionMatrix{CT, N, V <: AbstractVector{CT}} <:
     b::V
 end
 
-function MieTransitionMatrix{CT, N}(x, m) where {CT, N}
+function MieTransitionMatrix{CT, N}(x::Real, m::Number) where {CT, N}
     T = real(CT)
     a, b = bhmie(T, x, m; nₘₐₓ = N)
+    MieTransitionMatrix{CT, N, Vector{CT}}(a, b)
+end
+
+function MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number,
+                                    m_mantle::Number) where {CT, N}
+    T = real(CT)
+    a, b = bhcoat(T, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = N)
     MieTransitionMatrix{CT, N, Vector{CT}}(a, b)
 end
 
@@ -42,8 +57,18 @@ rotate(𝐓::MieTransitionMatrix, ::Rotation{3}) = copy(𝐓)
 @testitem "MieTransitionMatrix" begin
     using TransitionMatrices: MieTransitionMatrix, RotZYZ, TransitionMatrix, rotate
 
-    @testset "remains the same under rotations" begin
+    @testset "of a homogeneous sphere remains the same under rotations" begin
         𝐓 = MieTransitionMatrix{ComplexF64, 5}(1.0, 1.311)
+        @test all(isapprox.(𝐓,
+                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                                   RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
+        @test all(isapprox.(𝐓,
+                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                                   RotZYZ(0.8, 0.0, -1.0)); atol = eps(Float64)))
+    end
+
+    @testset "of a coated sphere remains the same under rotations" begin
+        𝐓 = MieTransitionMatrix{ComplexF64, 5}(0.4, 0.8, 1.0, 1.311)
         @test all(isapprox.(𝐓,
                             rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
                                    RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
