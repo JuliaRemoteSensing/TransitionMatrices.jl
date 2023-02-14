@@ -22,7 +22,11 @@ References:
 
 - Bohren, C.F., Huffman, D.R., 1983. Absorption and scattering of light by small particles. John Wiley & Sons.
 """
-function bhcoat(T, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = ceil(Int, Float64(max(x_mantle + 4 * ∛x_mantle + 2, x_mantle * max(abs(m_core), abs(m_mantle))))), tolerance = 1e-8)
+function bhcoat(T, x_core, x_mantle, m_core, m_mantle;
+                nₘₐₓ = ceil(Int,
+                            Float64(max(x_mantle + 4 * ∛x_mantle + 2,
+                                        x_mantle * max(abs(m_core), abs(m_mantle))))),
+                tolerance = 1e-8)
     @assert x_mantle>=x_core "x_mantle must be greater than or equal to x_core"
 
     C = complex(T)
@@ -119,17 +123,24 @@ function bhcoat(T, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = ceil(Int, Fl
     return a, b
 end
 
-function bhcoat(x_core, x_mantle, m_core, m_mantle; nₘₐₓ = ceil(Int, Float64(max(x_mantle + 4 * ∛x_mantle + 2, x_mantle * max(abs(m_core), abs(m_mantle))))), tolerance = 1e-8)
+function bhcoat(x_core, x_mantle, m_core, m_mantle;
+                nₘₐₓ = ceil(Int,
+                            Float64(max(x_mantle + 4 * ∛x_mantle + 2,
+                                        x_mantle * max(abs(m_core), abs(m_mantle))))),
+                tolerance = 1e-8)
     bhcoat(Float64, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = nₘₐₓ, tolerance = tolerance)
 end
 
 @testitem "bhcoat" begin
     using TransitionMatrices: bhmie, bhcoat
 
-    @testset "converges to bhmie" begin
-        am, bm = bhmie(1.0, 1.311)
-        ac, bc = bhcoat(1.0, 1.0, 1.311, 1.311)
-        @test all(am .≈ ac)
-        @test all(mm .≈ bc)
+    @testset "converges to bhmie when x = $x, m = $m" for (x, m) in [
+        (1.0, 1.311),
+        (2.0, 1.5 + 0.01im),
+    ]
+        am, bm = bhmie(x, m)
+        ac, bc = bhcoat(x, x, m, m)
+        @test all(isapprox.(am, ac; atol = 1e-12))
+        @test all(isapprox.(bm, bc; atol = 1e-12))
     end
 end
