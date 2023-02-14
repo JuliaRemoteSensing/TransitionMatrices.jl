@@ -9,6 +9,9 @@ d_{m n}^{s}(\vartheta)=& \sqrt{(s+m) !(s-m) !(s+n) !(s-n) !} \\
 & \times \sum_{k=\max(0,m-n)}^{\min(s + m, s - n)}(-1)^{k} \frac{\left(\cos \frac{1}{2} \vartheta\right)^{2 s-2 k+m-n}\left(\sin \frac{1}{2} \vartheta\right)^{2 k-m+n}}{k !(s+m-k) !(s-n-k) !(n-m+k) !}
 \end{aligned}
 ```
+
+!!! warning
+    This function easily overflows for large values of `s`, and it is no faster than the recursive method. It is provided here only for checking the correctness of the recursive method. Users are recommended to use `wigner_d_recursion`` instead.
 """
 function wigner_d(::Type{T}, m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}
     if s < max(abs(m), abs(n))
@@ -101,7 +104,17 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
 
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
-    !isnothing(deriv) && abs(cosϑ) ≈ 1 && min(abs(m), abs(n)) != 0 && error("Error: wigner_d_recursion! can only calculate derivatives for |cosϑ| < 1 when |m| != 0 and |n| != 0")
+
+    # ================================
+    # TODO: handle this excluded case correctly
+    # 
+    # A possible way is to add a small perturbation δϑ and then approximate the limit
+    # with |d′(ϑ)| ≈ √(round(Int, d′(ϑ + δϑ) ^ 2 * 4)).
+    #
+    # The sign can be determined by the sign of n - m and the parity of s.
+    # ================================
+    !isnothing(deriv) && abs(cosϑ) ≈ 1 && m != 0 && n != 0 &&
+        error("Error: wigner_d_recursion! can only calculate derivatives for |cosϑ| < 1 when |m| != 0 and |n| != 0")
 
     sinϑ = sin(ϑ)
     smin = max(abs(m), abs(n))
@@ -137,8 +150,12 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
         if !isnothing(deriv)
             if s == 0
                 deriv[s] = 0
-            elseif abs(cosϑ) ≈ 1
-                deriv[s] = abs(m) + abs(n) == 1 ? √T(s * (s + 1)) / 2 : 0
+            elseif cosϑ ≈ 1
+                deriv[s] = abs(m - n) == 1 ? (n - m) * √T(s * (s + 1)) / 2 : 0
+            elseif cosϑ ≈ -1
+                deriv[s] = abs(m - n) == 1 ?
+                           (n - m) * (-1)^((s + 1) & 1) * √T(s * (s + 1)) / 2 :
+                           0
             else
                 deriv[s] = 1 / sinϑ * (-(s + 1) * sm * sn / (s * (2s + 1)) * d₀ -
                             T(m * n // (s * (s + 1))) * d₁ +
@@ -155,7 +172,7 @@ end
 @testitem "Wigner d-function" begin
     using TransitionMatrices: wigner_d, wigner_d_recursion, wigner_d_recursion!
 
-    @testset "D($m, 0, n, 0.2) is correct" for m in 0:1
+    @testset "d($m, 0, n, 0.2) is correct" for m in 0:1
         d₁ = [wigner_d(m, 0, n, 0.2) for n in max(0, m):5]
         d₂ = wigner_d_recursion(m, 0, 5, 0.2)
         @test all(d₁ .≈ collect(d₂))
@@ -163,6 +180,50 @@ end
         d₃ = zeros(length(d₂))
         wigner_d_recursion!(d₃, m, 0, 5, 0.2)
         @test all(d₁ .≈ d₃)
+    end
+
+    @testset "d′(ϑ) converges correctly when cosϑ → 1" begin
+        params = Iterators.product(-1:1, -1:1, 5:5:15)
+        for (m, n, s) in params
+            if abs(m - n) != 1
+                continue
+            end
+
+            @testset "m = $m, n = $n, s = $s" begin
+                _, δd′ = wigner_d_recursion(m, n, s, 2e-4; deriv = true)
+                _, d′ = wigner_d_recursion(m, n, s, 1e-4; deriv = true)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test all(isapprox.(δd′, d′; atol = 1e-4, rtol = 1e-4))
+            end
+        end
+
+        @testset "m = 0, n = $n, s = 5" for n in 2:5
+            _, d′ = wigner_d_recursion(0, n, 5, 1e-4; deriv = true)
+            @test all(iszero.(d′))
+        end
+    end
+
+    @testset "d′(ϑ) converges correctly when cosϑ → -1" begin
+        params = Iterators.product(-1:1, -1:1, 5:5:15)
+        for (m, n, s) in params
+            if abs(m - n) != 1
+                continue
+            end
+
+            @testset "m = $m, n = $n, s = $s" begin
+                _, δd′ = wigner_d_recursion(m, n, s, π + 2e-4; deriv = true)
+                _, d′ = wigner_d_recursion(m, n, s, π + 1e-4; deriv = true)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test all(isapprox.(δd′, d′; atol = 1e-4, rtol = 1e-4))
+            end
+        end
+
+        @testset "m = 0, n = $n, s = 5" for n in 2:5
+            _, d′ = wigner_d_recursion(0, n, 5, π + 1e-4; deriv = true)
+            @test all(iszero.(d′))
+        end
     end
 end
 
@@ -178,6 +239,9 @@ where
 ```math
 0 \leq \alpha<2 \pi, \quad 0 \leq \beta \leq \pi, \quad 0 \leq \gamma<2 \pi
 ```
+
+!!! warning
+    This function easily overflows for large values of `s`, and it is no faster than the recursive method. It is provided here only for checking the correctness of the recursive method. Users are recommended to use `wigner_D_recursion` instead.
 """
 @inline function wigner_D(::Type{T}, m::Integer, m′::Integer, n::Integer, α::Number,
                           β::Number, γ::Number) where {T}
@@ -278,7 +342,7 @@ Calculate
 ```
 """
 function tau_func(::Type{T}, m::Integer, n::Integer, ϑ::Number) where {T}
-    _, d′ = wigner_d_recursion(T, 0, m, n, ϑ; deriv=true)
+    _, d′ = wigner_d_recursion(T, 0, m, n, ϑ; deriv = true)
     return d′[n]
 end
 
