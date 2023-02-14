@@ -118,9 +118,9 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
 end
 
 @doc raw"""
-`amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ)`
+`amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ, k₁=1.0)`
 
-Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. Here the wavelength is assumed to be ``2\pi`` so that `k_1=1`.
+Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. `k₁` is the wavenumber of the incident wave in the host medium, which should be calculated by `k₁ = 2π * mₕ / λ`, where `mₕ` is the refractive index of the host medium and `λ` is the wavelength of the incident wave. The default value is `k₁ = 1.0`.
 
 ### General T-Matrix
 
@@ -158,7 +158,8 @@ Where
 ### Mie T-Matrix
 
 """
-function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ) where {CT, N}
+function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ,
+                          k₁ = 1.0) where {CT, N}
     T = real(CT)
     𝐒₁₁, 𝐒₁₂, 𝐒₂₁, 𝐒₂₂ = zero(CT), zero(CT), zero(CT), zero(CT)
 
@@ -223,5 +224,5 @@ function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, �
         end
     end
 
-    @SMatrix [𝐒₁₁ 𝐒₁₂/1im; 𝐒₂₁*1im 𝐒₂₂]
+    return (@SMatrix [𝐒₁₁ 𝐒₁₂/1im; 𝐒₂₁*1im 𝐒₂₂]) ./ k₁
 end
