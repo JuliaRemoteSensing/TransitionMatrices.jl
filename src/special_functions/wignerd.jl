@@ -190,7 +190,10 @@ end
             end
 
             @testset "m = $m, n = $n, s = $s" begin
+                # No approximation
                 _, δd′ = wigner_d_recursion(m, n, s, 2e-4; deriv = true)
+
+                # Approximation
                 _, d′ = wigner_d_recursion(m, n, s, 1e-4; deriv = true)
 
                 # We only need to ensure that the sign is correct, so the tolerance is quite large here.
@@ -212,7 +215,10 @@ end
             end
 
             @testset "m = $m, n = $n, s = $s" begin
+                # No approximation
                 _, δd′ = wigner_d_recursion(m, n, s, π + 2e-4; deriv = true)
+
+                # Approximation
                 _, d′ = wigner_d_recursion(m, n, s, π + 1e-4; deriv = true)
 
                 # We only need to ensure that the sign is correct, so the tolerance is quite large here.
