@@ -3,6 +3,8 @@
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
+/coverage-lcov.info
+/lcov
 /docs/build/
 Manifest.toml
 

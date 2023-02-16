@@ -1,7 +1,38 @@
+export Spheroid
+
+@doc raw"""
+A spheroid scatterer.
+
+Attributes:
+
+- `a`: Length of the semi-major axis
+- `c`: Length of the semi-minor axis
+- `m`: Relative complex refractive index
+"""
 struct Spheroid{T, CT} <: AbstractAxisymmetricShape{T, CT}
     a::T
     c::T
     m::CT
+end
+
+volume(s::Spheroid) = 4.0 / 3.0 * π * s.a^2 * s.c
+volume_equivalent_radius(s::Spheroid) = ∛(s.a^2 * s.c)
+has_symmetric_plane(::Spheroid) = true
+
+@testitem "Utility functions are correct" begin
+    using TransitionMatrices: Spheroid, volume, volume_equivalent_radius,
+                              has_symmetric_plane
+
+    @testset "a = $a, c = $c" for (a, c, V, rᵥ) in [
+        (1.0, 0.5, 2.0943951023931953, 0.7937005259840998),
+        (1.0, 1.0, 4.1887902047863905, 1.0),
+        (0.5, 1.0, 1.0471975511965976, 0.6299605249474366),
+    ]
+        s = Spheroid(a, c, 1.311)
+        @test volume(s) ≈ V
+        @test volume_equivalent_radius(s) ≈ rᵥ
+        @test has_symmetric_plane(s)
+    end
 end
 
 function radius_and_deriv!(r, dr, s::Spheroid{Float64}, x)
@@ -32,7 +63,7 @@ function radius_and_deriv!(r, dr, s::Spheroid{T}, x) where {T}
     end
 end
 
-@testitem "derivative has correct sign" begin
+@testitem "radius derivative has correct sign" begin
     using TransitionMatrices: Spheroid, gausslegendre, radius_and_deriv!
     using Arblib: Arb
 

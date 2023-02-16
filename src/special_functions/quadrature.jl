@@ -36,3 +36,16 @@ function gausslegendre!(x, w, n::Integer)
                                            UInt64(n ÷ 2))
     end
 end
+
+@testitem "hypgeom_legendre_p_ui_root! is used correctly" begin
+    using Arblib: Arb
+    using TransitionMatrices: gausslegendre
+
+    @testset "n = $n" for n in (2, 5, 10, 20, 50, 100, 101)
+        x, w = gausslegendre(n)
+        x₁, w₁ = gausslegendre(Arb, n)
+
+        @test all(x .≈ x₁)
+        @test all(w .≈ w₁)
+    end
+end

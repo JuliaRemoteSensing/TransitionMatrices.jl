@@ -1,16 +1,11 @@
-estimate_ricattibesselj_extra_terms(n, x::Float64) = ceil(Int, 1.2 * √max(x, n)) + 3
-function estimate_ricattibesselj_extra_terms(n, x::ComplexF64)
+function estimate_ricattibesselj_extra_terms(n, x::Real)
     tb = max(n, abs(x))
-    ceil(Int, tb + 4.0 * ∛tb + 1.2 * √tb - n + 5)
+    ceil(Int, tb - n + 8.0 * √tb + 3)
 end
 
-function estimate_ricattibesselj_extra_terms(n, x::Union{Float128, Double64})
-    ceil(Int, 8 * √max(n, x)) + 3
-end
-function estimate_ricattibesselj_extra_terms(n,
-                                             x::Union{Complex{Float128}, Complex{Double64}})
+function estimate_ricattibesselj_extra_terms(n, x)
     tb = max(n, abs(x))
-    ceil(Int, tb + 4.0 * ∛tb + 8.0 * √tb - n + 5)
+    ceil(Int, tb - n + 4.0 * ∛tb + 8.0 * √tb + 5)
 end
 
 @doc raw"""
@@ -86,12 +81,14 @@ function ricattibesselj(nₘₐₓ::Integer, nₑₓₜᵣₐ::Integer, x)
 end
 
 @testitem "Ricatti-Bessel ψ and ψ′" begin
-    # Check correctness of real-value Ricatti-Bessel functions against GSL.
+    # Check correctness of real-value Ricatti-Bessel functions against `Bessels.jl`.
 
     using TransitionMatrices: ricattibesselj, estimate_ricattibesselj_extra_terms
     using GSL: sf_bessel_jl_array
 
-    @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0), n in (40,)
+    @testset "x = $x, n ∈ [1, $n]" for x in (0.01, 0.1, 1.0, 10.0, 100.0, 1000.0),
+                                       n in (40,)
+
         ψ, ψ′ = ricattibesselj(n, estimate_ricattibesselj_extra_terms(n, x), x)
 
         j = sf_bessel_jl_array(n, x)
@@ -131,7 +128,7 @@ end
     using TransitionMatrices: ricattibessely
     using GSL: sf_bessel_yl_array
 
-    @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0), n in (40,)
+    @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0, 100.0), n in (40,)
         χ, χ′ = ricattibessely(n, x)
 
         y = sf_bessel_yl_array(n, x)
