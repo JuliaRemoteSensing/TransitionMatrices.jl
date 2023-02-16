@@ -1,13 +1,15 @@
 @doc raw"""
-`bhcoat([T=Float64,], x_core, x_mantle, m_core, m_mantle; nₘₐₓ, tolerance = 1e-8)`
+```
+bhcoat([T=Float64,], xᵢₙ, xₒᵤₜ, mᵢₙ, mₒᵤₜ; nₘₐₓ, tolerance = 1e-8)
+```
 
 Inputs:
 
 - `T`: Type used for calculation. All real numbers will be stored as `T`, while complex numbers will be stored as `C = complex(T)`.
-- `x_core`: Size parameter of the core. Defined as ``\frac{2\pi r}{\lambda}``
-- `x_mantle`: Size parameter of the coated sphere. `x_mantle >= x_core` should hold.
-- `m_core`: Refractive index of the core, relative to the host medium.
-- `m_mantle`: Refractive index of the mantle, relative to the host medium.
+- `xᵢₙ`: Size parameter of the inner sphere. Defined as ``\frac{2\pi r}{\lambda}``
+- `xₒᵤₜ`: Size parameter of the coated sphere. `xₒᵤₜ >= xᵢₙ` should hold.
+- `mᵢₙ`: Refractive index of the inner sphere, relative to the host medium.
+- `mₒᵤₜ`: Refractive index of the mantle, relative to the host medium.
 
 Keyword arguments:
 
@@ -22,18 +24,19 @@ References:
 
 - Bohren, C.F., Huffman, D.R., 1983. Absorption and scattering of light by small particles. John Wiley & Sons.
 """
-function bhcoat(T, x_core, x_mantle, m_core, m_mantle;
+function bhcoat(T, xᵢₙ,
+                xₒᵤₜ, mᵢₙ, mₒᵤₜ;
                 nₘₐₓ = ceil(Int,
-                            Float64(max(x_mantle + 4 * ∛x_mantle + 2,
-                                        x_mantle * max(abs(m_core), abs(m_mantle))))),
+                            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
+                                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
                 tolerance = 1e-8)
-    @assert x_mantle>=x_core "x_mantle must be greater than or equal to x_core"
+    @assert xₒᵤₜ>=xᵢₙ "xₒᵤₜ must be greater than or equal to xᵢₙ"
 
     C = complex(T)
-    x = T(x_core)
-    y = T(x_mantle)
-    m₁ = C(m_core)
-    m₂ = C(m_mantle)
+    x = T(xᵢₙ)
+    y = T(xₒᵤₜ)
+    m₁ = C(mᵢₙ)
+    m₂ = C(mₒᵤₜ)
     x₁ = m₁ * x
     x₂ = m₂ * x
     y₂ = m₂ * y
@@ -123,12 +126,12 @@ function bhcoat(T, x_core, x_mantle, m_core, m_mantle;
     return a, b
 end
 
-function bhcoat(x_core, x_mantle, m_core, m_mantle;
+function bhcoat(xᵢₙ, xₒᵤₜ, mᵢₙ, mₒᵤₜ;
                 nₘₐₓ = ceil(Int,
-                            Float64(max(x_mantle + 4 * ∛x_mantle + 2,
-                                        x_mantle * max(abs(m_core), abs(m_mantle))))),
+                            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
+                                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
                 tolerance = 1e-8)
-    bhcoat(Float64, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = nₘₐₓ, tolerance = tolerance)
+    bhcoat(Float64, xᵢₙ, xₒᵤₜ, mᵢₙ, mₒᵤₜ; nₘₐₓ = nₘₐₓ, tolerance = tolerance)
 end
 
 @testitem "bhcoat" begin

@@ -9,11 +9,15 @@ T_{m n m^{\prime} n^{\prime}}^{22}(P)=-\delta_{m m^{\prime}} \delta_{n n^{\prime
 \end{array}
 ```
 
-`MieTransitionMatrix{CT, N}(x::Real, m::Number)` 
+```
+MieTransitionMatrix{CT, N}(x::Real, m::Number)
+``` 
 
 Generate the T-Matrix from the Mie coefficients of a homogeneous sphere.
 
-`MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number, m_mantle::Number)`
+```
+MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number, m_mantle::Number)
+```
 
 Generate the T-Matrix from the Mie coefficients of a coated sphere.
 

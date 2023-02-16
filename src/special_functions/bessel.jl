@@ -1,11 +1,14 @@
 estimate_ricattibesselj_extra_terms(n, x::Float64) = ceil(Int, 1.2 * √max(x, n)) + 3
-function estimate_ricattibesselj_extra_terms(n, x::ComplexF64) 
+function estimate_ricattibesselj_extra_terms(n, x::ComplexF64)
     tb = max(n, abs(x))
     ceil(Int, tb + 4.0 * ∛tb + 1.2 * √tb - n + 5)
 end
 
-estimate_ricattibesselj_extra_terms(n, x::Union{Float128, Double64}) = ceil(Int, 8 * √max(n, x)) + 3
-function estimate_ricattibesselj_extra_terms(n, x::Union{Complex{Float128}, Complex{Double64}}) 
+function estimate_ricattibesselj_extra_terms(n, x::Union{Float128, Double64})
+    ceil(Int, 8 * √max(n, x)) + 3
+end
+function estimate_ricattibesselj_extra_terms(n,
+                                             x::Union{Complex{Float128}, Complex{Double64}})
     tb = max(n, abs(x))
     ceil(Int, tb + 4.0 * ∛tb + 8.0 * √tb - n + 5)
 end

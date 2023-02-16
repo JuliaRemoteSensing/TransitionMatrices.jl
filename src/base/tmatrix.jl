@@ -66,14 +66,26 @@ function Base.getindex(tm::TransitionMatrix{CT, N}, idxs...) where {CT, N}
 end
 
 @doc raw"""
-`rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3})`
-
 Rotate the given T-Matrix `𝐓` by the Euler angle `rot` and generate a new T-Matrix.
 
-- For a general T-Matrix, Eq. (5.29) in Mishchenko et al. (2002) is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
+### General T-Matrix
+
+```
+rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3})
+```
+
+For a general T-Matrix, Eq. (5.29) in Mishchenko et al. (2002) is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
 
 ```math
 T_{m n m^{\prime} n^{\prime}}^{p p′}(L ; \alpha, \beta, \gamma)=\sum_{m_1=-n}^n \sum_{m_2=-n^{\prime}}^{n^{\prime}} D_{m m_1}^n(\alpha, \beta, \gamma) T_{m_1 n m_2 n^{\prime}}^{p p′}(P) D_{m_2 m^{\prime}}^{n^{\prime}}(-\gamma,-\beta,-\alpha)\quad p,p′=1,2
+```
+
+### Axisymmetric T-Matrix
+
+### Mie T-Matrix
+
+```
+rotate(𝐓::MieTransitionMatrix{CT, N}, rot::Rotation{3})
 ```
 
 - For a `MieTransitionMatrix`, the underlying Mie coefficients are copied and a new `MieTransitionMatrix` will be returned.
@@ -118,11 +130,13 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
 end
 
 @doc raw"""
-`amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ, k₁=1.0)`
-
 Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. `k₁` is the wavenumber of the incident wave in the host medium, which should be calculated by `k₁ = 2π * mₕ / λ`, where `mₕ` is the refractive index of the host medium and `λ` is the wavelength of the incident wave. The default value is `k₁ = 1.0`.
 
 ### General T-Matrix
+
+```
+amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ, k₁=1.0)
+```
 
 For a general T-Matrix, Eq. (5.11) -- Eq. (5.17) in Mishchenko et al. (2002) is used as a fallback.
 

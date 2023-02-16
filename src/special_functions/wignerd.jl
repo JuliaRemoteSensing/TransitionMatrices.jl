@@ -1,5 +1,7 @@
 @doc raw"""
-`wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}`
+```
+wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}
+```
 
 Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for a single ``(m, n, s)`` combination, using Eq. (B.1) of Mishchenko et al. (2002).
 
@@ -48,7 +50,9 @@ end
 end
 
 @doc raw"""
-`wigner_d_recursion([T=Float64,], m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv::Bool = false) where {T}`
+```
+wigner_d_recursion([T=Float64,], m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv::Bool = false) where {T}
+```
 
 Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (alternatively, its derivative as well) via upward recursion, using Eq. (B.22) of Mishchenko et al. (2002).
 
@@ -94,7 +98,9 @@ end
 end
 
 """
-`wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv=nothing)`
+```
+wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv=nothing)
+```
 
 Calculate the Wigner d-function recursively, in place.
 """
@@ -234,6 +240,10 @@ end
 end
 
 @doc raw"""
+```
+wigner_D(::Type{T}, m::Integer, m′::Integer, n::Integer, α::Number, β::Number, γ::Number) where {T}
+```
+
 Calculate the Wigner D-function ``D^j_{mn}(\theta)``, which is defined as:
 
 ```math
@@ -260,7 +270,9 @@ end
 end
 
 """
-`wigner_D_recursion([T=Float64,], m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)`
+```
+wigner_D_recursion([T=Float64,], m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)
+```
 
 Calculate the Wigner D-function recursively (use `wigner_d_recursion`).
 """
@@ -277,7 +289,9 @@ end
 end
 
 """
-`wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)`
+```
+wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Integer, α::Number, β::Number, γ::Number)
+```
 
 Calculate the Wigner D-function recursively, in place.
 """
@@ -309,7 +323,9 @@ end
 end
 
 @doc raw"""
-`pi_func([T=Float64,], m::Integer, n::Integer, ϑ::Number; d=nothing)`
+```
+pi_func([T=Float64,], m::Integer, n::Integer, ϑ::Number; d=nothing)
+```
 
 Calculate
 
@@ -339,7 +355,9 @@ end
 end
 
 @doc raw"""
-`tau_func([T=Float64,], m::Integer, n::Integer, ϑ::Number)`
+```
+tau_func([T=Float64,], m::Integer, n::Integer, ϑ::Number)
+```
 
 Calculate
 
