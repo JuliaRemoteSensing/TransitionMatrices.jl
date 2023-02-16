@@ -1,163 +1,142 @@
+estimate_ricattibesselj_extra_terms(n, x::Float64) = ceil(Int, 1.2 * √max(x, n)) + 3
+function estimate_ricattibesselj_extra_terms(n, x::ComplexF64) 
+    tb = max(n, abs(x))
+    ceil(Int, tb + 4.0 * ∛tb + 1.2 * √tb - n + 5)
+end
+
+estimate_ricattibesselj_extra_terms(n, x::Union{Float128, Double64}) = ceil(Int, 8 * √max(n, x)) + 3
+function estimate_ricattibesselj_extra_terms(n, x::Union{Complex{Float128}, Complex{Double64}}) 
+    tb = max(n, abs(x))
+    ceil(Int, tb + 4.0 * ∛tb + 8.0 * √tb - n + 5)
+end
+
+@doc raw"""
+```
+ricattibesselj!(ψₙ, ψₙ′, z, nₘₐₓ, nₑₓₜᵣₐ, x)
+```
+
+Parameters:
+
+- `ψ`: Output array for ``\psi_n(x)``.
+- `ψ′`: Output array for ``\psi^{\prime}_n(x)``.
+- `z`: Auxiliary array for downward recursion.
+- `nₘₐₓ`: Maximum order of ``\psi_n(x)``.
+- `nₑₓₜᵣₐ`: Extra terms for downward recursion of ``z``.
+- `x`: Argument.
+
+In-place version of [`ricattibesselj`](@ref).
 """
-Spherical Bessel function of the first kind.
-"""
-@inline function spherical_jn(::Type{T}, n::Integer, z) where {T}
-    if T <: Arblib.ArbLike
-        return √(Arblib.Arb(π) / (2z)) * Arblib.hypgeom_bessel_j!(Arblib.Arb(), Arblib.Arb(n + 1 // 2), Arblib.Arb(z))
-    elseif T <: Arblib.AcbLike
-        return √(Arblib.Arb(π) / (2z)) * Arblib.hypgeom_bessel_j!(Arblib.Acb(), Arblib.Acb(n + 1 // 2), Arblib.Acb(z))
-    else
-        return SpecialFunctions.sphericalbesselj(n, T(z))
+function ricattibesselj!(ψ, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, x)
+    nₜₒₜₐₗ = nₘₐₓ + nₑₓₜᵣₐ
+    x⁻¹ = one(x) / x
+    if length(z) < nₜₒₜₐₗ
+        resize!(z, nₜₒₜₐₗ)
+    end
+    z[nₜₒₜₐₗ] = x / (2nₜₒₜₐₗ + 1)
+    for n in (nₜₒₜₐₗ - 1):-1:1
+        z[n] = one(x) / ((2n + 1) * x⁻¹ - z[n + 1])
+    end
+    z₀ = one(x) / (x⁻¹ - z[1])
+    y₀ = z₀ * cos(x)
+    ψ[1] = y₀ * z[1]
+    ψ′[1] = y₀ - ψ[1] * x⁻¹
+    for n in 2:nₘₐₓ
+        ψ[n] = ψ[n - 1] * z[n]
+        ψ′[n] = ψ[n - 1] - ψ[n] * x⁻¹ * n
     end
 end
 
-@inline spherical_jn(n::Integer, z::Real) = spherical_jn(Float64, n, z)
-@inline spherical_jn(n::Integer, z) = spherical_jn(ComplexF64, n, z)
+@doc raw"""
+```
+ricattibesselj(nₘₐₓ::Integer, nₑₓₜᵣₐ::Integer, x)
+```
+
+Calculate Ricatti-Bessel function of the first kind, ``\psi_n(x)``, and its derivative ``\psi^{\prime}_n(x)`` for ``1\le n\le n_{\max}``.
+
+``\psi_n(x)`` is defined as
+
+```math
+\psi_n(x) = xj_n(x)
+```
+
+where ``j_n(x)`` is the Bessel function of the first kind.
+
+Parameters:
+
+- `nₘₐₓ`: Maximum order of ``\psi_n(x)``.
+- `nₑₓₜᵣₐ`: Extra terms for downward recursion of ``z``.
+- `x`: Argument.
+
+Returns: (`ψ`, `ψ′`)
+
+- `ψ`: Array of ``\psi_n(x)``.
+- `ψ′`: Array of ``\psi^{\prime}_n(x)``.
 
 """
-First-order derivative of spherical Bessel function of the first kind.
-"""
-@inline function spherical_jn_deriv(::Type{T}, n::Integer, z) where {T}
-    return spherical_jn(T, n - 1, z) - (n + 1) / z * spherical_jn(T, n, z)
+function ricattibesselj(nₘₐₓ::Integer, nₑₓₜᵣₐ::Integer, x)
+    T = typeof(x)
+    ψ = zeros(T, nₘₐₓ)
+    ψ′ = zeros(T, nₘₐₓ)
+    z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ)
+    ricattibesselj!(ψ, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, x)
+    return ψ, ψ′
 end
-@inline spherical_jn_deriv(n::Integer, z::Real) = spherical_jn_deriv(Float64, n, z)
-@inline spherical_jn_deriv(n::Integer, z) = spherical_jn_deriv(ComplexF64, n, z)
 
+@testitem "Ricatti-Bessel ψ and ψ′" begin
+    # Check correctness of real-value Ricatti-Bessel functions against GSL.
 
-"""
-Spherical Bessel function of the second kind.
-"""
-function spherical_yn(::Type{T}, n::Integer, z) where {T}
-    if T <: Arblib.ArbLike
-        return √(Arblib.Arb(π) / (2z)) * Arblib.hypgeom_bessel_y!(Arblib.Arb(), Arblib.Arb(n + 1 // 2), Arblib.Arb(z))
-    elseif T <: Arblib.AcbLike
-        return √(Arblib.Arb(π) / (2z)) * Arblib.hypgeom_bessel_y!(Arblib.Acb(), Arblib.Acb(n + 1 // 2), Arblib.Acb(z))
-    else
-        return SpecialFunctions.sphericalbessely(n, T(z))
+    using TransitionMatrices: ricattibesselj, estimate_ricattibesselj_extra_terms
+    using GSL: sf_bessel_jl_array
+
+    @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0), n in (40,)
+        ψ, ψ′ = ricattibesselj(n, estimate_ricattibesselj_extra_terms(n, x), x)
+
+        j = sf_bessel_jl_array(n, x)
+        j′ = [j[i] - (i + 1) / x * j[i + 1] for i in 1:n]
+        ψ₁ = j[2:end] .* x
+        ψ₁′ = j′ .* x .+ j[2:end]
+
+        @test all(ψ .≈ ψ₁)
+        @test all(ψ′ .≈ ψ₁′)
     end
 end
 
-@inline spherical_yn(n::Integer, z::Real) = spherical_yn(Float64, n, z)
-@inline spherical_yn(n::Integer, z) = spherical_yn(ComplexF64, n, z)
-
-"""
-First-order derivative of spherical Bessel function of the second kind.
-"""
-@inline function spherical_yn_deriv(::Type{T}, n::Integer, z) where {T}
-    return spherical_yn(T, n - 1, z) - (n + 1) / z * spherical_yn(T, n, z)
-end
-@inline spherical_yn_deriv(n::Integer, z::Real) = spherical_yn_deriv(Float64, n, z)
-@inline spherical_yn_deriv(n::Integer, z) = spherical_yn_deriv(ComplexF64, n, z)
-
-"""
-Spherical Hankel function of the first kind.
-"""
-@inline spherical_hn1(::Type{T}, n::Integer, z) where {T} = spherical_jn(T, n, z) + 1im * spherical_yn(T, n, z)
-@inline spherical_hn1(n::Integer, z::Real) = spherical_hn1(Float64, n, z)
-@inline spherical_hn1(n::Integer, z) = spherical_hn1(ComplexF64, n, z)
-
-"""
-First-order derivative of spherical Hankel function of the first kind.
-"""
-@inline function spherical_hn1_deriv(::Type{T}, n::Integer, z) where {T}
-    return spherical_jn_deriv(T, n, z) + 1im * spherical_yn_deriv(T, n, z)
+function ricattibessely!(χ, χ′, nₘₐₓ, x)
+    x⁻¹ = one(x) / x
+    χ[1] = -cos(x) * x⁻¹ - sin(x)
+    χ[2] = (-3x⁻¹^2 + 1) * cos(x) - 3x⁻¹ * sin(x)
+    for n in 2:(nₘₐₓ - 1)
+        χ[n + 1] = (2n + 1) * x⁻¹ * χ[n] - χ[n - 1]
+    end
+    χ′[1] = -(cos(x) + x⁻¹ * χ[1])
+    for n in 2:nₘₐₓ
+        χ′[n] = χ[n - 1] - n * x⁻¹ * χ[n]
+    end
 end
 
-@inline spherical_hn1_deriv(n::Integer, z::Real) = spherical_hn1_deriv(Float64, n, z)
-@inline spherical_hn1_deriv(n::Integer, z) = spherical_hn1_deriv(ComplexF64, n, z)
-
-"""
-Spherical Hankel function of the second kind.
-"""
-@inline spherical_hn2(::Type{T}, n::Integer, z) where {T} = spherical_jn(T, n, z) - 1im * spherical_yn(T, n, z)
-
-@inline spherical_hn2(n::Integer, z::Real) = spherical_hn2(Float64, n, z)
-@inline spherical_hn2(n::Integer, z) = spherical_hn2(ComplexF64, n, z)
-
-"""
-First-order derivative of spherical Hankel function of the second kind.
-"""
-@inline function spherical_hn2_deriv(::Type{T}, n::Integer, z) where {T}
-    return spherical_jn_deriv(T, n, z) - 1im * spherical_yn_deriv(T, n, z)
+function ricattibessely(nₘₐₓ, x)
+    T = typeof(x)
+    χ = zeros(T, nₘₐₓ)
+    χ′ = zeros(T, nₘₐₓ)
+    ricattibessely!(χ, χ′, nₘₐₓ, x)
+    return χ, χ′
 end
 
-@inline spherical_hn2_deriv(n::Integer, z::Real) = spherical_hn2_deriv(Float64, n, z)
-@inline spherical_hn2_deriv(n::Integer, z) = spherical_hn2_deriv(ComplexF64, n, z)
+@testitem "Ricatti-Bessel χ and χ′" begin
+    # Check correctness of real-value Ricatti-Bessel functions against GSL.
 
-"""
-Riccati Bessel function of the first kind.
-"""
-@inline ricatti_jn(::Type{T}, n::Integer, z) where {T} = z * spherical_jn(T, n, z)
+    using TransitionMatrices: ricattibessely
+    using GSL: sf_bessel_yl_array
 
-@inline ricatti_jn(n::Integer, z::Real) = ricatti_jn(Float64, n, z)
-@inline ricatti_jn(n::Integer, z) = ricatti_jn(ComplexF64, n, z)
+    @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0), n in (40,)
+        χ, χ′ = ricattibessely(n, x)
 
-"""
-First-order derivative of Riccati Bessel function of the first kind.
-"""
-@inline function ricatti_jn_deriv(::Type{T}, n::Integer, z) where {T}
-    jn = spherical_jn(T, n, z)
-    jnd = spherical_jn_deriv(T, n, z)
-    return z * jnd + jn
+        y = sf_bessel_yl_array(n, x)
+        y′ = [y[i] - (i + 1) / x * y[i + 1] for i in 1:n]
+        χ₁ = y[2:end] .* x
+        χ₁′ = y′ .* x .+ y[2:end]
+
+        @test all(χ .≈ χ₁)
+        @test all(χ′ .≈ χ₁′)
+    end
 end
-
-@inline ricatti_jn_deriv(n::Integer, z::Real) = ricatti_jn_deriv(Float64, n, z)
-@inline ricatti_jn_deriv(n::Integer, z) = ricatti_jn_deriv(ComplexF64, n, z)
-
-"""
-Riccati Bessel function of the second kind.
-
-> Note that in `miepy`, the author used `-z⋅y(z)` instead of `z⋅y(z)`
-"""
-@inline ricatti_yn(::Type{T}, n::Integer, z) where {T} = z * spherical_yn(T, n, z)
-
-@inline ricatti_yn(n::Integer, z::Real) = ricatti_yn(Float64, n, z)
-@inline ricatti_yn(n::Integer, z) = ricatti_yn(ComplexF64, n, z)
-
-"""
-First-order derivative of Riccati Bessel function of the second kind.
-"""
-@inline function ricatti_yn_deriv(::Type{T}, n::Integer, z) where {T}
-    yn = spherical_yn(T, n, z)
-    ynd = spherical_yn_deriv(T, n, z)
-    return z * ynd + yn
-end
-
-@inline ricatti_yn_deriv(n::Integer, z::Real) = ricatti_yn_deriv(Float64, n, z)
-@inline ricatti_yn_deriv(n::Integer, z) = ricatti_yn_deriv(ComplexF64, n, z)
-
-"""
-Riccati Hankel function of the first kind.
-"""
-@inline ricatti_hn1(::Type{T}, n::Integer, z) where {T} = ricatti_jn(T, n, z) + 1im * ricatti_yn(T, n, z)
-
-@inline ricatti_hn1(n::Integer, z::Real) = ricatti_hn1(Float64, n, z)
-@inline ricatti_hn1(n::Integer, z) = ricatti_hn1(ComplexF64, n, z)
-
-"""
-First-order derivative of Riccati Hankel function of the first kind.
-"""
-@inline function ricatti_hn1_deriv(::Type{T}, n::Integer, z) where {T}
-    return ricatti_jn_deriv(T, n, z) + 1im * ricatti_yn_deriv(T, n, z)
-end
-
-@inline ricatti_hn1_deriv(n::Integer, z::Real) = ricatti_hn1_deriv(Float64, n, z)
-@inline ricatti_hn1_deriv(n::Integer, z) = ricatti_hn1_deriv(ComplexF64, n, z)
-
-"""
-Riccati Hankel function of the second kind.
-"""
-@inline ricatti_hn2(::Type{T}, n::Integer, z) where {T} = ricatti_jn(T, n, z) - 1im * ricatti_yn(T, n, z)
-
-@inline ricatti_hn2(n::Integer, z::Real) = ricatti_hn2(Float64, n, z)
-@inline ricatti_hn2(n::Integer, z) = ricatti_hn2(ComplexF64, n, z)
-
-"""
-First-order derivative of Riccati Hankel function of the second kind.
-"""
-@inline function ricatti_hn2_deriv(::Type{T}, n::Integer, z) where {T}
-    return ricatti_jn_deriv(T, n, z) - 1im * ricatti_yn_deriv(T, n, z)
-end
-
-@inline ricatti_hn2_deriv(n::Integer, z::Real) = ricatti_hn2_deriv(Float64, n, z)
-@inline ricatti_hn2_deriv(n::Integer, z) = ricatti_hn2_deriv(ComplexF64, n, z)
