@@ -1,3 +1,5 @@
+const WIGNER_D_EPS = 1e-12
+
 @doc raw"""
 ```
 wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}
@@ -129,9 +131,10 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
         deriv = OffsetArray(deriv, smin:smax)
     end
 
-    ξ = m <= n ? 1 : (-1)^((m - n) & 1)
+    sig = iseven(m + n) ? 1 :
+          (m > n ? -sign(sinϑ) : sign(sinϑ))
     d₀ = 0
-    d₁ = d[smin] = ξ * T(2)^(-smin) *
+    d₁ = d[smin] = sig * T(2)^(-smin) *
                    √(factorial(T, 2smin) / factorial(T, abs(m - n)) /
                      factorial(T, abs(m + n))) *
                    (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)
@@ -156,11 +159,11 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
         if !isnothing(deriv)
             if s == 0
                 deriv[s] = 0
-            elseif cosϑ ≈ 1
+            elseif abs(1 - cosϑ) < WIGNER_D_EPS
                 deriv[s] = abs(m - n) == 1 ? (n - m) * √T(s * (s + 1)) / 2 : 0
-            elseif cosϑ ≈ -1
+            elseif abs(1 + cosϑ) < WIGNER_D_EPS
                 deriv[s] = abs(m - n) == 1 ?
-                           (n - m) * (-1)^((s + 1) & 1) * √T(s * (s + 1)) / 2 :
+                           (n - m) * (-1)^(s & 1) * √T(s * (s + 1)) / 2 :
                            0
             else
                 deriv[s] = 1 / sinϑ * (-(s + 1) * sm * sn / (s * (2s + 1)) * d₀ -
@@ -178,29 +181,31 @@ end
 @testitem "Wigner d-function" begin
     using TransitionMatrices: wigner_d, wigner_d_recursion, wigner_d_recursion!
 
-    @testset "d($m, 0, n, 0.2) is correct" for m in 0:1
-        d₁ = [wigner_d(m, 0, n, 0.2) for n in max(0, m):5]
-        d₂ = wigner_d_recursion(m, 0, 5, 0.2)
+    @testset "d($m, $m′, $n, $ϑ) is correct" for m in -2:2, m′ in -2:2, n in (5,),
+                                                 ϑ in (-2e-4, 2e-4, 0.5, π - 2e-4, π + 2e-4)
+
+        d₁ = [wigner_d(m, m′, n, ϑ) for n in max(abs(m′), abs(m)):n]
+        d₂ = wigner_d_recursion(m, m′, n, ϑ)
         @test all(d₁ .≈ collect(d₂))
 
         d₃ = zeros(length(d₂))
-        wigner_d_recursion!(d₃, m, 0, 5, 0.2)
+        wigner_d_recursion!(d₃, m, m′, n, ϑ)
         @test all(d₁ .≈ d₃)
     end
 
     @testset "d′(ϑ) converges correctly when cosϑ → 1" begin
-        params = Iterators.product(-1:1, -1:1, 5:5:15)
-        for (m, n, s) in params
+        params = Iterators.product(-1:1, -1:1, 5:5:15, -1:2:1)
+        for (m, n, s, δ) in params
             if abs(m - n) != 1
                 continue
             end
 
-            @testset "m = $m, n = $n, s = $s" begin
+            @testset "m = $m, n = $n, s = $s, δ = $(1e-6δ)" begin
                 # No approximation
-                _, δd′ = wigner_d_recursion(m, n, s, 2e-4; deriv = true)
+                _, δd′ = wigner_d_recursion(m, n, s, 2e-6δ; deriv = true)
 
                 # Approximation
-                _, d′ = wigner_d_recursion(m, n, s, 1e-4; deriv = true)
+                _, d′ = wigner_d_recursion(m, n, s, 1e-6δ; deriv = true)
 
                 # We only need to ensure that the sign is correct, so the tolerance is quite large here.
                 @test all(isapprox.(δd′, d′; atol = 1e-4, rtol = 1e-4))
@@ -208,24 +213,24 @@ end
         end
 
         @testset "m = 0, n = $n, s = 5" for n in 2:5
-            _, d′ = wigner_d_recursion(0, n, 5, 1e-4; deriv = true)
+            _, d′ = wigner_d_recursion(0, n, 5, 1e-6; deriv = true)
             @test all(iszero.(d′))
         end
     end
 
     @testset "d′(ϑ) converges correctly when cosϑ → -1" begin
-        params = Iterators.product(-1:1, -1:1, 5:5:15)
-        for (m, n, s) in params
+        params = Iterators.product(-1:1, -1:1, 5:5:15, -1:2:1)
+        for (m, n, s, δ) in params
             if abs(m - n) != 1
                 continue
             end
 
-            @testset "m = $m, n = $n, s = $s" begin
+            @testset "m = $m, n = $n, s = $s, δ = $(1e-6δ)" begin
                 # No approximation
-                _, δd′ = wigner_d_recursion(m, n, s, π + 2e-4; deriv = true)
+                _, δd′ = wigner_d_recursion(m, n, s, π + 2e-6δ; deriv = true)
 
                 # Approximation
-                _, d′ = wigner_d_recursion(m, n, s, π + 1e-4; deriv = true)
+                _, d′ = wigner_d_recursion(m, n, s, π + 1e-6δ; deriv = true)
 
                 # We only need to ensure that the sign is correct, so the tolerance is quite large here.
                 @test all(isapprox.(δd′, d′; atol = 1e-4, rtol = 1e-4))
@@ -233,7 +238,7 @@ end
         end
 
         @testset "m = 0, n = $n, s = 5" for n in 2:5
-            _, d′ = wigner_d_recursion(0, n, 5, π + 1e-4; deriv = true)
+            _, d′ = wigner_d_recursion(0, n, 5, π + 1e-6; deriv = true)
             @test all(iszero.(d′))
         end
     end
@@ -338,10 +343,11 @@ If `d` is given, it is used as the value of ``d_{0 m}^n(\vartheta)``.
 function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number; d = nothing) where {T}
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
-    if cosϑ ≈ 1
+
+    if abs(1 - cosϑ) < WIGNER_D_EPS
         return abs(m) == 1 ? √T(n * (n + 1)) / 2 : zero(T)
-    elseif cosϑ ≈ -1
-        return abs(m) == 1 ? -√T(n * (n + 1)) / 2 : zero(T)
+    elseif abs(1 + cosϑ) < WIGNER_D_EPS
+        return abs(m) == 1 ? (-1)^((n + 1) & 1) * √T(n * (n + 1)) / 2 : zero(T)
     else
         if isnothing(d)
             d = wigner_d_recursion(T, 0, m, n, ϑ)[n]
@@ -352,6 +358,66 @@ end
 
 @inline function pi_func(m::Integer, n::Integer, ϑ::Number; d = nothing)
     return pi_func(Float64, m, n, ϑ; d = d)
+end
+
+"""
+A special version of `pi_func` that does not multiply `m`. Only for internal use.
+"""
+function pi_func_special(::Type{T}, m::Integer, n::Integer, ϑ::Number;
+                         d = nothing) where {T}
+    ϑ = T(ϑ)
+    cosϑ = cos(ϑ)
+
+    if abs(1 - cosϑ) < WIGNER_D_EPS
+        return abs(m) == 1 ? √T(n * (n + 1)) / 2m : zero(T)
+    elseif abs(1 + cosϑ) < WIGNER_D_EPS
+        return abs(m) == 1 ? (-1)^((n + 1) & 1) * √T(n * (n + 1)) / 2m : zero(T)
+    else
+        if isnothing(d)
+            d = wigner_d_recursion(T, 0, m, n, ϑ)[n]
+        end
+        return d / sin(ϑ)
+    end
+end
+
+@inline function pi_func_special(m::Integer, n::Integer, ϑ::Number; d = nothing)
+    return pi_func_special(Float64, m, n, ϑ; d = d)
+end
+
+@testitem "π-function" begin
+    using TransitionMatrices: pi_func
+
+    @testset "π(ϑ) converges correctly when cosϑ → 1" begin
+        params = Iterators.product(-2:2, 2:5, -1:2:1)
+        for (m, n, δ) in params
+            @testset "m = $m, n = $n" begin
+                # No approximation
+                π₁ = pi_func(m, n, 2e-6δ)
+
+                # Approximation
+                π₂ = pi_func(m, n, 1e-6δ)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test isapprox(π₁, π₂; atol = 1e-4, rtol = 1e-4)
+            end
+        end
+    end
+
+    @testset "π(ϑ) converges correctly when cosϑ → -1" begin
+        params = Iterators.product(-2:2, 2:5, -1:2:1)
+        for (m, n, δ) in params
+            @testset "m = $m, n = $n" begin
+                # No approximation
+                π₁ = pi_func(m, n, π + 2e-6δ)
+
+                # Approximation
+                π₂ = pi_func(m, n, π + 1e-6δ)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test isapprox(π₁, π₂; atol = 1e-4, rtol = 1e-4)
+            end
+        end
+    end
 end
 
 @doc raw"""
@@ -373,3 +439,40 @@ end
 @inline function tau_func(m::Integer, n::Integer, ϑ::Number)
     return tau_func(Float64, m, n, ϑ)
 end
+
+@testitem "τ-function" begin
+    using TransitionMatrices: tau_func
+
+    @testset "τ(ϑ) converges correctly when cosϑ → 1" begin
+        params = Iterators.product(-2:2, 2:5, -1:2:1)
+        for (m, n, δ) in params
+            @testset "m = $m, n = $n" begin
+                # No approximation
+                τ₁ = tau_func(m, n, 2e-6δ)
+
+                # Approximation
+                τ₂ = tau_func(m, n, 1e-6δ)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test isapprox(τ₁, τ₂; atol = 1e-4, rtol = 1e-4)
+            end
+        end
+    end
+
+    @testset "τ(ϑ) converges correctly when cosϑ → -1" begin
+        params = Iterators.product(-2:2, 2:5, -1:2:1)
+        for (m, n, δ) in params
+            @testset "m = $m, n = $n" begin
+                # No approximation
+                τ₁ = tau_func(m, n, π + 2e-6δ)
+
+                # Approximation
+                τ₂ = tau_func(m, n, π + 1e-6δ)
+
+                # We only need to ensure that the sign is correct, so the tolerance is quite large here.
+                @test isapprox(τ₁, τ₂; atol = 1e-4, rtol = 1e-4)
+            end
+        end
+    end
+end
+

@@ -11,11 +11,11 @@ Base.@propagate_inbounds function Base.getindex(axi::AxisymmetricTransitionMatri
         zero(CT)
     else
         mₐ = abs(m)
-        sign = m >= 0 ? 1 : (-1)^(p + p′)
+        sig = m >= 0 ? 1 : (-1)^(p + p′)
         nn = N - max(1, mₐ) + 1
         n₁ = (p - 1) * nn + n - max(1, mₐ) + 1
         n₂ = (p′ - 1) * nn + n′ - max(1, mₐ) + 1
-        axi.𝐓[mₐ + 1][n₁, n₂] * sign
+        axi.𝐓[mₐ + 1][n₁, n₂] * sig
     end
 end
 
@@ -103,9 +103,9 @@ function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ,
         π₂, τ₂ = wigner_d_recursion(T, 0, m, N, ϑ₂, deriv = true)
 
         for n in m:N
-            # Here we use a trick to get d/sthe without multiplying m
-            π₁[n] = pi_func(T, 1, n, ϑ₁; d = π₁[n])
-            π₂[n] = pi_func(T, 1, n, ϑ₂; d = π₂[n])
+            # Here we use a special version to get d/sthe without multiplying m
+            π₁[n] = pi_func_special(T, m, n, ϑ₁; d = π₁[n])
+            π₂[n] = pi_func_special(T, m, n, ϑ₂; d = π₂[n])
         end
 
         nₘ = N - max(1, m) + 1
@@ -145,7 +145,27 @@ function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ,
     return 𝐑₂ * (𝐒 * 𝐑₁) / k₁
 end
 
-# TODO: Add signature
+@testitem "𝐒(axi, euler) ≡ 𝐒(rotate(axi, euler))" begin
+    using Rotations: RotZYZ
+    using TransitionMatrices: Spheroid, amplitude_matrix, rotate, transition_matrix
+
+    @testset "Spheroid" begin
+        params = Iterators.product((0.5, 1.0, 5.0), (1.0,), (1.311, 1.5 + 0.01im),
+                                   (0.0, 0.5), (0.0, 0.5))
+
+        @testset "a = $a, c = $c, m = $m, α = $α, β = $β" for (a, c, m, α, β) in params
+            s = Spheroid{Float64, ComplexF64}(a, c, m)
+            𝐓 = transition_matrix(s, 2π, 15, 200)
+            𝐓r = rotate(𝐓, RotZYZ(α, β, 0))
+
+            𝐒 = amplitude_matrix(𝐓, 0.0, 0.3, π / 2, 0.5; rot = RotZYZ(α, β, 0))
+            𝐒r = amplitude_matrix(𝐓r, 0.0, 0.3, π / 2, 0.5)
+
+            @test all(𝐒 .≈ 𝐒r)
+        end
+    end
+end
+
 @doc raw"""
 ```
 transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}

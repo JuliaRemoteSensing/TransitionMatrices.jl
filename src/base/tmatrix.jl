@@ -117,9 +117,9 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
         for p in 1:2, p′ in 1:2
             for (n, m) in OrderDegreeIterator(N)
                 for m₂ in (-n′):n′, m₁ in (-n):n
-                    sign = iseven(m′ + m₂) ? 1 : -1
+                    sig = iseven(m′ + m₂) ? 1 : -1
                     𝐓′[m, n, m′, n′, p, p′] += coeff[m, m₁] * d[m, m₁, n] *
-                                               conj(coeff[m′, m₂]) * d[m₂, m′, n′] * sign *
+                                               conj(coeff[m′, m₂]) * d[m₂, m′, n′] * sig *
                                                𝐓[m₁, n, m₂, n′, p, p′]
                 end
             end
