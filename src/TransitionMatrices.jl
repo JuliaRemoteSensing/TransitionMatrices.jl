@@ -4,6 +4,7 @@ using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
+using LinearAlgebra: cond
 using LoopVectorization: @turbo
 using OffsetArrays: OffsetArray
 using Quadmath: Float128
