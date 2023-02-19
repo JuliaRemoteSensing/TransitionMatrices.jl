@@ -338,9 +338,10 @@ Calculate
 \pi_{m n}(\vartheta)=\frac{m d_{0 m}^n(\vartheta)}{\sin \vartheta}
 ```
 
-If `d` is given, it is used as the value of ``d_{0 m}^n(\vartheta)``.
+- If `d` is given, it is used as the value of ``d_{0 m}^n(\vartheta)``.
 """
-function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number; d = nothing) where {T}
+function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number;
+                 d = nothing) where {T}
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
 
@@ -356,32 +357,9 @@ function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number; d = nothing) whe
     end
 end
 
-@inline function pi_func(m::Integer, n::Integer, ϑ::Number; d = nothing)
+@inline function pi_func(m::Integer, n::Integer, ϑ::Number;
+                         d = nothing)
     return pi_func(Float64, m, n, ϑ; d = d)
-end
-
-"""
-A special version of `pi_func` that does not multiply `m`. Only for internal use.
-"""
-function pi_func_special(::Type{T}, m::Integer, n::Integer, ϑ::Number;
-                         d = nothing) where {T}
-    ϑ = T(ϑ)
-    cosϑ = cos(ϑ)
-
-    if abs(1 - cosϑ) < WIGNER_D_EPS
-        return abs(m) == 1 ? √T(n * (n + 1)) / 2m : zero(T)
-    elseif abs(1 + cosϑ) < WIGNER_D_EPS
-        return abs(m) == 1 ? (-1)^((n + 1) & 1) * √T(n * (n + 1)) / 2m : zero(T)
-    else
-        if isnothing(d)
-            d = wigner_d_recursion(T, 0, m, n, ϑ)[n]
-        end
-        return d / sin(ϑ)
-    end
-end
-
-@inline function pi_func_special(m::Integer, n::Integer, ϑ::Number; d = nothing)
-    return pi_func_special(Float64, m, n, ϑ; d = d)
 end
 
 @testitem "π-function" begin
@@ -475,4 +453,3 @@ end
         end
     end
 end
-

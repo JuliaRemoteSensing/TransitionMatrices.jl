@@ -103,9 +103,8 @@ function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ,
         π₂, τ₂ = wigner_d_recursion(T, 0, m, N, ϑ₂, deriv = true)
 
         for n in m:N
-            # Here we use a special version to get d/sthe without multiplying m
-            π₁[n] = pi_func_special(T, m, n, ϑ₁; d = π₁[n])
-            π₂[n] = pi_func_special(T, m, n, ϑ₂; d = π₂[n])
+            π₁[n] = pi_func(T, m, n, ϑ₁; d = π₁[n])
+            π₂[n] = pi_func(T, m, n, ϑ₂; d = π₂[n])
         end
 
         nₘ = N - max(1, m) + 1
@@ -127,9 +126,9 @@ function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ,
                 c₁ = coeff[n + offset, n′ + offset] * 2cosmφ
                 c₂ = coeff[n + offset, n′ + offset] * 2sinmφ
 
-                D₁₁ = m^2 * π₂[n + offset] * π₁[n′ + offset]
-                D₁₂ = m * π₂[n + offset] * τ₁[n′ + offset]
-                D₂₁ = m * τ₂[n + offset] * π₁[n′ + offset]
+                D₁₁ = π₂[n + offset] * π₁[n′ + offset]
+                D₁₂ = π₂[n + offset] * τ₁[n′ + offset]
+                D₂₁ = τ₂[n + offset] * π₁[n′ + offset]
                 D₂₂ = τ₂[n + offset] * τ₁[n′ + offset]
                 S₁₁ += c₁ * (T₁₁ * D₁₁ + T₁₂ * D₁₂ + T₂₁ * D₂₁ + T₂₂ * D₂₂)
                 S₁₂ += c₂ * (T₁₁ * D₁₂ + T₁₂ * D₁₁ + T₂₁ * D₂₂ + T₂₂ * D₂₁)
