@@ -1,3 +1,5 @@
+export Chebyshev
+
 @doc raw"""
 A Chebyshev scatterer defined by
 
@@ -34,6 +36,22 @@ end
 
 volume(c::Chebyshev) = 4 // 3 * π * volume_equivalent_radius(c)^3
 has_symmetric_plane(c::Chebyshev) = iseven(c.n)
+
+@testitem "Utility functions are correct" begin
+    using TransitionMatrices: Chebyshev, volume, volume_equivalent_radius,
+                              has_symmetric_plane
+
+    @testset "r₀ = $r₀, ε = $ε, n = $n" for (r₀, ε, n, V, rᵥ) in [
+        (1.0, 0.5, 2, 3.4258319889145845, 0.9351741286290055),
+        (3.0, -1.0, 3, 277.8963101575429, 4.048225756255873),
+        (5.0, 1.0, 8, 1274.5227007709325, 6.725939997427172),
+    ]
+        c = Chebyshev(r₀, ε, n, 1.5 + 0.01im)
+        @test volume(c) ≈ V
+        @test volume_equivalent_radius(c) ≈ rᵥ
+        @test has_symmetric_plane(c) == iseven(n)
+    end
+end
 
 function radius_and_deriv!(r, dr, c::Chebyshev{Float64}, x)
     ngauss = length(x)
