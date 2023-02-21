@@ -53,8 +53,22 @@ Base.@propagate_inbounds function Base.getindex(mie::MieTransitionMatrix{CT, N, 
     end
 end
 
+"""
+```
+rotate(mie::MieTransitionMatrix, ::Rotation{3})
+```
+
+The T-Matrix of a Mie scatterer is invariant under rotation. Therefore, the original T-Matrix will be returned.
+"""
 rotate(mie::MieTransitionMatrix, ::Rotation{3}) = mie
 
+"""
+```
+orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...)
+```
+
+The T-Matrix of a Mie scatterer is invariant under rotation. Therefore, the original T-Matrix will be returned.
+"""
 orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...) = mie
 
 @testitem "MieTransitionMatrix" begin

@@ -26,39 +26,17 @@ function Base.getindex(tm::TransitionMatrix{CT, N}, idxs...) where {CT, N}
 end
 
 @doc raw"""
-Rotate the given T-Matrix `𝐓` by the Euler angle `rot` and generate a new T-Matrix.
-
-### General T-Matrix
-
 ```
 rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3})
 ```
+
+Rotate the given T-Matrix `𝐓` by the Euler angle `rot` and generate a new T-Matrix.
 
 For a general T-Matrix, Eq. (5.29) in Mishchenko et al. (2002) is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
 
 ```math
 T_{m n m^{\prime} n^{\prime}}^{p p′}(L ; \alpha, \beta, \gamma)=\sum_{m_1=-n}^n \sum_{m_2=-n^{\prime}}^{n^{\prime}} D_{m m_1}^n(\alpha, \beta, \gamma) T_{m_1 n m_2 n^{\prime}}^{p p′}(P) D_{m_2 m^{\prime}}^{n^{\prime}}(-\gamma,-\beta,-\alpha)\quad p,p′=1,2
 ```
-
-### Axisymmetric T-Matrix
-
-### Mie T-Matrix
-
-```
-rotate(𝐓::MieTransitionMatrix{CT, N}, rot::Rotation{3})
-```
-
-For a `MieTransitionMatrix`, the underlying Mie coefficients are copied and a new `MieTransitionMatrix` will be returned.
-
-### Orientation-averaged T-Matrix
-
-```
-rotate(oa::OrientationAveragedTransitionMatrix{CT, N, V}, ::Rotation{3}) where {CT, N, V} =
-    typeof(oa)(copy(oa.𝐓))
-```
-
-For an `OrientationAveragedTransitionMatrix`, the underlying T-Matrix is copied and a new `OrientationAveragedTransitionMatrix` will be returned.
-
 """
 function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {CT, N}
     # Get the Euler angle in Z-Y-Z order.
@@ -212,15 +190,11 @@ function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, �
 end
 
 @doc raw"""
-Calculate the orientation average of a transition matrix, given the orientation distribution function ``p_o(\alpha,\beta,\gamma)``. 
-
-### General T-Matrix
-
 ```
 orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 10, Nβ = 10, Nγ = 10) where {CT, N}
 ```
 
-For a general T-Matrix and a general orientation distribution function, we use numerical integration to calculate the orientation average. The orientation average is given by
+Calculate the orientation average of a transition matrix using numerical integration, given the orientation distribution function ``p_o(\alpha,\beta,\gamma)``. 
 
 ```math
 \langle T_{m n m^{\prime} n^{\prime}}^{p p^{\prime}}(L)\rangle = \int_0^{2\pi}\mathrm{d}\alpha\int_0^{\pi}\mathrm{d}\beta\sin\beta\int_0^{2\pi}\mathrm{d}\gamma p_o(\alpha,\beta,\gamma) T_{m n m^{\prime} n^{\prime}}^{p p^{\prime}}(L; \alpha,\beta,\gamma)
@@ -239,15 +213,6 @@ Parameters:
     This is the fallback method and does not utilize any symmetry, so it is expected to be slow. You should use specified versions of this function, or implement your own if there is no suited version for your combination of T-Matrix and orientation distribution function.
 
     You may also need to test the convergence of `Nα`, `Nβ` and `Nγ` manually. If any one is too small, there will be large errors in the results.
-
-### Random orientation T-Matrix and Mie T-Matrix
-
-```
-orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...)
-orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...)
-```
-
-Both types are invariant under rotation. Therefore, the original T-Matrix will be returned.
 """
 function orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 10, Nβ = 10,
                              Nγ = 10) where {CT, N}

@@ -35,8 +35,22 @@ Base.@propagate_inbounds function Base.getindex(oa::RandomOrientationTransitionM
     end
 end
 
+"""
+```
+rotate(ro::RandomOrientationTransitionMatrix{CT, N, V}, ::Rotation{3}) where {CT, N, V}
+```
+
+The random-orientation T-Matrix is invariant under rotation. Therefore, the original T-Matrix will be returned.
+"""
 rotate(ro::RandomOrientationTransitionMatrix{CT, N, V}, ::Rotation{3}) where {CT, N, V} = ro
 
+"""
+```
+orientation_average(ro::RandomOrientationTransitionMatrix, _pₒ; _kwargs...)
+```
+
+The random-orientation T-Matrix is invariant under rotation. Therefore, the original T-Matrix will be returned.
+"""
 orientation_average(ro::RandomOrientationTransitionMatrix, _pₒ; _kwargs...) = ro
 
 @testitem "Analytical orientation average can be approximated by numerical method" begin
