@@ -2,6 +2,5 @@
 Arblib = "fb37089c-8514-4489-9461-98f9c8763369"
 GSL = "92c85e6c-cbff-5e0c-80f7-495c94daaecd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
-SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"

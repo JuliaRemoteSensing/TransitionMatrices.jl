@@ -1,3 +1,3 @@
 include("bhmie.jl")
 include("bhcoat.jl")
-include("tmatrix.jl")
+include("MieTransitionMatrix.jl")

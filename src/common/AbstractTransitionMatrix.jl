@@ -1,43 +1,3 @@
-"""
-Iterator for the order-degree pairs of the given maximum order `nₘₐₓ`.
-"""
-struct OrderDegreeIterator
-    nₘₐₓ::Int
-end
-
-Base.iterate(::OrderDegreeIterator) = ((1, -1), (1, -1))
-function Base.iterate(iter::OrderDegreeIterator, (n, m))
-    if m == n
-        n == iter.nₘₐₓ ? nothing : ((n + 1, -n - 1), (n + 1, -n - 1))
-    else
-        ((n, m + 1), (n, m + 1))
-    end
-end
-
-Base.firstindex(iter::OrderDegreeIterator) = 1
-Base.lastindex(iter::OrderDegreeIterator) = length(iter)
-function Base.getindex(iter::OrderDegreeIterator, idx)
-    n = floor(Int, √idx)
-    m = idx - n^2 - n
-    (n, m)
-end
-Base.length(iter::OrderDegreeIterator) = iter.nₘₐₓ * (iter.nₘₐₓ + 2)
-Base.size(x::OrderDegreeIterator) = (length(x),)
-Base.eltype(::OrderDegreeIterator) = Tuple{Int, Int}
-Base.isdone(iter::OrderDegreeIterator, state) = state >= (iter.nₘₐₓ, iter.nₘₐₓ)
-
-@testitem "OrderDegreeIterator" begin
-    using TransitionMatrices: OrderDegreeIterator
-
-    @test iterate(OrderDegreeIterator(3)) == ((1, -1), (1, -1))
-    @test iterate(OrderDegreeIterator(3), (1, 1)) == ((2, -2), (2, -2))
-    @test collect(OrderDegreeIterator(2)) ==
-          [(1, -1), (1, 0), (1, 1), (2, -2), (2, -1), (2, 0), (2, 1), (2, 2)]
-    @test size(OrderDegreeIterator(100)) == (10200,)
-    @test !Base.isdone(OrderDegreeIterator(2), (1, 1))
-    @test Base.isdone(OrderDegreeIterator(2), (2, 2))
-end
-
 @doc raw"""
 A general T-Matrix ``T_{m n m^{\prime} n^{\prime}}^{k l}`` stored in a 6-dimensional array, in the order ``(m, n, m^{\prime}, n^{\prime}, k, l)``.
 """
@@ -88,7 +48,17 @@ T_{m n m^{\prime} n^{\prime}}^{p p′}(L ; \alpha, \beta, \gamma)=\sum_{m_1=-n}^
 rotate(𝐓::MieTransitionMatrix{CT, N}, rot::Rotation{3})
 ```
 
-- For a `MieTransitionMatrix`, the underlying Mie coefficients are copied and a new `MieTransitionMatrix` will be returned.
+For a `MieTransitionMatrix`, the underlying Mie coefficients are copied and a new `MieTransitionMatrix` will be returned.
+
+### Orientation-averaged T-Matrix
+
+```
+rotate(oa::OrientationAveragedTransitionMatrix{CT, N, V}, ::Rotation{3}) where {CT, N, V} =
+    typeof(oa)(copy(oa.𝐓))
+```
+
+For an `OrientationAveragedTransitionMatrix`, the underlying T-Matrix is copied and a new `OrientationAveragedTransitionMatrix` will be returned.
+
 """
 function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {CT, N}
     # Get the Euler angle in Z-Y-Z order.
@@ -239,4 +209,74 @@ function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, �
     end
 
     return (@SMatrix [𝐒₁₁ 𝐒₁₂/1im; 𝐒₂₁*1im 𝐒₂₂]) ./ k₁
+end
+
+@doc raw"""
+Calculate the orientation average of a transition matrix, given the orientation distribution function ``p_o(\alpha,\beta,\gamma)``. 
+
+### General T-Matrix
+
+```
+orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 10, Nβ = 10, Nγ = 10) where {CT, N}
+```
+
+For a general T-Matrix and a general orientation distribution function, we use numerical integration to calculate the orientation average. The orientation average is given by
+
+```math
+\langle T_{m n m^{\prime} n^{\prime}}^{p p^{\prime}}(L)\rangle = \int_0^{2\pi}\mathrm{d}\alpha\int_0^{\pi}\mathrm{d}\beta\sin\beta\int_0^{2\pi}\mathrm{d}\gamma p_o(\alpha,\beta,\gamma) T_{m n m^{\prime} n^{\prime}}^{p p^{\prime}}(L; \alpha,\beta,\gamma)
+```
+
+Parameters:
+
+- `𝐓`: The T-Matrix to be orientation averaged.
+- `pₒ`: The orientation distribution function. Note that the ``\sin\beta`` part is already included.
+- `Nα`: The number of points used in the numerical integration of ``\alpha``. Default to 10.
+- `Nβ`: The number of points used in the numerical integration of ``\beta``. Default to 10.
+- `Nγ`: The number of points used in the numerical integration of ``\gamma``. Default to 10.
+
+!!! note
+
+    This is the fallback method and does not utilize any symmetry, so it is expected to be slow. You should use specified versions of this function, or implement your own if there is no suited version for your combination of T-Matrix and orientation distribution function.
+
+    You may also need to test the convergence of `Nα`, `Nβ` and `Nγ` manually. If any one is too small, there will be large errors in the results.
+
+### Random orientation T-Matrix and Mie T-Matrix
+
+```
+orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...)
+orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...)
+```
+
+Both types are invariant under rotation. Therefore, the original T-Matrix will be returned.
+"""
+function orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 10, Nβ = 10,
+                             Nγ = 10) where {CT, N}
+    T̄ = similar(𝐓)
+    fill!(T̄, zero(CT))
+
+    # Transform to [0, 2pi]
+    xa, wa = gausslegendre(Nα)
+    @. xa = (xa + 1) * π
+    @. wa *= π
+
+    # Integrate cos(beta) from -1 to 1
+    xb, wb = gausslegendre(Nβ)
+    # Get beta from cos(beta)
+    xb = acos.(xb)
+
+    # Transform to [0, 2pi]
+    xc, wc = gausslegendre(Nγ)
+    @. xc = (xc + 1) * π
+    @. wc *= π
+
+    for (α, wi) in zip(xa, wa)
+        for (β, wj) in zip(xb, wb)
+            for (γ, wk) in zip(xc, wc)
+                𝐓αβγ = rotate(𝐓, RotZYZ(α, β, γ))
+                @. T̄ += pₒ(α, β, γ) * 𝐓αβγ * wi * wj * wk
+            end
+        end
+    end
+
+    TransitionMatrix{CT, N, typeof(T̄)}(T̄)
 end

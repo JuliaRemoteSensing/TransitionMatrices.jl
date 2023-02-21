@@ -1,4 +1,5 @@
 const FACTORIAL = Dict()
+const FACTORIAL_LOCK = ReentrantLock()
 
 """
 `factorial([T=Float64,], n)`
@@ -14,9 +15,11 @@ function factorial(::Type{T}, n)::T where {T}
         memo = FACTORIAL[T]
         n₀ = length(memo)
         if n₀ <= n
-            sizehint!(memo, n + 1)
-            for i in n₀:n
-                push!(memo, memo[end] * i)
+            lock(FACTORIAL_LOCK) do 
+                sizehint!(memo, n + 1)
+                for i in n₀:n
+                    push!(memo, memo[end] * i)
+                end
             end
         end
         return memo[n + 1]

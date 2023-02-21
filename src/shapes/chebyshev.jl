@@ -1,5 +1,3 @@
-export Chebyshev
-
 @doc raw"""
 A Chebyshev scatterer defined by
 
@@ -53,21 +51,17 @@ has_symmetric_plane(c::Chebyshev) = iseven(c.n)
     end
 end
 
-function radius_and_deriv!(r, dr, c::Chebyshev{Float64}, x)
-    ngauss = length(x)
+"""
+```
+radius_and_deriv!(r, dr, c::Chebyshev{T}, x) where {T}
+```
 
-    # Use @turbo for Float64 only (loop vectorization does not work well for other types, e.g., Double64, Float128, and does not work at all for Arb)
-    @turbo for i in 1:ngauss
-        nϑ = acos(x[i]) * c.n
-        r[i] = c.r₀ * (1 + c.ε * cos(nϑ))
-        dr[i] = -c.r₀ * c.ε * c.n * sin(nϑ)
-    end
-end
-
+We could have used @turbo for primitive types like `Float64`, but this is
+not the bottleneck, so we only use `@inbounds` here.
+"""
 function radius_and_deriv!(r, dr, c::Chebyshev{T}, x) where {T}
     ngauss = length(x)
 
-    # For other types, we only use @inbounds to skip bounds checking
     @inbounds for i in 1:ngauss
         nϑ = acos(x[i]) * c.n
         r[i] = c.r₀ * (1 + c.ε * cos(nϑ))

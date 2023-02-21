@@ -1,5 +1,3 @@
-export Spheroid
-
 @doc raw"""
 A spheroid scatterer.
 
@@ -35,24 +33,17 @@ has_symmetric_plane(::Spheroid) = true
     end
 end
 
-function radius_and_deriv!(r, dr, s::Spheroid{Float64}, x)
-    ngauss = length(x)
+"""
+```
+radius_and_deriv!(r, dr, s::Spheroid{T}, x) where {T}
+```
 
-    # Use @turbo for Float64 only (loop vectorization does not work well for other types, e.g., Double64, Float128, and does not work at all for Arb)
-    @turbo for i in 1:(ngauss ÷ 2)
-        cosϑ = x[i]
-        sinϑ = √(1.0 - cosϑ^2)
-        r[i] = s.a * s.c * √(1.0 / (s.a^2 * cosϑ^2 + s.c^2 * sinϑ^2))
-        r[ngauss + 1 - i] = r[i]
-        dr[i] = r[i]^3 * cosϑ * sinϑ * (s.a^2 - s.c^2) / (s.a^2 * s.c^2)
-        dr[ngauss + 1 - i] = -dr[i]
-    end
-end
-
+We could have used @turbo for primitive types like `Float64`, but this is
+not the bottleneck, so we only use `@inbounds` here.
+"""
 function radius_and_deriv!(r, dr, s::Spheroid{T}, x) where {T}
     ngauss = length(x)
 
-    # For other types, we only use @inbounds to skip bounds checking
     @inbounds for i in 1:(ngauss ÷ 2)
         cosϑ = x[i]
         sinϑ = √(1.0 - cosϑ^2)

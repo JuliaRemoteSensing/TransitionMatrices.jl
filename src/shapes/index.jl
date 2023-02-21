@@ -1,6 +1,3 @@
-export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volume,
-       volume_equivalent_radius, has_symmetric_plane
-
 abstract type AbstractShape{T, CT} end
 abstract type AbstractHomogeneousShape{T, CT} <: AbstractShape{T, CT} end
 abstract type AbstractAxisymmetricShape{T, CT} <: AbstractHomogeneousShape{T, CT} end

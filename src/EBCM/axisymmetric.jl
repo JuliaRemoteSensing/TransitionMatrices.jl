@@ -154,8 +154,8 @@ end
 
         @testset "a = $a, c = $c, m = $m, α = $α, β = $β" for (a, c, m, α, β) in params
             s = Spheroid{Float64, ComplexF64}(a, c, m)
-            𝐓 = transition_matrix(s, 2π, 15, 200)
-            𝐓r = rotate(𝐓, RotZYZ(α, β, 0))
+            𝐓 = transition_matrix(s, 2π, 15, 200);
+            𝐓r = rotate(𝐓, RotZYZ(α, β, 0));
 
             𝐒 = amplitude_matrix(𝐓, 0.0, 0.3, π / 2, 0.5; rot = RotZYZ(α, β, 0))
             𝐒r = amplitude_matrix(𝐓r, 0.0, 0.3, π / 2, 0.5)

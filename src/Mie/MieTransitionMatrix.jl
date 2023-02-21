@@ -42,9 +42,6 @@ function MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number
     MieTransitionMatrix{CT, N, Vector{CT}}(a, b)
 end
 
-function Base.copy(𝐓::MieTransitionMatrix{CT, N}) where {CT, N}
-    MieTransitionMatrix{CT, N, Vector{CT}}(copy(𝐓.a), copy(𝐓.b))
-end
 Base.@propagate_inbounds function Base.getindex(mie::MieTransitionMatrix{CT, N, V},
                                                 m::Integer, n::Integer, m′::Integer,
                                                 n′::Integer, p::Integer,
@@ -56,7 +53,9 @@ Base.@propagate_inbounds function Base.getindex(mie::MieTransitionMatrix{CT, N, 
     end
 end
 
-rotate(𝐓::MieTransitionMatrix, ::Rotation{3}) = copy(𝐓)
+rotate(mie::MieTransitionMatrix, ::Rotation{3}) = mie
+
+orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...) = mie
 
 @testitem "MieTransitionMatrix" begin
     using TransitionMatrices: MieTransitionMatrix, RotZYZ, TransitionMatrix, rotate
