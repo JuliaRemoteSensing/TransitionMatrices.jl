@@ -22,7 +22,7 @@ end
 @doc raw"""
 ```
 amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ, φᵢ, ϑₛ, φₛ;
-                          k₁ = 1.0,
+                          λ = 2π,
                           rot::Union{Nothing, Rotation{3}} = nothing) where {CT, N, V, T}
 ```
 
@@ -35,13 +35,14 @@ Parameters:
 - `φᵢ`: the azimuth angle of the incident wave.
 - `ϑₛ`: the zenith angle of the scattered wave.
 - `φₛ`: the azimuth angle of the scattered wave.
-- `k₁`: the wavenumber of the incident wave in the host medium, default to 1.0.
+- `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 - `rot`: the rotation of the scatterer.
 
 """
 function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ, φᵢ, ϑₛ, φₛ;
-                          k₁ = 1.0,
+                          λ = 2π,
                           rot::Union{Nothing, Rotation{3}} = nothing) where {CT, N, V, T}
+    k₁ = 2π / λ
     if isnothing(rot)
         α, β = zero(T), zero(T)
     else

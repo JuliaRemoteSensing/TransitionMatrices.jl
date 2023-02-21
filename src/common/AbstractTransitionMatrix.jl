@@ -79,7 +79,7 @@ end
 
 @doc raw"""
 ```
-amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ; k₁=1.0)
+amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ; λ=2π)
 ```
 
 Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. 
@@ -91,7 +91,7 @@ Parameters:
 - `φᵢ`: the incidence azimuthal angle in radians.
 - `ϑₛ`: the scattering zenith angle in radians.
 - `φₛ`: the scattering azimuthal angle in radians.
-- `k₁`: the wavenumber of the incident wave in the host medium, which should be calculated by `k₁ = 2π * mₕ / λ`, where `mₕ` is the refractive index of the host medium and `λ` is the wavelength of the incident wave. Default to 1.0.
+- `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 
 For a general T-Matrix, Eq. (5.11) -- Eq. (5.17) in Mishchenko et al. (2002) is used as a fallback.
 
@@ -123,8 +123,9 @@ Where
 ```
 """
 function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ;
-                          k₁ = 1.0) where {CT, N}
+                          λ = 2π) where {CT, N}
     T = real(CT)
+    k₁ = 2π / λ
     𝐒₁₁, 𝐒₁₂, 𝐒₂₁, 𝐒₂₂ = zero(CT), zero(CT), zero(CT), zero(CT)
 
     πᵢ = OffsetArray(zeros(T, 2N + 1, N + 1), (-N):N, 0:N)
@@ -250,7 +251,7 @@ end
 
 @doc raw"""
 ```
-scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N}, k₁ = 1.0) where {CT, N}
+scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N}, λ=2π) where {CT, N}
 ```
 
 Calculate the scattering cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.140) in Mishchenko et al. (2002).
@@ -262,10 +263,9 @@ Calculate the scattering cross section per particle averaged over the uniform or
 Parameters:
 
 - `𝐓`: the T-Matrix of the scatterer.
-- `k₁`: the wavenumber of the incident wave in the host medium. Default to 1.0.
-
+- `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 """
 function scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
-                                  k₁ = 1.0) where {CT, N}
-    return sum(abs2, 𝐓) * 2π / k₁^2
+                                  λ = 2π) where {CT, N}
+    return sum(abs2, 𝐓) * λ^2 / 2π
 end
