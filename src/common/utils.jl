@@ -97,3 +97,59 @@ end
                0.4 1.2 -1.0 -0.4
                2.8 -1.0 -2.8 1.2])
 end
+
+"""
+```
+albedo(𝐓::AbstractTransitionMatrix)
+```
+
+Calculate the single scattering albedo from the given T-Matrix.
+"""
+function albedo(𝐓::AbstractTransitionMatrix)
+    scattering_cross_section(𝐓) / extinction_cross_section(𝐓)
+end
+
+@testitem "albedo of" begin
+    using TransitionMatrices: Spheroid, transition_matrix, albedo
+
+    @testset "non-absorbing scatterers should be equal to 1.0" begin
+        s = Spheroid(1.5, 1.0, complex(1.311))
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test albedo(𝐓) ≈ 1.0
+    end
+
+    @testset "absorbing scatterers should be less than 1.0" begin
+        s = Spheroid(1.5, 1.0, 1.5 + 0.01im)
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test albedo(𝐓) < 1.0
+    end
+end
+
+"""
+```
+absorption_cross_section(𝐓::AbstractTransitionMatrix, λ=2π)
+```
+
+Calculate the absorption cross section from the given T-Matrix.
+"""
+function absorption_cross_section(𝐓::AbstractTransitionMatrix, λ = 2π)
+    extinction_cross_section(𝐓, λ) - scattering_cross_section(𝐓, λ)
+end
+
+@testitem "absorption cross section of" begin
+    using TransitionMatrices: Spheroid, transition_matrix, absorption_cross_section
+
+    @testset "non-absorbing scatterers should be approximate to 0.0" begin
+        s = Spheroid(1.5, 1.0, complex(1.311))
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+
+        # The result may be slightly negative due to numerical errors
+        @test abs(absorption_cross_section(𝐓)) < 1e-8
+    end
+
+    @testset "absorbing scatterers should be less than 1.0" begin
+        s = Spheroid(1.5, 1.0, 1.5 + 0.01im)
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test absorption_cross_section(𝐓) > 0.0
+    end
+end

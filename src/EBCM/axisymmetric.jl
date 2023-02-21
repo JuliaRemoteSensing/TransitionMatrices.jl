@@ -585,3 +585,88 @@ end
         end
     end
 end
+
+@doc raw"""
+```
+scattering_cross_section(axi::AxisymmetricTransitionMatrix{CT, N}, λ=2π) where {CT, N}
+```
+
+Calculate the scattering cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.141) in Mishchenko et al. (2002).
+
+```math
+\left\langle C_{\text {sca }}\right\rangle=\frac{2 \pi}{k_1^2} \sum_{n=1}^{\infty} \sum_{n^{\prime}=1}^{\infty} \sum_{m=0}^{\min \left(n, n^{\prime}\right)} \sum_{k=1}^2 \sum_{l=1}^2\left(2-\delta_{m 0}\right)\left|T_{m n m n^{\prime}}^{k l}(P)\right|^2
+```
+
+Parameters:
+
+- `𝐓`: the T-Matrix of the scatterer.
+- `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
+"""
+function scattering_cross_section(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
+                                  λ = 2π) where {CT, N, V, T}
+    Cˢᶜᵃ = zero(T)
+    for m in 0:N
+        for p′ in 1:2, p in 1:2
+            for n′ in max(m, 1):N, n in max(m, 1):N
+                if m == 0
+                    Cˢᶜᵃ += abs2(𝐓[m, n, m, n′, p, p′])
+                else
+                    Cˢᶜᵃ += 2 * abs2(𝐓[m, n, m, n′, p, p′])
+                end
+            end
+        end
+    end
+
+    Cˢᶜᵃ * λ^2 / 2π
+end
+
+@testitem "scattering cross section should be the same when calculating for axisymmetric scatterers using the general method" begin
+    using TransitionMatrices: Spheroid, TransitionMatrix, transition_matrix,
+                              scattering_cross_section
+
+    s = Spheroid(1.0, 0.5, 1.5 + 0.01im)
+    𝐓 = transition_matrix(s, 2π, 5, 40)
+    Cˢᶜᵃ = scattering_cross_section(𝐓)
+    Cˢᶜᵃ′ = scattering_cross_section(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓))
+    @test Cˢᶜᵃ ≈ Cˢᶜᵃ′
+end
+
+@doc raw"""
+```
+extinction_cross_section(axi::AxisymmetricTransitionMatrix{CT, N}, λ=2π) where {CT, N}
+```
+
+Calculate the extinction cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.107) in Mishchenko et al. (2002).
+
+```math
+\left\langle C_{\text {ext }}\right\rangle=-\frac{2 \pi}{k_1^2} \operatorname{Re} \sum_{n=1}^{\infty} \sum_{m=0}^n\left(2-\delta_{m 0}\right)\left[T_{m n m n}^{11}(P)+T_{m n m n}^{22}(P)\right]
+```
+
+Parameters:
+
+- `𝐓`: the T-Matrix of the scatterer.
+- `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
+"""
+function extinction_cross_section(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
+                                  λ = 2π) where {CT, N, V, T}
+    Cᵉˣᵗ = zero(CT)
+    for m in 0:N
+        coeff = m == 0 ? 1 : 2
+        for n in max(m, 1):N
+            Cᵉˣᵗ += coeff * (𝐓[m, n, m, n, 1, 1] + 𝐓[m, n, m, n, 2, 2])
+        end
+    end
+
+    -real(Cᵉˣᵗ) * λ^2 / 2π
+end
+
+@testitem "extinction cross section should be the same when calculating for axisymmetric scatterers using the general method" begin
+    using TransitionMatrices: Spheroid, TransitionMatrix, transition_matrix,
+                              extinction_cross_section
+
+    s = Spheroid(1.0, 0.5, 1.5 + 0.01im)
+    𝐓 = transition_matrix(s, 2π, 5, 40)
+    Cᵉˣᵗ = extinction_cross_section(𝐓)
+    Cᵉˣᵗ′ = extinction_cross_section(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓))
+    @test Cᵉˣᵗ ≈ Cᵉˣᵗ′
+end
