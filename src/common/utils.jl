@@ -4,10 +4,7 @@ Iterator for the order-degree pairs of the given maximum order `nₘₐₓ`.
 Example of `nₘₐₓ=2`:
 
 ```jldoctest
-collect(OrderDegreeIterator(2))
-
-# output
-
+julia> collect(OrderDegreeIterator(2))
 8-element Vector{Tuple{Int64, Int64}}:
  (1, -1)
  (1, 0)
@@ -47,10 +44,12 @@ Base.isdone(iter::OrderDegreeIterator, state) = state >= (iter.nₘₐₓ, iter.
 @testitem "OrderDegreeIterator" begin
     using TransitionMatrices: OrderDegreeIterator
 
+    @test eltype(OrderDegreeIterator(3)) == Tuple{Int, Int}
     @test iterate(OrderDegreeIterator(3)) == ((1, -1), (1, -1))
     @test iterate(OrderDegreeIterator(3), (1, 1)) == ((2, -2), (2, -2))
     @test collect(OrderDegreeIterator(2)) ==
           [(1, -1), (1, 0), (1, 1), (2, -2), (2, -1), (2, 0), (2, 1), (2, 2)]
+    @test length(OrderDegreeIterator(2)) == 8
     @test size(OrderDegreeIterator(100)) == (10200,)
     @test !Base.isdone(OrderDegreeIterator(2), (1, 1))
     @test Base.isdone(OrderDegreeIterator(2), (2, 2))
