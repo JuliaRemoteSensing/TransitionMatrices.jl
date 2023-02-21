@@ -87,3 +87,13 @@ function phase_matrix(𝐒::AbstractMatrix)
     𝐙 = @SMatrix [𝐙₁₁ 𝐙₁₂ 𝐙₁₃ 𝐙₁₄; 𝐙₂₁ 𝐙₂₂ 𝐙₂₃ 𝐙₂₄; 𝐙₃₁ 𝐙₃₂ 𝐙₃₃ 𝐙₃₄; 𝐙₄₁ 𝐙₄₂ 𝐙₄₃ 𝐙₄₄]
     return real.(𝐙)
 end
+
+@testitem "Can calculate phase matrix from amplitude scattering matrix" begin
+    using TransitionMatrices
+
+    @test all(phase_matrix([1+2im 2+3im; 0.2-0.5im 0.5-0.2im]) .≈
+              [9.29 -4.0 -8.2 -0.79
+               8.71 -4.0 -7.8 -1.21
+               0.4 1.2 -1.0 -0.4
+               2.8 -1.0 -2.8 1.2])
+end

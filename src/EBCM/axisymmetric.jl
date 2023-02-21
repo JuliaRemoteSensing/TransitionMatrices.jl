@@ -154,8 +154,8 @@ end
 
         @testset "a = $a, c = $c, m = $m, α = $α, β = $β" for (a, c, m, α, β) in params
             s = Spheroid{Float64, ComplexF64}(a, c, m)
-            𝐓 = transition_matrix(s, 2π, 15, 200);
-            𝐓r = rotate(𝐓, RotZYZ(α, β, 0));
+            𝐓 = transition_matrix(s, 2π, 15, 200)
+            𝐓r = rotate(𝐓, RotZYZ(α, β, 0))
 
             𝐒 = amplitude_matrix(𝐓, 0.0, 0.3, π / 2, 0.5; rot = RotZYZ(α, β, 0))
             𝐒r = amplitude_matrix(𝐓r, 0.0, 0.3, π / 2, 0.5)
@@ -197,12 +197,9 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
                               Ng) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
-    x, w = gausslegendre(T, Ng)
+    x, w, r, r′ = gaussquad(s, Ng)
     ϑ = acos.(x)
-    r = similar(x)
-    r′ = similar(x)
     k = 2 * T(π) / λ
-    radius_and_deriv!(r, r′, s, x)
 
     a = [n * (n + 1) for n in 1:nₘₐₓ]
     A = [√(T(2n + 1) / (2n * (n + 1))) for n in 1:nₘₐₓ]
@@ -343,12 +340,9 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
                              Ng) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
-    x, w = gausslegendre(T, Ng)
+    x, w, r, r′ = gaussquad(s, Ng)
     ϑ = acos.(x)
-    r = similar(x)
-    r′ = similar(x)
     k = 2 * T(π) / λ
-    radius_and_deriv!(r, r′, s, x)
 
     nₘᵢₙ = max(1, m)
     nn = nₘₐₓ - nₘᵢₙ + 1
@@ -529,6 +523,19 @@ end
         end
     end
 
+    @testset "Cylinder" begin
+        params = Iterators.product((1.0, 2.0), (0.5, 2.0), (1.311, 1.5 + 0.01im))
+        nₘₐₓ = 10
+        Ng = 200
+        λ = 2π
+        @testset "r = $r, h = $h, m = $m" for (r, h, m) in params
+            c = Spheroid{Float64, ComplexF64}(r, h, m)
+            𝐓 = transition_matrix_m(0, c, λ, nₘₐₓ, Ng)
+            𝐓₀ = transition_matrix_m₀(c, λ, nₘₐₓ, Ng)
+            @test all(𝐓 .≈ 𝐓₀)
+        end
+    end
+
     @testset "Chebyshev" begin
         params = Iterators.product((0.5, 1.0, 5.0), (-0.5, 0.1, 0.9), (2, 3, 8),
                                    (1.311, 1.5 + 0.01im))
@@ -536,9 +543,9 @@ end
         Ng = 200
         λ = 2π
         @testset "r₀ = $r₀, ε = $ε, n = $n, m = $m" for (r₀, ε, n, m) in params
-            s = Chebyshev{Float64, ComplexF64}(r₀, ε, n, m)
-            𝐓 = transition_matrix_m(0, s, λ, nₘₐₓ, Ng)
-            𝐓₀ = transition_matrix_m₀(s, λ, nₘₐₓ, Ng)
+            c = Chebyshev{Float64, ComplexF64}(r₀, ε, n, m)
+            𝐓 = transition_matrix_m(0, c, λ, nₘₐₓ, Ng)
+            𝐓₀ = transition_matrix_m₀(c, λ, nₘₐₓ, Ng)
             @test all(𝐓 .≈ 𝐓₀)
         end
     end

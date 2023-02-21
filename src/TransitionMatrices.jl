@@ -26,13 +26,22 @@ export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMa
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix,
        orientation_average, transition_matrix,
-       transition_matrix_m, transition_matrix_m₀
+       transition_matrix_m, transition_matrix_m₀,
+       clear_factorial_table!
 
 # Shape related exports
 export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volume,
-       volume_equivalent_radius, has_symmetric_plane, Spheroid, Chebyshev
+       volume_equivalent_radius, has_symmetric_plane, Spheroid, Cylinder, Chebyshev
 
 # Re-exports
 export RotZYZ, Double64, Float128, Arb, Acb
+
+function __init__()
+    factorial(Float64, 150)
+    factorial(Double64, 150)
+    factorial(Float128, 300)
+    factorial(Arb, 500)
+    factorial(BigFloat, 500)
+end
 
 end

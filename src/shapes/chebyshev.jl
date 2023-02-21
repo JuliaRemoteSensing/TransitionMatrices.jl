@@ -9,10 +9,10 @@ where ``T_n(\cos\theta)=\cos n\theta``.
 
 Attributes:
 
-- `r₀`: Radius of the base sphere.
-- `ε`: Deformation parameter, which satisfies ``-1\le\varepsilon<1``.
-- `n`: Degree of the Chebyshev polynomial.
-- `m`: Relative complex refractive index.
+- `r₀`: radius of the base sphere.
+- `ε`: deformation parameter, which satisfies ``-1\le\varepsilon<1``.
+- `n`: degree of the Chebyshev polynomial.
+- `m`: relative complex refractive index.
 """
 struct Chebyshev{T, CT} <: AbstractAxisymmetricShape{T, CT}
     r₀::T
@@ -51,20 +51,19 @@ has_symmetric_plane(c::Chebyshev) = iseven(c.n)
     end
 end
 
-"""
-```
-radius_and_deriv!(r, dr, c::Chebyshev{T}, x) where {T}
-```
+function gaussquad(c::Chebyshev{T}, ngauss) where {T}
+    x, w = gausslegendre(T, ngauss)
+    r = similar(x)
+    r′ = similar(x)
 
-We could have used @turbo for primitive types like `Float64`, but this is
-not the bottleneck, so we only use `@inbounds` here.
-"""
-function radius_and_deriv!(r, dr, c::Chebyshev{T}, x) where {T}
-    ngauss = length(x)
-
-    @inbounds for i in 1:ngauss
+    # We could have used @turbo for primitive types like 
+    # `Float64`, but this is not the bottleneck, so we only use 
+    # `@simd` here.
+    @simd for i in 1:ngauss
         nϑ = acos(x[i]) * c.n
         r[i] = c.r₀ * (1 + c.ε * cos(nϑ))
-        dr[i] = -c.r₀ * c.ε * c.n * sin(nϑ)
+        r′[i] = -c.r₀ * c.ε * c.n * sin(nϑ)
     end
+
+    return x, w, r, r′
 end

@@ -10,4 +10,5 @@ volume(s::AbstractShape) = 4 // 3 * π * volume_equivalent_radius(s)^3
 has_symmetric_plane(s::AbstractShape) = false
 
 include("spheroid.jl")
+include("cylinder.jl")
 include("chebyshev.jl")
