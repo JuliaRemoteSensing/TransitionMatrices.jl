@@ -9,10 +9,10 @@ where ``T_n(\cos\theta)=\cos n\theta``.
 
 Attributes:
 
-- `r₀`: radius of the base sphere.
-- `ε`: deformation parameter, which satisfies ``-1\le\varepsilon<1``.
-- `n`: degree of the Chebyshev polynomial.
-- `m`: relative complex refractive index.
+- `r₀`: the radius of the base sphere.
+- `ε`: the deformation parameter, which satisfies ``-1\le\varepsilon<1``.
+- `n`: the degree of the Chebyshev polynomial.
+- `m`: the relative complex refractive index.
 """
 struct Chebyshev{T, CT} <: AbstractAxisymmetricShape{T, CT}
     r₀::T
@@ -51,6 +51,20 @@ has_symmetric_plane(c::Chebyshev) = iseven(c.n)
     end
 end
 
+@doc raw"""
+```
+gaussquad(c::Chebyshev{T}, ngauss) where {T}
+```
+
+Evaluate the quadrature points, weights and the corresponding radius and radius derivative (to ``\vartheta``) for a Chebyshev particle.
+
+Returns: (`x`, `w`, `r`, `r′`)
+
+- `x`: the quadrature points.
+- `w`: the quadrature weights.
+- `r`: the radius at each quadrature point.
+- `r′`: the radius derivative at each quadrature point.
+"""
 function gaussquad(c::Chebyshev{T}, ngauss) where {T}
     x, w = gausslegendre(T, ngauss)
     r = similar(x)

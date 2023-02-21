@@ -25,9 +25,17 @@ export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMa
 
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix,
-       orientation_average, transition_matrix,
-       transition_matrix_m, transition_matrix_m₀,
+       orientation_average, scattering_cross_section,
+       transition_matrix, transition_matrix_m, transition_matrix_m₀,
        clear_factorial_table!
+
+# Utility functions (short names)
+const calc_T = transition_matrix
+const calc_S = amplitude_matrix
+const calc_Z = phase_matrix
+const calc_Csca = scattering_cross_section
+
+export calc_T, calc_S, calc_Z, calc_Csca
 
 # Shape related exports
 export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volume,

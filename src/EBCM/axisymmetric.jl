@@ -19,6 +19,26 @@ Base.@propagate_inbounds function Base.getindex(axi::AxisymmetricTransitionMatri
     end
 end
 
+@doc raw"""
+```
+amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ, φᵢ, ϑₛ, φₛ;
+                          k₁ = 1.0,
+                          rot::Union{Nothing, Rotation{3}} = nothing) where {CT, N, V, T}
+```
+
+Calculate the amplitude matrix of an axisymmetric scatterer.
+
+Parameters:
+
+- `axi`: the T-Matrix of the scatterer.
+- `ϑᵢ`: the zenith angle of the incident wave.
+- `φᵢ`: the azimuth angle of the incident wave.
+- `ϑₛ`: the zenith angle of the scattered wave.
+- `φₛ`: the azimuth angle of the scattered wave.
+- `k₁`: the wavenumber of the incident wave in the host medium, default to 1.0.
+- `rot`: the rotation of the scatterer.
+
+"""
 function amplitude_matrix(axi::AxisymmetricTransitionMatrix{CT, N, V, T}, ϑᵢ, φᵢ, ϑₛ, φₛ;
                           k₁ = 1.0,
                           rot::Union{Nothing, Rotation{3}} = nothing) where {CT, N, V, T}
@@ -174,14 +194,14 @@ Calculate the T-Matrix for a given scatterer and wavelength.
 
 Parameters:
 
-- `s`: An axisymmetricsScatterer
-- `λ`: Wavelength
-- `nₘₐₓ`: Maximum order of the T-Matrix
-- `Ng`: Number of Gauss-Legendre quadrature points
+- `s`: the axisymmetricsScatterer.
+- `λ`: the wavelength.
+- `nₘₐₓ`: the maximum order of the T-Matrix.
+- `Ng`: the number of Gauss-Legendre quadrature points to be used.
 
 Returns:
 
-- `𝐓`: An `AxisymmetricTransitionMatrix` struct containing the T-Matrix
+- `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
     𝐓 = Vector{Matrix{CT}}(undef, nₘₐₓ + 1)
@@ -193,6 +213,13 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, 
     AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(𝐓), T}(𝐓)
 end
 
+"""
+```
+transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+```
+
+Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
+"""
 function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
                               Ng) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
@@ -336,6 +363,13 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     return 𝐓
 end
 
+"""
+```
+transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+```
+
+Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
+"""
 function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
                              Ng) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"

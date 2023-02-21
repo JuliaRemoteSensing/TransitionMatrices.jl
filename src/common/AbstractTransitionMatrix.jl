@@ -78,13 +78,20 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
 end
 
 @doc raw"""
-Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. `k₁` is the wavenumber of the incident wave in the host medium, which should be calculated by `k₁ = 2π * mₕ / λ`, where `mₕ` is the refractive index of the host medium and `λ` is the wavelength of the incident wave. The default value is `k₁ = 1.0`.
-
-### General T-Matrix
-
 ```
-amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ, k₁=1.0)
+amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ; k₁=1.0)
 ```
+
+Calculate the amplitude matrix of the given T-Matrix `𝐓` at the given incidence and scattering angles. 
+
+Parameters:
+
+- `𝐓`: the T-Matrix of the scatterer.
+- `ϑᵢ`: the incidence zenith angle in radians.
+- `φᵢ`: the incidence azimuthal angle in radians.
+- `ϑₛ`: the scattering zenith angle in radians.
+- `φₛ`: the scattering azimuthal angle in radians.
+- `k₁`: the wavenumber of the incident wave in the host medium, which should be calculated by `k₁ = 2π * mₕ / λ`, where `mₕ` is the refractive index of the host medium and `λ` is the wavelength of the incident wave. Default to 1.0.
 
 For a general T-Matrix, Eq. (5.11) -- Eq. (5.17) in Mishchenko et al. (2002) is used as a fallback.
 
@@ -114,13 +121,8 @@ Where
 \tau_{m n}(\vartheta)=\frac{\mathrm{d} d_{0 m}^n(\vartheta)}{\mathrm{d} \vartheta}, \quad \tau_{-m n}(\vartheta)=(-1)^m \tau_{m n}(\vartheta)
 \end{array}
 ```
-
-### Axisymmetric T-Matrix
-
-### Mie T-Matrix
-
 """
-function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ,
+function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ;
                           k₁ = 1.0) where {CT, N}
     T = real(CT)
     𝐒₁₁, 𝐒₁₂, 𝐒₂₁, 𝐒₂₂ = zero(CT), zero(CT), zero(CT), zero(CT)
@@ -202,11 +204,11 @@ Calculate the orientation average of a transition matrix using numerical integra
 
 Parameters:
 
-- `𝐓`: The T-Matrix to be orientation averaged.
-- `pₒ`: The orientation distribution function. Note that the ``\sin\beta`` part is already included.
-- `Nα`: The number of points used in the numerical integration of ``\alpha``. Default to 10.
-- `Nβ`: The number of points used in the numerical integration of ``\beta``. Default to 10.
-- `Nγ`: The number of points used in the numerical integration of ``\gamma``. Default to 10.
+- `𝐓`: the T-Matrix to be orientation averaged.
+- `pₒ`: the orientation distribution function. Note that the ``\sin\beta`` part is already included.
+- `Nα`: the number of points used in the numerical integration of ``\alpha``. Default to 10.
+- `Nβ`: the number of points used in the numerical integration of ``\beta``. Default to 10.
+- `Nγ`: the number of points used in the numerical integration of ``\gamma``. Default to 10.
 
 !!! note
 
@@ -244,4 +246,26 @@ function orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 
     end
 
     TransitionMatrix{CT, N, typeof(T̄)}(T̄)
+end
+
+@doc raw"""
+```
+scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N}, k₁ = 1.0) where {CT, N}
+```
+
+Calculate the scattering cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.140) in Mishchenko et al. (2002).
+
+```math
+\left\langle C_{\mathrm{sca}}\right\rangle=\frac{2 \pi}{k_1^2} \sum_{n=1}^{\infty} \sum_{m=-n}^n \sum_{n^{\prime}=1}^{\infty} \sum_{m^{\prime}=-n^{\prime}}^{n^{\prime}} \sum_{k=1}^2 \sum_{l=1}^2\left|T_{m n m^{\prime} n^{\prime}}^{k l}(P)\right|^2
+```
+
+Parameters:
+
+- `𝐓`: the T-Matrix of the scatterer.
+- `k₁`: the wavenumber of the incident wave in the host medium. Default to 1.0.
+
+"""
+function scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
+                                  k₁ = 1.0) where {CT, N}
+    return sum(abs2, 𝐓) * 2π / k₁^2
 end

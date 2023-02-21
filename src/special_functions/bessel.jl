@@ -15,12 +15,12 @@ ricattibesselj!(ψₙ, ψₙ′, z, nₘₐₓ, nₑₓₜᵣₐ, x)
 
 Parameters:
 
-- `ψ`: Output array for ``\psi_n(x)``.
-- `ψ′`: Output array for ``\psi^{\prime}_n(x)``.
-- `z`: Auxiliary array for downward recursion.
-- `nₘₐₓ`: Maximum order of ``\psi_n(x)``.
-- `nₑₓₜᵣₐ`: Extra terms for downward recursion of ``z``.
-- `x`: Argument.
+- `ψ`: output array for ``\psi_n(x)``.
+- `ψ′`: output array for ``\psi^{\prime}_n(x)``.
+- `z`: auxiliary array for downward recursion.
+- `nₘₐₓ`: maximum order of ``\psi_n(x)``.
+- `nₑₓₜᵣₐ`: extra terms for downward recursion of ``z``.
+- `x`: argument.
 
 In-place version of [`ricattibesselj`](@ref).
 """
@@ -61,15 +61,14 @@ where ``j_n(x)`` is the Bessel function of the first kind.
 
 Parameters:
 
-- `nₘₐₓ`: Maximum order of ``\psi_n(x)``.
-- `nₑₓₜᵣₐ`: Extra terms for downward recursion of ``z``.
-- `x`: Argument.
+- `nₘₐₓ`: maximum order of ``\psi_n(x)``.
+- `nₑₓₜᵣₐ`: extra terms for downward recursion of ``z``.
+- `x`: argument.
 
 Returns: (`ψ`, `ψ′`)
 
-- `ψ`: Array of ``\psi_n(x)``.
-- `ψ′`: Array of ``\psi^{\prime}_n(x)``.
-
+- `ψ`: array of ``\psi_n(x)``.
+- `ψ′`: array of ``\psi^{\prime}_n(x)``.
 """
 function ricattibesselj(nₘₐₓ::Integer, nₑₓₜᵣₐ::Integer, x)
     T = typeof(x)
@@ -101,6 +100,20 @@ end
     end
 end
 
+@doc raw"""
+```
+ricattibessely!(χ, χ′, nₘₐₓ, x)
+```
+
+Parameters:
+
+- `χ`: output array for ``\chi_n(x)``.
+- `χ′`: output array for ``\chi^{\prime}_n(x)``.
+- `nₘₐₓ`: maximum order of ``\chi_n(x)``.
+- `x`: argument.
+
+In-place version of [`ricattibessely`](@ref).
+"""
 function ricattibessely!(χ, χ′, nₘₐₓ, x)
     x⁻¹ = one(x) / x
     χ[1] = -cos(x) * x⁻¹ - sin(x)
@@ -114,6 +127,31 @@ function ricattibessely!(χ, χ′, nₘₐₓ, x)
     end
 end
 
+@doc raw"""
+```
+ricattibessely(nₘₐₓ::Integer, x)
+```
+
+Calculate Ricatti-Bessel function of the second kind, ``\chi_n(x)``, and its derivative ``\chi^{\prime}_n(x)`` for ``1\le n\le n_{\max}``.
+
+``\chi_n(x)`` is defined as
+
+```math
+\chi_n(x) = xy_n(x)
+```
+
+where ``y_n(x)`` is the Bessel function of the second kind.
+
+Parameters:
+
+- `nₘₐₓ`: maximum order of ``\chi_n(x)``.
+- `x`: argument.
+
+Returns: (`χ`, `χ′`)
+
+- `χ`: Array of ``\chi_n(x)``.
+- `χ′`: Array of ``\chi^{\prime}_n(x)``.
+"""
 function ricattibessely(nₘₐₓ, x)
     T = typeof(x)
     χ = zeros(T, nₘₐₓ)

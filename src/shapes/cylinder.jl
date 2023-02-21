@@ -3,9 +3,9 @@ A cylindrical scatterer.
 
 Attributes:
 
-- `r`: radius of the cylinder base
-- `h`: height of the cylinder
-- `m`: relative complex refractive index
+- `r`: the radius of the cylinder base.
+- `h`: the height of the cylinder.
+- `m`: the relative complex refractive index.
 """
 struct Cylinder{T, CT} <: AbstractAxisymmetricShape{T, CT}
     r::T
@@ -33,6 +33,20 @@ has_symmetric_plane(::Cylinder) = true
     end
 end
 
+@doc raw"""
+```
+gaussquad(c::Cylinder{T}, ngauss) where {T}
+```
+
+Evaluate the quadrature points, weights and the corresponding radius and radius derivative (to ``\vartheta``) for a cylinder.
+
+Returns: (`x`, `w`, `r`, `r′`)
+
+- `x`: the quadrature points.
+- `w`: the quadrature weights.
+- `r`: the radius at each quadrature point.
+- `r′`: the radius derivative at each quadrature point.
+"""
 function gaussquad(c::Cylinder{T}, ngauss) where {T}
     ng = ngauss ÷ 2
     ng1 = ng ÷ 2

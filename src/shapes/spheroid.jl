@@ -3,9 +3,9 @@ A spheroidal scatterer.
 
 Attributes:
 
-- `a`: length of the semi-major axis
-- `c`: length of the semi-minor axis
-- `m`: relative complex refractive index
+- `a`: the length of the semi-major axis.
+- `c`: the length of the semi-minor axis.
+- `m`: the relative complex refractive index.
 """
 struct Spheroid{T, CT} <: AbstractAxisymmetricShape{T, CT}
     a::T
@@ -33,6 +33,20 @@ has_symmetric_plane(::Spheroid) = true
     end
 end
 
+@doc raw"""
+```
+gaussquad(s::Spheroid{T}, ngauss) where {T}
+```
+
+Evaluate the quadrature points, weights and the corresponding radius and radius derivative (to ``\vartheta``) for a spheroid.
+
+Returns: (`x`, `w`, `r`, `r′`)
+
+- `x`: the quadrature points.
+- `w`: the quadrature weights.
+- `r`: the radius at each quadrature point.
+- `r′`: the radius derivative at each quadrature point.
+"""
 function gaussquad(s::Spheroid{T}, ngauss) where {T}
     x, w = gausslegendre(T, ngauss)
     r = similar(x)
