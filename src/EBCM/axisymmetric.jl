@@ -529,7 +529,7 @@ end
         Ng = 200
         λ = 2π
         @testset "r = $r, h = $h, m = $m" for (r, h, m) in params
-            c = Spheroid{Float64, ComplexF64}(r, h, m)
+            c = Cylinder{Float64, ComplexF64}(r, h, m)
             𝐓 = transition_matrix_m(0, c, λ, nₘₐₓ, Ng)
             𝐓₀ = transition_matrix_m₀(c, λ, nₘₐₓ, Ng)
             @test all(𝐓 .≈ 𝐓₀)
