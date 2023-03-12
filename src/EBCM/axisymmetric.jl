@@ -204,11 +204,12 @@ Returns:
 
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
-function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng;
+                           zerofn = () -> zero(CT)) where {T, CT}
     𝐓 = Vector{Matrix{CT}}(undef, nₘₐₓ + 1)
-    𝐓[1] = transition_matrix_m₀(s, λ, nₘₐₓ, Ng)
+    𝐓[1] = transition_matrix_m₀(s, λ, nₘₐₓ, Ng; zerofn = zerofn)
     for m in 1:nₘₐₓ
-        𝐓[m + 1] = transition_matrix_m(m, s, λ, nₘₐₓ, Ng)
+        𝐓[m + 1] = transition_matrix_m(m, s, λ, nₘₐₓ, Ng; zerofn = zerofn)
     end
 
     AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(𝐓), T}(𝐓)
@@ -267,7 +268,7 @@ transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                              Ng; prec = precision(CT)) where {T, CT}
+                              Ng; zerofn = () -> zero(CT)) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     x, w, r, r′ = gaussquad(s, Ng)
@@ -280,7 +281,7 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     𝜋 = similar(d)
     τ = similar(d)
 
-    for i in eachindex(ϑ)
+    Threads.@threads for i in eachindex(ϑ)
         wigner_d_recursion!(view(d, i, :), 0, 0, nₘₐₓ, ϑ[i];
                             deriv = view(τ, i, :))
 
@@ -332,15 +333,15 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
 
         if n != n′
-            PL₁ = complex_zero_prec(CT, prec)
-            PL₂ = complex_zero_prec(CT, prec)
-            PL₇ = complex_zero_prec(CT, prec)
-            PL₈ = complex_zero_prec(CT, prec)
+            PL₁ = zerofn()
+            PL₂ = zerofn()
+            PL₇ = zerofn()
+            PL₈ = zerofn()
 
-            UL₁ = complex_zero_prec(CT, prec)
-            UL₂ = complex_zero_prec(CT, prec)
-            UL₇ = complex_zero_prec(CT, prec)
-            UL₈ = complex_zero_prec(CT, prec)
+            UL₁ = zerofn()
+            UL₂ = zerofn()
+            UL₇ = zerofn()
+            UL₈ = zerofn()
 
             for i in 1:ng
                 PL₁ += w[i] * k * r′[i] * τ[i, n] * d[i, n′] * ψ[i, n] * ψₛ[i, n′]
@@ -371,13 +372,13 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             𝐔₂₂[n, n′] = 1im * A[n] * A[n′] * (s.m^2 - 1) / (s.m * (a[n] - a[n′])) *
                          (a[n] * UL₈ - a[n′] * UL₇)
         else
-            PL̃₁ = complex_zero_prec(CT, prec)
-            PL̃₂ = complex_zero_prec(CT, prec)
-            PL̃₃ = complex_zero_prec(CT, prec)
+            PL̃₁ = zerofn()
+            PL̃₂ = zerofn()
+            PL̃₃ = zerofn()
 
-            UL̃₁ = complex_zero_prec(CT, prec)
-            UL̃₂ = complex_zero_prec(CT, prec)
-            UL̃₃ = complex_zero_prec(CT, prec)
+            UL̃₁ = zerofn()
+            UL̃₂ = zerofn()
+            UL̃₃ = zerofn()
 
             for i in 1:ng
                 PL̃₁ += w[i] * (𝜋[i, n]^2 + τ[i, n]^2) *
@@ -415,7 +416,7 @@ transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                             Ng; prec = precision(CT)) where {T, CT}
+                             Ng; zerofn = () -> zero(CT)) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     x, w, r, r′ = gaussquad(s, Ng)
@@ -430,7 +431,7 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     𝜋 = similar(d)
     τ = similar(d)
 
-    for i in eachindex(ϑ)
+    Threads.@threads for i in eachindex(ϑ)
         wigner_d_recursion!(view(d, i, :), 0, m, nₘₐₓ, ϑ[i];
                             deriv = view(τ, i, :))
 
@@ -483,11 +484,11 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
     Threads.@threads for (n, n′) in collect(Iterators.product(nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ))
         if !(sym && iseven(n + n′))
-            PK₁ = zero(CT)
-            PK₂ = zero(CT)
+            PK₁ = zerofn()
+            PK₂ = zerofn()
 
-            UK₁ = zero(CT)
-            UK₂ = zero(CT)
+            UK₁ = zerofn()
+            UK₂ = zerofn()
 
             for i in 1:ng
                 PK₁ += w[i] * k * r′[i] * 𝜋[i, n] * d[i, n′] * ψ[i, n] * ψₛ′[i, n′]
@@ -506,15 +507,15 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
         if !(sym && isodd(n + n′))
             if n != n′
-                PL₁ = complex_zero_prec(CT, prec)
-                PL₂ = complex_zero_prec(CT, prec)
-                PL₇ = complex_zero_prec(CT, prec)
-                PL₈ = complex_zero_prec(CT, prec)
+                PL₁ = zerofn()
+                PL₂ = zerofn()
+                PL₇ = zerofn()
+                PL₈ = zerofn()
 
-                UL₁ = complex_zero_prec(CT, prec)
-                UL₂ = complex_zero_prec(CT, prec)
-                UL₇ = complex_zero_prec(CT, prec)
-                UL₈ = complex_zero_prec(CT, prec)
+                UL₁ = zerofn()
+                UL₂ = zerofn()
+                UL₇ = zerofn()
+                UL₈ = zerofn()
 
                 for i in 1:ng
                     PL₁ += w[i] * k * r′[i] * τ[i, n] * d[i, n′] * ψ[i, n] * ψₛ[i, n′]
@@ -546,13 +547,13 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
                 𝐔₂₂[n, n′] = 1im * A[n] * A[n′] * (s.m^2 - 1) / (s.m * (a[n] - a[n′])) *
                              (a[n] * UL₈ - a[n′] * UL₇)
             else
-                PL̃₁ = complex_zero_prec(CT, prec)
-                PL̃₂ = complex_zero_prec(CT, prec)
-                PL̃₃ = complex_zero_prec(CT, prec)
+                PL̃₁ = zerofn()
+                PL̃₂ = zerofn()
+                PL̃₃ = zerofn()
 
-                UL̃₁ = complex_zero_prec(CT, prec)
-                UL̃₂ = complex_zero_prec(CT, prec)
-                UL̃₃ = complex_zero_prec(CT, prec)
+                UL̃₁ = zerofn()
+                UL̃₂ = zerofn()
+                UL̃₃ = zerofn()
 
                 for i in 1:ng
                     PL̃₁ += w[i] * (𝜋[i, n]^2 + τ[i, n]^2) *

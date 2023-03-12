@@ -153,28 +153,3 @@ end
         @test absorption_cross_section(𝐓) > 0.0
     end
 end
-
-function complex_zero_prec(CT, prec)
-    if prec <= 53
-        return ComplexF64(0.0)
-    elseif prec <= 106
-        return Double64(0.0)
-    elseif prec <= 113
-        return ComplexF128(0.0)
-    else
-        return Acb(prec = prec)
-    end
-end
-
-function complex_zero_prec(::Type{Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}}},
-                           prec) where {F, T, N}
-    if prec <= 53
-        return Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, Float64}, Float64, N}}(0.0)
-    elseif prec <= 106
-        return Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, Double64}, Double64, N}}(0.0)
-    elseif prec <= 113
-        return Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, Float128}, Float128, N}}(0.0)
-    else
-        return Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, Arb}, Arb, N}}(0.0)
-    end
-end

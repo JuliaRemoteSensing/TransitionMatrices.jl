@@ -1,4 +1,5 @@
 Base.convert(::Type{Float128}, x::ArbLike) = Float128(BigFloat(x))
+Quadmath.Float128(x::ArbLike) = Float128(BigFloat(x))
 Base.round(x::Arb, ::RoundingMode{:Up}) = ceil(BigFloat(x))
 
 function Base.inv(x::Matrix{Arb})
@@ -35,6 +36,7 @@ function Base.Float16(x::T) where {T <: ForwardDiff.Dual}
     Float16(ForwardDiff.value(x))
 end
 
+Base.Float32(x::ArbLike) = Float32(BigFloat(x))
 function Base.Float32(x::T) where {T <: ForwardDiff.Dual}
     Float32(ForwardDiff.value(x))
 end

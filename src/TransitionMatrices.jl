@@ -6,8 +6,10 @@ using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: cond
+using MLJ: machine, predict
+using MLJXGBoostInterface
 using OffsetArrays: OffsetArray
-using Quadmath: Float128, ComplexF128
+using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Rotation, RotZYZ
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem
@@ -29,8 +31,7 @@ export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix,
        orientation_average, scattering_cross_section, extinction_cross_section,
        absorption_cross_section,
        albedo,
-       transition_matrix, transition_matrix_m, transition_matrix_m₀,
-       clear_factorial_table!
+       transition_matrix, transition_matrix_m, transition_matrix_m₀
 
 # Utility functions (short names)
 const calc_T = transition_matrix
@@ -49,14 +50,6 @@ export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volum
        volume_equivalent_radius, has_symmetric_plane, Spheroid, Cylinder, Chebyshev
 
 # Re-exports
-export RotZYZ, Double64, Float128, Arb, Acb
-
-function __init__()
-    factorial(Float64, 150)
-    factorial(Double64, 150)
-    factorial(Float128, 300)
-    factorial(Arb, 500)
-    factorial(BigFloat, 500)
-end
+export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb
 
 end

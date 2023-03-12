@@ -1,6 +1,6 @@
+authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 name = "TransitionMatrices"
 uuid = "057c4241-e127-4181-840e-6b4b92e6eef5"
-authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 version = "0.1.0"
 
 [deps]
@@ -10,12 +10,13 @@ FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
+MLJXGBoostInterface = "54119dfa-1dab-4055-a167-80440f4f7a91"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
-XGBoost = "009559a3-9522-5dbb-924b-0b6ed2b22bb9"
 
 [compat]
 Arblib = "0.8"
@@ -23,10 +24,11 @@ DoubleFloats = "1.2"
 FastGaussQuadrature = "0.5"
 FiniteDifferences = "0.12"
 ForwardDiff = "0.10"
+MLJ = "0.19"
+MLJXGBoostInterface = "0.3"
 OffsetArrays = "1"
 Quadmath = "0.5"
 Rotations = "1"
 StaticArrays = "1"
 TestItems = "0.1"
-XGBoost = "2"
 julia = "1.8"
