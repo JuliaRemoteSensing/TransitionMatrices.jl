@@ -191,7 +191,7 @@ end
 transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
 ```
 
-Calculate the T-Matrix for a given scatterer and wavelength.
+Calculate the T-Matrix for a given scatterer and wavelength, using the given maximum order `nₘₐₓ` and number of Gauss-Legendre quadrature points `Ng`.
 
 Parameters:
 
@@ -207,12 +207,57 @@ Returns:
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
     𝐓 = Vector{Matrix{CT}}(undef, nₘₐₓ + 1)
     𝐓[1] = transition_matrix_m₀(s, λ, nₘₐₓ, Ng)
-    Threads.@threads for m in 1:nₘₐₓ
+    for m in 1:nₘₐₓ
         𝐓[m + 1] = transition_matrix_m(m, s, λ, nₘₐₓ, Ng)
     end
 
     AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(𝐓), T}(𝐓)
 end
+
+function 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
+    𝐐 = @. 𝐏 + 1im * 𝐔
+    𝐓 = -𝐏 * inv(𝐐)
+end
+
+## Hand-written version autodiff, slower than ForwardDiff.jl
+# function 𝐓_from_𝐏_and_𝐔(𝐏::Matrix{Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}}},
+#                         𝐔) where {F, T, N}
+#     𝐐 = @. 𝐏 + 1im * 𝐔
+#     𝐐r = real.(𝐐)
+#     𝐐i = imag.(𝐐)
+#     Qv = @. complex(ForwardDiff.value(𝐐r), ForwardDiff.value(𝐐i))
+#     Qv⁻¹ = inv(Qv)
+#     𝐏r = real.(𝐏)
+#     𝐏i = imag.(𝐏)
+#     Pv = @. complex(ForwardDiff.value(𝐏r), ForwardDiff.value(𝐏i))
+#     Tv = -Pv * Qv⁻¹
+#     ∂Pr = ForwardDiff.partials.(𝐏r)
+#     ∂Pi = ForwardDiff.partials.(𝐏i)
+#     ∂Qr = ForwardDiff.partials.(𝐐r)
+#     ∂Qi = ForwardDiff.partials.(𝐐i)
+
+#     ∂P = [map(zip(∂Pr, ∂Pi)) do (r, i)
+#               complex(r[j], i[j])
+#           end
+#           for j in 1:N]
+#     ∂Q = [map(zip(∂Qr, ∂Qi)) do (r, i)
+#               complex(r[j], i[j])
+#           end
+#           for j in 1:N]
+
+#     ∂T = map(zip(∂P, ∂Q)) do (∂Pj, ∂Qj)
+#         -(∂Pj + Tv * ∂Qj) * Qv⁻¹
+#     end
+
+#     DT = eltype(𝐐r)
+#     𝐓 = similar(𝐐)
+#     map!(𝐓, CartesianIndices(Tv)) do ij
+#         complex(DT(real(Tv[ij]),
+#                    ForwardDiff.Partials(tuple([real(∂T[i][ij]) for i in 1:N]...))),
+#                 DT(imag(Tv[ij]),
+#                    ForwardDiff.Partials(tuple([imag(∂T[i][ij]) for i in 1:N]...))))
+#     end
+# end
 
 """
 ```
@@ -222,7 +267,7 @@ transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                              Ng) where {T, CT}
+                              Ng; prec = precision(CT)) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     x, w, r, r′ = gaussquad(s, Ng)
@@ -287,15 +332,15 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
 
         if n != n′
-            PL₁ = zero(CT)
-            PL₂ = zero(CT)
-            PL₇ = zero(CT)
-            PL₈ = zero(CT)
+            PL₁ = complex_zero_prec(CT, prec)
+            PL₂ = complex_zero_prec(CT, prec)
+            PL₇ = complex_zero_prec(CT, prec)
+            PL₈ = complex_zero_prec(CT, prec)
 
-            UL₁ = zero(CT)
-            UL₂ = zero(CT)
-            UL₇ = zero(CT)
-            UL₈ = zero(CT)
+            UL₁ = complex_zero_prec(CT, prec)
+            UL₂ = complex_zero_prec(CT, prec)
+            UL₇ = complex_zero_prec(CT, prec)
+            UL₈ = complex_zero_prec(CT, prec)
 
             for i in 1:ng
                 PL₁ += w[i] * k * r′[i] * τ[i, n] * d[i, n′] * ψ[i, n] * ψₛ[i, n′]
@@ -326,13 +371,13 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             𝐔₂₂[n, n′] = 1im * A[n] * A[n′] * (s.m^2 - 1) / (s.m * (a[n] - a[n′])) *
                          (a[n] * UL₈ - a[n′] * UL₇)
         else
-            PL̃₁ = zero(CT)
-            PL̃₂ = zero(CT)
-            PL̃₃ = zero(CT)
+            PL̃₁ = complex_zero_prec(CT, prec)
+            PL̃₂ = complex_zero_prec(CT, prec)
+            PL̃₃ = complex_zero_prec(CT, prec)
 
-            UL̃₁ = zero(CT)
-            UL̃₂ = zero(CT)
-            UL̃₃ = zero(CT)
+            UL̃₁ = complex_zero_prec(CT, prec)
+            UL̃₂ = complex_zero_prec(CT, prec)
+            UL̃₃ = complex_zero_prec(CT, prec)
 
             for i in 1:ng
                 PL̃₁ += w[i] * (𝜋[i, n]^2 + τ[i, n]^2) *
@@ -358,9 +403,7 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
     end
 
-    𝐐 = @. 𝐏 + 1im * 𝐔
-    𝐓 = -𝐏 * inv(𝐐)
-
+    𝐓 = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
     return 𝐓
 end
 
@@ -372,7 +415,7 @@ transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                             Ng) where {T, CT}
+                             Ng; prec = precision(CT)) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     x, w, r, r′ = gaussquad(s, Ng)
@@ -463,15 +506,15 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
         if !(sym && isodd(n + n′))
             if n != n′
-                PL₁ = zero(CT)
-                PL₂ = zero(CT)
-                PL₇ = zero(CT)
-                PL₈ = zero(CT)
+                PL₁ = complex_zero_prec(CT, prec)
+                PL₂ = complex_zero_prec(CT, prec)
+                PL₇ = complex_zero_prec(CT, prec)
+                PL₈ = complex_zero_prec(CT, prec)
 
-                UL₁ = zero(CT)
-                UL₂ = zero(CT)
-                UL₇ = zero(CT)
-                UL₈ = zero(CT)
+                UL₁ = complex_zero_prec(CT, prec)
+                UL₂ = complex_zero_prec(CT, prec)
+                UL₇ = complex_zero_prec(CT, prec)
+                UL₈ = complex_zero_prec(CT, prec)
 
                 for i in 1:ng
                     PL₁ += w[i] * k * r′[i] * τ[i, n] * d[i, n′] * ψ[i, n] * ψₛ[i, n′]
@@ -503,13 +546,13 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
                 𝐔₂₂[n, n′] = 1im * A[n] * A[n′] * (s.m^2 - 1) / (s.m * (a[n] - a[n′])) *
                              (a[n] * UL₈ - a[n′] * UL₇)
             else
-                PL̃₁ = zero(CT)
-                PL̃₂ = zero(CT)
-                PL̃₃ = zero(CT)
+                PL̃₁ = complex_zero_prec(CT, prec)
+                PL̃₂ = complex_zero_prec(CT, prec)
+                PL̃₃ = complex_zero_prec(CT, prec)
 
-                UL̃₁ = zero(CT)
-                UL̃₂ = zero(CT)
-                UL̃₃ = zero(CT)
+                UL̃₁ = complex_zero_prec(CT, prec)
+                UL̃₂ = complex_zero_prec(CT, prec)
+                UL̃₃ = complex_zero_prec(CT, prec)
 
                 for i in 1:ng
                     PL̃₁ += w[i] * (𝜋[i, n]^2 + τ[i, n]^2) *
@@ -536,8 +579,7 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
     end
 
-    𝐐 = @. 𝐏 + 1im * 𝐔
-    𝐓 = -𝐏 * inv(𝐐)
+    𝐓 = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
 
     return 𝐓
 end
@@ -669,4 +711,18 @@ end
     Cᵉˣᵗ = extinction_cross_section(𝐓)
     Cᵉˣᵗ′ = extinction_cross_section(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓))
     @test Cᵉˣᵗ ≈ Cᵉˣᵗ′
+end
+
+function extinction_efficiency_m₀(T₀)
+    nₘₐₓ = size(T₀, 1) ÷ 2
+    Qᵉˣᵗ = sum((2n + 1) * real(T₀[n, n] + T₀[n + nₘₐₓ, n + nₘₐₓ]) for n in 1:nₘₐₓ)
+    return Qᵉˣᵗ
+end
+
+function scattering_efficiency_m₀(T₀)
+    nₘₐₓ = size(T₀, 1) ÷ 2
+    Qˢᶜᵃ = sum((2n + 1) *
+               real(T₀[n, n] * T₀[n, n]' + T₀[n + nₘₐₓ, n + nₘₐₓ] * T₀[n + nₘₐₓ, n + nₘₐₓ]')
+               for n in 1:nₘₐₓ)
+    return Qˢᶜᵃ
 end

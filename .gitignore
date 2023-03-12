@@ -14,5 +14,5 @@ Manifest.toml
 .idea
 
 # Temporarily ignored
-
+/*.jl
 /notebooks

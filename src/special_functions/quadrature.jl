@@ -11,8 +11,8 @@ gausslegendre(n::Integer) = gausslegendre(Float64, n)
 
 function gausslegendre(T, n::Integer)
     x, w = gausslegendre(Arb, n)
-    x = convert.(T, x)
-    w = convert.(T, w)
+    x = convert.(T, BigFloat.(x))
+    w = convert.(T, BigFloat.(w))
     return x, w
 end
 

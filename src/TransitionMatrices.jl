@@ -4,9 +4,10 @@ using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
+using ForwardDiff: ForwardDiff
 using LinearAlgebra: cond
 using OffsetArrays: OffsetArray
-using Quadmath: Float128
+using Quadmath: Float128, ComplexF128
 using Rotations: Rotation, RotZYZ
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem

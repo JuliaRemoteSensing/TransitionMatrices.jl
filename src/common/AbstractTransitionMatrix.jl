@@ -291,11 +291,10 @@ function extinction_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
     Cᵉˣᵗ = zero(CT)
 
     for n in 1:N
-        for m in -n:n
+        for m in (-n):n
             Cᵉˣᵗ += 𝐓[m, n, m, n, 1, 1] + 𝐓[m, n, m, n, 2, 2]
         end
     end
 
     -real(Cᵉˣᵗ) * λ^2 / 2π
 end
-

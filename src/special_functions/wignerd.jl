@@ -178,6 +178,15 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
     return isnothing(deriv) ? d : (d, deriv)
 end
 
+# Workaround to avoid NaNs in ForwardDiff
+function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer,
+                             ϑ::Number; deriv = nothing) where {T <: ForwardDiff.Dual}
+    dv = map(x -> x.value, d)
+    wigner_d_recursion!(dv, m, n, smax, ϑ.value; deriv = deriv)
+    d .= map(x -> eltype(d)(x), dv)
+    return isnothing(deriv) ? d : (d, deriv)
+end
+
 @testitem "Wigner d-function" begin
     using TransitionMatrices: wigner_d, wigner_d_recursion, wigner_d_recursion!
 
