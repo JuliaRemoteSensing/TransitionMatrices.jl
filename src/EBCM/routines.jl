@@ -45,7 +45,7 @@ end
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 0.0001,
                            ndgs = 4, routine_generator = routine_mishchenko,
                            nₛₜₐᵣₜ = 0, Ngₛₜₐᵣₜ = nₛₜₐᵣₜ * ndgs, nₘₐₓ_only = false,
-                           full = false, reuse = true) where {T, CT}
+                           full = false, reuse = true, maxiter = 20) where {T, CT}
     if nₛₜₐᵣₜ == 0
         kr = 2π * rmax(s) / λ
         if nₛₜₐᵣₜ == 0
@@ -56,8 +56,10 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 
 
     routine = routine_generator(threshold, ndgs, nₘₐₓ_only)
     nₘₐₓ, Ng = nₛₜₐᵣₜ, Ngₛₜₐᵣₜ
+    counter = 0
     while true
         cache = nothing
+        counter += 1
 
         if !full
             T₀, cache = transition_matrix_m₀(s, λ, nₘₐₓ, Ng; reuse = true)
@@ -83,6 +85,10 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 
             end
         else
             nₘₐₓ, Ng = nₘₐₓ′, Ng′
+        end
+
+        if counter > maxiter
+            error("Maximum number of iterations reached, failed to converge.")
         end
     end
 end
