@@ -123,3 +123,11 @@ function estimate_total_loss(s::Spheroid, nₘₐₓ)
             [(rmin = min(s.a, s.c), rmax = max(s.a, s.c), mr = real(s.m), mi = imag(s.m),
               nmax = nₘₐₓ)])[1]
 end
+
+function rmax(s::Spheroid)
+    max(s.a, s.c)
+end
+
+function rmin(s::Spheroid)
+    min(s.a, s.c)
+end

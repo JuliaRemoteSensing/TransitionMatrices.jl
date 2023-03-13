@@ -1,6 +1,7 @@
 Base.convert(::Type{Float128}, x::ArbLike) = Float128(BigFloat(x))
 Quadmath.Float128(x::ArbLike) = Float128(BigFloat(x))
 Base.round(x::Arb, ::RoundingMode{:Up}) = ceil(BigFloat(x))
+Base.abs2(x::AcbLike) = abs2(real(x)) + abs2(imag(x))
 
 function Base.inv(x::Matrix{Arb})
     a = ArbMatrix(x)
@@ -26,8 +27,16 @@ function Base.precision(::Type{
     precision(T)
 end
 
-function Arblib.set!(arb::Arblib.ArbRef, dual::ForwardDiff.Dual)
+function Arblib.set!(arb::Arblib.ArbLike, dual::ForwardDiff.Dual)
     Arblib.set!(arb, dual.value)
+end
+
+function Arblib.set!(arb::Arblib.ArbLike, val::Float128)
+    Arblib.set!(arb, BigFloat(val))
+end
+
+function Arblib.set!(arb::Arblib.ArbLike, val::Double64)
+    Arblib.set!(arb, BigFloat(val))
 end
 
 Base.Int64(x::ArbLike) = round(Int64, BigFloat(x))

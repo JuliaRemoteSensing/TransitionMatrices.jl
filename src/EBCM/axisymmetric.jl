@@ -268,31 +268,18 @@ transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                              Ng; zerofn = () -> zero(CT)) where {T, CT}
+                              Ng; zerofn = () -> zero(CT), reuse = false) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
-    x, w, r, r′ = gaussquad(s, Ng)
-    ϑ = acos.(x)
     k = 2 * T(π) / λ
-
-    a = [n * (n + 1) for n in 1:nₘₐₓ]
-    A = [√(T(2n + 1) / (2n * (n + 1))) for n in 1:nₘₐₓ]
-    d = OffsetArray(zeros(T, Ng, nₘₐₓ + 1), 1:Ng, 0:nₘₐₓ)
-    𝜋 = similar(d)
-    τ = similar(d)
-
-    Threads.@threads for i in eachindex(ϑ)
-        wigner_d_recursion!(view(d, i, :), 0, 0, nₘₐₓ, ϑ[i];
-                            deriv = view(τ, i, :))
-
-        for n in 0:nₘₐₓ
-            𝜋[i, n] = pi_func(T, 0, n, ϑ[i]; d = d[i, n])
-        end
-    end
-
     sym = has_symmetric_plane(s)
     ng = sym ? Ng ÷ 2 : Ng
 
+    x, w, r, r′ = gaussquad(s, Ng)
+    ϑ = acos.(x)
+
+    a = [n * (n + 1) for n in 1:nₘₐₓ]
+    A = [√(T(2n + 1) / (2n * (n + 1))) for n in 1:nₘₐₓ]
     rₘₐₓ = maximum(r)
     nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, k * rₘₐₓ)
     ψ = zeros(T, ng, nₘₐₓ)
@@ -314,18 +301,32 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     χₛ = similar(ψₛ)
     χₛ′ = similar(ψₛ)
 
+    Threads.@threads for i in 1:ng
+        kₛr = k * s.m * r[i]
+        ricattibesselj!(view(ψₛ, i, :), view(ψₛ′, i, :), view(zₛ, :, i), nₘₐₓ, nₑₓₜᵣₐ,
+                        kₛr)
+        ricattibessely!(view(χₛ, i, :), view(χₛ′, i, :), nₘₐₓ, kₛr)
+    end
+
+    d = OffsetArray(zeros(T, Ng, nₘₐₓ + 1), 1:Ng, 0:nₘₐₓ)
+    𝜋 = similar(d)
+    τ = similar(d)
+
+    Threads.@threads for i in eachindex(ϑ)
+        wigner_d_recursion!(view(d, i, :), 0, 0, nₘₐₓ, ϑ[i];
+                            deriv = view(τ, i, :))
+
+        for n in 0:nₘₐₓ
+            𝜋[i, n] = pi_func(T, 0, n, ϑ[i]; d = d[i, n])
+        end
+    end
+
     𝐏 = zeros(CT, 2nₘₐₓ, 2nₘₐₓ)
     𝐏₁₁ = view(𝐏, 1:nₘₐₓ, 1:nₘₐₓ)
     𝐏₂₂ = view(𝐏, (nₘₐₓ + 1):(2nₘₐₓ), (nₘₐₓ + 1):(2nₘₐₓ))
     𝐔 = zeros(CT, 2nₘₐₓ, 2nₘₐₓ)
     𝐔₁₁ = view(𝐔, 1:nₘₐₓ, 1:nₘₐₓ)
     𝐔₂₂ = view(𝐔, (nₘₐₓ + 1):(2nₘₐₓ), (nₘₐₓ + 1):(2nₘₐₓ))
-
-    Threads.@threads for i in 1:ng
-        kₛr = k * s.m * r[i]
-        ricattibesselj!(view(ψₛ, i, :), view(ψₛ′, i, :), view(zₛ, :, i), nₘₐₓ, nₑₓₜᵣₐ, kₛr)
-        ricattibessely!(view(χₛ, i, :), view(χₛ′, i, :), nₘₐₓ, kₛr)
-    end
 
     Threads.@threads for (n, n′) in collect(Iterators.product(1:nₘₐₓ, 1:nₘₐₓ))
         if sym && isodd(n + n′)
@@ -405,6 +406,12 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     end
 
     𝐓 = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
+
+    if reuse
+        cache = x, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, χₛ, χₛ′
+        return 𝐓, cache
+    end
+
     return 𝐓
 end
 
@@ -416,17 +423,52 @@ transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) 
 Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
 """
 function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                             Ng; zerofn = () -> zero(CT)) where {T, CT}
+                             Ng; zerofn = () -> zero(CT), cache = nothing) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
-    x, w, r, r′ = gaussquad(s, Ng)
-    ϑ = acos.(x)
     k = 2 * T(π) / λ
-
     nₘᵢₙ = max(1, m)
     nn = nₘₐₓ - nₘᵢₙ + 1
-    a = OffsetArray([n * (n + 1) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
-    A = OffsetArray([√(T(2n + 1) / (2n * (n + 1))) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
+    sym = has_symmetric_plane(s)
+    ng = sym ? Ng ÷ 2 : Ng
+
+    if !isnothing(cache)
+        x, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, χₛ, χₛ′ = cache
+    else
+        x, w, r, r′ = gaussquad(s, Ng)
+        ϑ = acos.(x)
+        a = OffsetArray([n * (n + 1) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
+        A = OffsetArray([√(T(2n + 1) / (2n * (n + 1))) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
+
+        rₘₐₓ = maximum(r)
+        nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, k * rₘₐₓ)
+        ψ = zeros(T, ng, nₘₐₓ)
+        z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ, ng)
+        ψ′ = similar(ψ)
+        χ = similar(ψ)
+        χ′ = similar(ψ)
+
+        Threads.@threads for i in 1:ng
+            kr = k * r[i]
+            ricattibesselj!(view(ψ, i, :), view(ψ′, i, :), view(z, :, i), nₘₐₓ, nₑₓₜᵣₐ, kr)
+            ricattibessely!(view(χ, i, :), view(χ′, i, :), nₘₐₓ, kr)
+        end
+
+        nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, s.m * k * rₘₐₓ)
+        ψₛ = zeros(CT, ng, nₘₐₓ)
+        zₛ = zeros(CT, nₘₐₓ + nₑₓₜᵣₐ, ng)
+        ψₛ′ = similar(ψₛ)
+        χₛ = similar(ψₛ)
+        χₛ′ = similar(ψₛ)
+
+        Threads.@threads for i in 1:ng
+            kₛr = k * s.m * r[i]
+            ricattibesselj!(view(ψₛ, i, :), view(ψₛ′, i, :), view(zₛ, :, i), nₘₐₓ, nₑₓₜᵣₐ,
+                            kₛr)
+            ricattibessely!(view(χₛ, i, :), view(χₛ′, i, :), nₘₐₓ, kₛr)
+        end
+    end
+
     d = OffsetArray(zeros(T, Ng, nₘₐₓ - m + 1), 1:Ng, m:nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
@@ -438,36 +480,6 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         for n in nₘᵢₙ:nₘₐₓ
             𝜋[i, n] = pi_func(T, m, n, ϑ[i]; d = d[i, n])
         end
-    end
-
-    sym = has_symmetric_plane(s)
-    ng = sym ? Ng ÷ 2 : Ng
-
-    rₘₐₓ = maximum(r)
-    nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, k * rₘₐₓ)
-    ψ = zeros(T, ng, nₘₐₓ)
-    z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ, ng)
-    ψ′ = similar(ψ)
-    χ = similar(ψ)
-    χ′ = similar(ψ)
-
-    Threads.@threads for i in 1:ng
-        kr = k * r[i]
-        ricattibesselj!(view(ψ, i, :), view(ψ′, i, :), view(z, :, i), nₘₐₓ, nₑₓₜᵣₐ, kr)
-        ricattibessely!(view(χ, i, :), view(χ′, i, :), nₘₐₓ, kr)
-    end
-
-    nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, s.m * k * rₘₐₓ)
-    ψₛ = zeros(CT, ng, nₘₐₓ)
-    zₛ = zeros(CT, nₘₐₓ + nₑₓₜᵣₐ, ng)
-    ψₛ′ = similar(ψₛ)
-    χₛ = similar(ψₛ)
-    χₛ′ = similar(ψₛ)
-
-    Threads.@threads for i in 1:ng
-        kₛr = k * s.m * r[i]
-        ricattibesselj!(view(ψₛ, i, :), view(ψₛ′, i, :), view(zₛ, :, i), nₘₐₓ, nₑₓₜᵣₐ, kₛr)
-        ricattibessely!(view(χₛ, i, :), view(χₛ′, i, :), nₘₐₓ, kₛr)
     end
 
     𝐏 = zeros(CT, 2nn, 2nn)

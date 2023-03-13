@@ -89,3 +89,11 @@ function gaussquad(c::Cylinder{T}, ngauss) where {T}
 
     return x, w, r, r′
 end
+
+function rmax(c::Cylinder)
+    return abs(complex(c.r, c.h / 2))
+end
+
+function rmin(c::Cylinder)
+    return min(c.r, c.h / 2)
+end
