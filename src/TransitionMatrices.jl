@@ -11,6 +11,7 @@ using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Rotation, RotZYZ
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem
+using Wigxjpf: wig3jj, wig_table_init, wig_table_free, wig_temp_init, wig_temp_free
 
 include("compat/index.jl")
 include("special_functions/index.jl")
@@ -25,7 +26,7 @@ export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMa
        AxisymmetricTransitionMatrix, MieTransitionMatrix
 
 # Utility functions
-export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix,
+export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,
        orientation_average, scattering_cross_section, extinction_cross_section,
        absorption_cross_section,
        albedo,
@@ -35,12 +36,13 @@ export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix,
 const calc_T = transition_matrix
 const calc_S = amplitude_matrix
 const calc_Z = phase_matrix
+const calc_F = scattering_matrix
 const calc_ω = albedo
 const calc_Cext = extinction_cross_section
 const calc_Csca = scattering_cross_section
 const calc_Cabs = absorption_cross_section
 
-export calc_T, calc_S, calc_Z, calc_ω,
+export calc_T, calc_S, calc_Z, calc_F, calc_ω,
        calc_Csca, calc_Cext, calc_Cabs
 
 # Shape related exports

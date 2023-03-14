@@ -14,6 +14,7 @@ Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+Wigxjpf = "af901252-fd8a-4391-8647-10b4fde07a1e"
 
 [compat]
 Arblib = "0.8"
