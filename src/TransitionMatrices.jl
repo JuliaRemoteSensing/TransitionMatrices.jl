@@ -6,8 +6,6 @@ using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
 using LinearAlgebra: cond
-using MLJ: machine, predict
-using MLJXGBoostInterface
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Rotation, RotZYZ

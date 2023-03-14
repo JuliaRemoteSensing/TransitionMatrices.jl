@@ -103,27 +103,6 @@ end
     end
 end
 
-function estimate_integral_loss(s::Spheroid, nₘₐₓ)
-    mach = machine("fixtures/spheroids.Q.model")
-    predict(mach,
-            [(rmin = min(s.a, s.c), rmax = max(s.a, s.c), mr = real(s.m), mi = imag(s.m),
-              nmax = nₘₐₓ)])[1]
-end
-
-function estimate_inverse_loss(s::Spheroid, nₘₐₓ)
-    mach = machine("fixtures/spheroids.T.model")
-    predict(mach,
-            [(rmin = min(s.a, s.c), rmax = max(s.a, s.c), mr = real(s.m), mi = imag(s.m),
-              nmax = nₘₐₓ)])[1]
-end
-
-function estimate_total_loss(s::Spheroid, nₘₐₓ)
-    mach = machine("fixtures/spheroids.AT.model")
-    predict(mach,
-            [(rmin = min(s.a, s.c), rmax = max(s.a, s.c), mr = real(s.m), mi = imag(s.m),
-              nmax = nₘₐₓ)])[1]
-end
-
 function rmax(s::Spheroid)
     max(s.a, s.c)
 end

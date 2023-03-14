@@ -1,0 +1,15 @@
+authors = ["Gabriel Wu <wuzihua@pku.edu.cn>"]
+name = "EBCMPrecisionLossEstimators"
+uuid = "b9ae27e8-a04d-47c2-942e-fb60855865c5"
+version = "0.1.0"
+
+[deps]
+MLJ = "add582a8-e3ab-11e8-2d5e-e98b27df1bc7"
+MLJXGBoostInterface = "54119dfa-1dab-4055-a167-80440f4f7a91"
+TransitionMatrices = "057c4241-e127-4181-840e-6b4b92e6eef5"
+
+[compat]
+MLJ = "0.19"
+MLJXGBoostInterface = "0.3"
+TransitionMatrices = "0.1"
+julia = "1.8"
