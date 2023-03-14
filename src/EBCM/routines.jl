@@ -45,7 +45,7 @@ end
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 0.0001,
                            ndgs = 4, routine_generator = routine_mishchenko,
                            nₛₜₐᵣₜ = 0, Ngₛₜₐᵣₜ = nₛₜₐᵣₜ * ndgs, nₘₐₓ_only = false,
-                           full = false, reuse = true, maxiter = 20) where {T, CT}
+                           full = false, reuse = true, maxiter = 20, zerofn = () -> zero(CT)) where {T, CT}
     if nₛₜₐᵣₜ == 0
         kr = 2π * rmax(s) / λ
         if nₛₜₐᵣₜ == 0

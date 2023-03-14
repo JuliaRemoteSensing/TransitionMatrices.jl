@@ -153,3 +153,20 @@ end
         @test absorption_cross_section(𝐓) > 0.0
     end
 end
+
+@doc raw"""
+```
+asymmetry_parameter(𝐓, λ)
+```
+
+Calculate the asymmetry parameter from the given transition matrix, using Eq. (4.92) in Mishchenko et al. (2002):
+
+```math
+\langle\cos\Theta\rangle=\frac{\alpha_1^1}{3}
+```
+
+"""
+function asymmetry_parameter(𝐓::AbstractTransitionMatrix, λ)
+    α₁, _ = expansion_coefficients(𝐓, λ)
+    return α₁[1] / 3
+end

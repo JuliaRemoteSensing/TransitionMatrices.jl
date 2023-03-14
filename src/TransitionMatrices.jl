@@ -29,7 +29,7 @@ export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMa
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,
        orientation_average, scattering_cross_section, extinction_cross_section,
        absorption_cross_section,
-       albedo,
+       albedo, asymmetry_parameter,
        transition_matrix, transition_matrix_m, transition_matrix_m₀
 
 # Utility functions (short names)
@@ -37,6 +37,7 @@ const calc_T = transition_matrix
 const calc_S = amplitude_matrix
 const calc_Z = phase_matrix
 const calc_F = scattering_matrix
+const calc_g = asymmetry_parameter
 const calc_ω = albedo
 const calc_Cext = extinction_cross_section
 const calc_Csca = scattering_cross_section

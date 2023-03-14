@@ -207,9 +207,9 @@ Returns:
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng;
                            zerofn = () -> zero(CT)) where {T, CT}
     𝐓 = Vector{Matrix{CT}}(undef, nₘₐₓ + 1)
-    𝐓[1] = transition_matrix_m₀(s, λ, nₘₐₓ, Ng; zerofn = zerofn)
+    𝐓[1], cache = transition_matrix_m₀(s, λ, nₘₐₓ, Ng; zerofn = zerofn, reuse = true)
     for m in 1:nₘₐₓ
-        𝐓[m + 1] = transition_matrix_m(m, s, λ, nₘₐₓ, Ng; zerofn = zerofn)
+        𝐓[m + 1] = transition_matrix_m(m, s, λ, nₘₐₓ, Ng; zerofn = zerofn, cache = cache)
     end
 
     AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(𝐓), T}(𝐓)
