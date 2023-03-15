@@ -7,11 +7,11 @@ DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrice
 makedocs(;
          modules = [TransitionMatrices],
          authors = "Gabriel Wu <wuzihua@pku.edu.cn> and contributors",
-         repo = "https://github.com/lucifer1004/TransitionMatrices.jl/blob/{commit}{path}#{line}",
+         repo = "https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/{commit}{path}#{line}",
          sitename = "TransitionMatrices.jl",
          format = Documenter.HTML(;
                                   prettyurls = get(ENV, "CI", "false") == "true",
-                                  canonical = "https://lucifer1004.github.io/TransitionMatrices.jl",
+                                  canonical = "https://JuliaRemoteSensing.github.io/TransitionMatrices.jl",
                                   edit_link = "main",
                                   assets = String[]),
          pages = [
@@ -20,5 +20,5 @@ makedocs(;
          ])
 
 deploydocs(;
-           repo = "github.com/lucifer1004/TransitionMatrices.jl",
+           repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
            devbranch = "main")
