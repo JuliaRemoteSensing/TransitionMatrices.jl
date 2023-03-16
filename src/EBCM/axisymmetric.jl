@@ -437,7 +437,7 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     else
         x, w, r, r′ = gaussquad(s, Ng)
         ϑ = acos.(x)
-        a = OffsetArray([n * (n + 1) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
+        a = OffsetArray([T(n * (n + 1)) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
         A = OffsetArray([√(T(2n + 1) / (2n * (n + 1))) for n in nₘᵢₙ:nₘₐₓ], nₘᵢₙ:nₘₐₓ)
 
         rₘₐₓ = maximum(r)
