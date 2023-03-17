@@ -2,10 +2,11 @@ module TransitionMatrices
 
 using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
+using ArbNumerics: ArbFloat, ArbReal, ArbComplex
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
-using LinearAlgebra: cond
+using GenericLinearAlgebra: cond, inv
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Rotation, RotZYZ
@@ -51,6 +52,6 @@ export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volum
        volume_equivalent_radius, has_symmetric_plane, Spheroid, Cylinder, Chebyshev
 
 # Re-exports
-export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb
+export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb, ArbFloat, ArbReal, ArbComplex
 
 end

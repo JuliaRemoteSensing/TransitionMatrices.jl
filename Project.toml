@@ -1,14 +1,15 @@
 authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 name = "TransitionMatrices"
 uuid = "057c4241-e127-4181-840e-6b4b92e6eef5"
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
+ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
 Arblib = "fb37089c-8514-4489-9461-98f9c8763369"
 DoubleFloats = "497a8b3b-efae-58df-a0af-a86822472b78"
 FastGaussQuadrature = "442a2c76-b920-505d-bb47-c5924d526838"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+GenericLinearAlgebra = "14197337-ba66-59df-a3e3-ca00e7dcff7a"
 OffsetArrays = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
@@ -17,10 +18,12 @@ TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
 Wigxjpf = "af901252-fd8a-4391-8647-10b4fde07a1e"
 
 [compat]
+ArbNumerics = "1"
 Arblib = "0.8"
 DoubleFloats = "1"
 FastGaussQuadrature = "0.4, 0.5"
 ForwardDiff = "0.10"
+GenericLinearAlgebra = "0.3"
 OffsetArrays = "1"
 Quadmath = "0.5"
 Rotations = "1"
