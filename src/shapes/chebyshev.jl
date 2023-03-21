@@ -83,9 +83,9 @@ function gaussquad(c::Chebyshev{T}, ngauss) where {T}
 end
 
 function rmax(c::Chebyshev)
-    return c.r₀ * (1 + c.ε)
+    return c.r₀ * (1 + abs(c.ε))
 end
 
 function rmin(c::Chebyshev)
-    return c.r₀ * (1 - c.ε)
+    return c.r₀ * (1 - abs(c.ε))
 end

@@ -3,16 +3,19 @@ module TransitionMatrices
 using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using ArbNumerics: ArbFloat, ArbReal, ArbComplex
+using BlockArrays: mortar
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
-using GenericLinearAlgebra: cond, inv
+using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Rotation, RotZYZ
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem
 using Wigxjpf: wig3jj, wig_table_init, wig_table_free, wig_temp_init, wig_temp_free
+
+const 𝐈 = GenericLinearAlgebra.I
 
 include("compat/index.jl")
 include("special_functions/index.jl")
@@ -21,6 +24,7 @@ include("shapes/index.jl")
 
 include("Mie/index.jl")
 include("EBCM/index.jl")
+include("IITM/index.jl")
 
 # Various types of transition matrices
 export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMatrix,

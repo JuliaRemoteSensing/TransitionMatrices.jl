@@ -2,6 +2,7 @@ Base.convert(::Type{Float128}, x::ArbLike) = Float128(BigFloat(x))
 Quadmath.Float128(x::ArbLike) = Float128(BigFloat(x))
 Base.round(x::Arb, ::RoundingMode{:Up}) = ceil(BigFloat(x))
 Base.abs2(x::AcbLike) = abs2(real(x)) + abs2(imag(x))
+Base.complex(::Type{Arb}) = Acb
 
 function Base.inv(x::Matrix{Arb})
     a = ArbMatrix(x)

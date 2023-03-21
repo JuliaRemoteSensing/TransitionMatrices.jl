@@ -97,3 +97,7 @@ end
 function rmin(c::Cylinder)
     return min(c.r, c.h / 2)
 end
+
+function Base.:∈(x, c::Cylinder)
+    return abs2(x[1]) + abs2(x[2]) <= c.r^2 && abs(x[3]) <= c.h / 2
+end

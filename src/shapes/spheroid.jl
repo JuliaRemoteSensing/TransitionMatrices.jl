@@ -110,3 +110,8 @@ end
 function rmin(s::Spheroid)
     min(s.a, s.c)
 end
+
+function Base.:∈(x, s::Spheroid)
+    (x[1] / s.a)^2 + (x[2] / s.a)^2 +
+    (x[3] / s.c)^2 <= 1.0
+end
