@@ -13,6 +13,8 @@ The transition matrix method, or T-Matrix method, is one of the most powerful an
     - Spheroids
     - Cylinders
     - Chebyshev particles
+  - Arbitrary shapes (via IITM)
+    - Prisms
 - Calculate far-field scattering properties using the T-Matrix
   - Cross sections and single scattering albedo (SSA)
   - Amplitude scattering matrix
@@ -27,4 +29,4 @@ Compared to existing packages, `TransitionMatrices.jl` is special in that it is 
 - `Arb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
 - `ArbFloat` from [`ArbNumerics.jl`](https://github.com/JeffreySarnoff/ArbNumerics.jl)
 
-By using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.
+For EBCM, by using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.

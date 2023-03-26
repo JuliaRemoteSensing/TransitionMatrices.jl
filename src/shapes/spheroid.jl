@@ -115,3 +115,5 @@ function Base.:∈(x, s::Spheroid)
     (x[1] / s.a)^2 + (x[2] / s.a)^2 +
     (x[3] / s.c)^2 <= 1.0
 end
+
+refractive_index(s::Spheroid, x) = x ∈ s ? s.m : one(s.m)

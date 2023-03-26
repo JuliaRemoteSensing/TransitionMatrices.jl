@@ -32,7 +32,6 @@ function volume_equivalent_radius(c::Chebyshev)
     return ∛a * c.r₀
 end
 
-volume(c::Chebyshev) = 4 // 3 * π * volume_equivalent_radius(c)^3
 has_symmetric_plane(c::Chebyshev) = iseven(c.n)
 
 @testitem "Utility functions are correct" begin

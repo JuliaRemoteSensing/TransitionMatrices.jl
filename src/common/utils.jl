@@ -54,3 +54,10 @@ Base.isdone(iter::OrderDegreeIterator, state) = state >= (iter.nₘₐₓ, iter.
     @test !Base.isdone(OrderDegreeIterator(2), (1, 1))
     @test Base.isdone(OrderDegreeIterator(2), (2, 2))
 end
+
+# Compat for enumerate
+Base.firstindex(::Base.Iterators.Enumerate{OrderDegreeIterator}) = 1
+Base.lastindex(iter::Base.Iterators.Enumerate{OrderDegreeIterator}) = length(iter.itr)
+function Base.getindex(iter::Base.Iterators.Enumerate{OrderDegreeIterator}, idx)
+    (idx, iter.itr[idx])
+end

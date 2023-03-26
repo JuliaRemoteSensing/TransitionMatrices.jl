@@ -91,7 +91,7 @@ function gaussquad(c::Cylinder{T}, ngauss) where {T}
 end
 
 function rmax(c::Cylinder)
-    return abs(complex(c.r, c.h / 2))
+    return hypot(c.r, c.h / 2)
 end
 
 function rmin(c::Cylinder)
@@ -101,3 +101,5 @@ end
 function Base.:∈(x, c::Cylinder)
     return abs2(x[1]) + abs2(x[2]) <= c.r^2 && abs(x[3]) <= c.h / 2
 end
+
+refractive_index(c::Cylinder, x) = x ∈ c ? c.m : one(c.m)

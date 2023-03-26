@@ -1,6 +1,6 @@
 @doc raw"""
 ```
-transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng, Nr; rₘᵢₙ) where {T, CT}
+transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ; rₘᵢₙ) where {T, CT}
 ```
 
 Use IITM to calculate the T-Matrix for a given scatterer and wavelength.
@@ -10,8 +10,8 @@ Parameters:
 - `s`: the axisymmetric scatterer.
 - `λ`: the wavelength.
 - `nₘₐₓ`: the maximum order of the T-Matrix.
-- `Ng`: the number of Gauss-Legendre quadrature points to be used.
 - `Nr`: the number of radial quadrature points to be used.
+- `Nϑ`: the number of zenithal quadrature points to be used.
 
 Keyword arguments:
 
@@ -21,22 +21,22 @@ Returns:
 
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
-function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng,
-                                Nr; rₘᵢₙ = TransitionMatrices.rmin(s)) where {T, CT}
-    k = 2π / λ
-    rₘₐₓ = TransitionMatrices.rmax(s)
+function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
+                                ; rₘᵢₙ = rmin(s)) where {T, CT}
+    k = 2 * T(π) / λ
+    rₘₐₓ = rmax(s)
 
     # Radial quadrature nodes and weights
-    xr, wr = TransitionMatrices.gausslegendre(Nr)
+    xr, wr = gausslegendre(T, Nr)
     @. xr = (rₘₐₓ - rₘᵢₙ) * (xr + 1) / 2 + rₘᵢₙ
     @. wr = (rₘₐₓ - rₘᵢₙ) / 2 * wr
 
     # Zenithal quadrature nodes and weights
-    x, w = TransitionMatrices.gausslegendre(Ng)
+    x, w = gausslegendre(T, Nϑ)
     ϑ = acos.(x)
 
     # Initialize T-Matrix with Mie coefficients
-    a, b = TransitionMatrices.bhmie(T, k * rₘᵢₙ, s.m; nₘₐₓ = nₘₐₓ)
+    a, b = bhmie(T, k * rₘᵢₙ, s.m; nₘₐₓ = nₘₐₓ)
     Ts = Matrix{CT}[]
     for m in 0:nₘₐₓ
         nn = nₘₐₓ + 1 - max(m, 1)
@@ -52,18 +52,16 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     end
 
     # Precalculate d, 𝜋 and τ
-    d = OffsetArray(zeros(T, Ng, nₘₐₓ + 1, nₘₐₓ + 1), 1:Ng, 0:nₘₐₓ, 0:nₘₐₓ)
+    d = OffsetArray(zeros(T, Nϑ, nₘₐₓ + 1, nₘₐₓ + 1), 1:Nϑ, 0:nₘₐₓ, 0:nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
 
-    Threads.@threads for i in eachindex(ϑ)
-        for m in 0:nₘₐₓ
-            TransitionMatrices.wigner_d_recursion!(view(d, i, m:nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
-                                                   deriv = view(τ, i, m:nₘₐₓ, m))
+    Threads.@threads for (i, m) in collect(Iterators.product(1:Nϑ, 0:nₘₐₓ))
+        wigner_d_recursion!(view(d, i, m:nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
+                            deriv = view(τ, i, m:nₘₐₓ, m))
 
-            for n in max(m, 1):nₘₐₓ
-                𝜋[i, n, m] = TransitionMatrices.pi_func(T, m, n, ϑ[i]; d = d[i, n, m])
-            end
+        for n in max(m, 1):nₘₐₓ
+            𝜋[i, n, m] = pi_func(T, m, n, ϑ[i]; d = d[i, n, m])
         end
     end
 
@@ -77,14 +75,14 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
         # Calculate Ricatti-Bessel functions and derivatives
         kr = k * r
-        nₑₓₜᵣₐ = TransitionMatrices.estimate_ricattibesselj_extra_terms(nₘₐₓ, kr)
+        nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, kr)
         ψ = zeros(T, nₘₐₓ)
         z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ)
         ψ′ = similar(ψ)
         χ = similar(ψ)
         χ′ = similar(ψ)
-        TransitionMatrices.ricattibesselj!(ψ, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, kr)
-        TransitionMatrices.ricattibessely!(χ, χ′, nₘₐₓ, kr)
+        ricattibesselj!(ψ, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, kr)
+        ricattibessely!(χ, χ′, nₘₐₓ, kr)
 
         # Since we use Ricatti-Bessel instead of spherical Bessel functions,
         # we need to divide the values by an extra `kr`
@@ -123,7 +121,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
                     ΔU = @SMatrix [pptt -im*pttp 0
                                    im*pttp pptt 0
                                    0 0 a½[n] * a½[n′] * dd/ε[i]]
-                    U += ΔU * w[i] * (ε[i] - 1)
+                    U += w[i] * (ε[i] - 1) * ΔU
                 end
 
                 U *= A[n] * A[n′] * (kr)^2
@@ -180,9 +178,13 @@ end
     k = 2π / λ
     m = 1.311 + 0.01im
     s = Spheroid(r, r, m)
-    N = 10
-    𝐓ₘ = MieTransitionMatrix{ComplexF64, N}(k * r, m)
-    𝐓ᵢ = transition_matrix_iitm(s, λ, N, 10, 1000; rₘᵢₙ = 4.0)
+
+    nₘₐₓ = 10
+    𝐓ₘ = MieTransitionMatrix{ComplexF64, nₘₐₓ}(k * r, m)
+
+    Nr = 50
+    Nϑ = 100
+    𝐓ᵢ = transition_matrix_iitm(s, λ, nₘₐₓ, Nr, Nϑ; rₘᵢₙ = 4.0)
 
     Cˢᶜᵃₘ = calc_Csca(𝐓ₘ)
     Cˢᶜᵃᵢ = calc_Csca(𝐓ᵢ)
@@ -207,7 +209,7 @@ end
     𝐓ₑ = transition_matrix(s, λ, nₘₐₓ, Ng)
 
     Nr = 500
-    𝐓ᵢ = transition_matrix_iitm(s, λ, nₘₐₓ, 4Ng, Nr)
+    𝐓ᵢ = transition_matrix_iitm(s, λ, nₘₐₓ, Nr, 4Ng)
 
     Cˢᶜᵃₑ = calc_Csca(𝐓ₑ)
     Cˢᶜᵃᵢ = calc_Csca(𝐓ᵢ)

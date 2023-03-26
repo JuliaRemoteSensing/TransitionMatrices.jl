@@ -10,7 +10,7 @@ using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
-using Rotations: Rotation, RotZYZ
+using Rotations: Angle2d, Rotation, RotMatrix2, RotZYZ
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem
 using Wigxjpf: wig3jj, wig_table_init, wig_table_free, wig_temp_init, wig_temp_free
@@ -54,8 +54,9 @@ export calc_T, calc_T_iitm, calc_S, calc_Z, calc_F, calc_ω,
        calc_Csca, calc_Cext, calc_Cabs
 
 # Shape related exports
-export AbstractShape, AbstractHomogeneousShape, AbstractAxisymmetricShape, volume,
-       volume_equivalent_radius, has_symmetric_plane, Spheroid, Cylinder, Chebyshev
+export AbstractShape, AbstractAxisymmetricShape, AbstractNFoldShape, volume,
+       volume_equivalent_radius, has_symmetric_plane, refractive_index,
+       rmin, rmax, Spheroid, Cylinder, Chebyshev, Prism
 
 # Re-exports
 export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb, ArbFloat, ArbReal, ArbComplex
