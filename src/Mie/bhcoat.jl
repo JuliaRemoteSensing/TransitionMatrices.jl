@@ -14,7 +14,7 @@ Inputs:
 Keyword arguments:
 
 - `nₘₐₓ`: Maximum order of the Mie coefficients. Default to ``\max(x_m + 4\sqrt{3}{x_m} + 2, \max(|m_c|, |m_m|)x_m)``.
-- `tolerance`: Error tolerance. Default is `1e-8`.
+- `tolerance`: Error tolerance. Default to `1e-8`.
 
 Outputs:
 

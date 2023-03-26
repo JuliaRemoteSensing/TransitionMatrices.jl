@@ -298,3 +298,159 @@ function extinction_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
 
     -real(Cᵉˣᵗ) * λ^2 / 2π
 end
+
+"""
+```
+phase_matrix(𝐒::AbstractMatrix)
+```
+
+Calculate the phase matrix `𝐙` from the amplitude matrix `𝐒`, according to Eq. (2.106) -- Eq. (2.121) in Mishchenko et al. (2002).
+"""
+function phase_matrix(𝐒::AbstractMatrix)
+    𝐙₁₁ = 0.5 * (𝐒[1, 1] * 𝐒[1, 1]' + 𝐒[1, 2] * 𝐒[1, 2]' + 𝐒[2, 1] * 𝐒[2, 1]' +
+           𝐒[2, 2] * 𝐒[2, 2]')
+    𝐙₁₂ = 0.5 * (𝐒[1, 1] * 𝐒[1, 1]' - 𝐒[1, 2] * 𝐒[1, 2]' + 𝐒[2, 1] * 𝐒[2, 1]' -
+           𝐒[2, 2] * 𝐒[2, 2]')
+    𝐙₁₃ = -𝐒[1, 1] * 𝐒[1, 2]' - 𝐒[2, 2] * 𝐒[2, 1]'
+    𝐙₁₄ = 1.0im * (𝐒[1, 1] * 𝐒[1, 2]' - 𝐒[2, 2] * 𝐒[2, 1]')
+    𝐙₂₁ = 0.5 * (𝐒[1, 1] * 𝐒[1, 1]' + 𝐒[1, 2] * 𝐒[1, 2]' - 𝐒[2, 1] * 𝐒[2, 1]' -
+           𝐒[2, 2] * 𝐒[2, 2]')
+    𝐙₂₂ = 0.5 * (𝐒[1, 1] * 𝐒[1, 1]' - 𝐒[1, 2] * 𝐒[1, 2]' - 𝐒[2, 1] * 𝐒[2, 1]' +
+           𝐒[2, 2] * 𝐒[2, 2]')
+    𝐙₂₃ = -𝐒[1, 1] * 𝐒[1, 2]' + 𝐒[2, 2] * 𝐒[2, 1]'
+    𝐙₂₄ = 1.0im * (𝐒[1, 1] * 𝐒[1, 2]' + 𝐒[2, 2] * 𝐒[2, 1]')
+    𝐙₃₁ = -𝐒[1, 1] * 𝐒[2, 1]' - 𝐒[2, 2] * 𝐒[1, 2]'
+    𝐙₃₂ = -𝐒[1, 1] * 𝐒[2, 1]' + 𝐒[2, 2] * 𝐒[1, 2]'
+    𝐙₃₃ = 𝐒[1, 1] * 𝐒[2, 2]' + 𝐒[1, 2] * 𝐒[2, 1]'
+    𝐙₃₄ = -1.0im * (𝐒[1, 1] * 𝐒[2, 2]' + 𝐒[2, 1] * 𝐒[1, 2]')
+    𝐙₄₁ = 1.0im * (𝐒[2, 1] * 𝐒[1, 1]' + 𝐒[2, 2] * 𝐒[1, 2]')
+    𝐙₄₂ = 1.0im * (𝐒[2, 1] * 𝐒[1, 1]' - 𝐒[2, 2] * 𝐒[1, 2]')
+    𝐙₄₃ = -1.0im * (𝐒[2, 2] * 𝐒[1, 1]' - 𝐒[1, 2] * 𝐒[2, 1]')
+    𝐙₄₄ = 𝐒[2, 2] * 𝐒[1, 1]' - 𝐒[1, 2] * 𝐒[2, 1]'
+
+    𝐙 = @SMatrix [𝐙₁₁ 𝐙₁₂ 𝐙₁₃ 𝐙₁₄; 𝐙₂₁ 𝐙₂₂ 𝐙₂₃ 𝐙₂₄; 𝐙₃₁ 𝐙₃₂ 𝐙₃₃ 𝐙₃₄; 𝐙₄₁ 𝐙₄₂ 𝐙₄₃ 𝐙₄₄]
+    return real.(𝐙)
+end
+
+@testitem "Can calculate phase matrix from amplitude scattering matrix" begin
+    using TransitionMatrices
+
+    @test all(phase_matrix([1+2im 2+3im; 0.2-0.5im 0.5-0.2im]) .≈
+              [9.29 -4.0 -8.2 -0.79
+               8.71 -4.0 -7.8 -1.21
+               0.4 1.2 -1.0 -0.4
+               2.8 -1.0 -2.8 1.2])
+end
+
+"""
+```
+albedo(𝐓::AbstractTransitionMatrix)
+```
+
+Calculate the single scattering albedo from the given T-Matrix.
+"""
+function albedo(𝐓::AbstractTransitionMatrix)
+    scattering_cross_section(𝐓) / extinction_cross_section(𝐓)
+end
+
+@testitem "albedo of" begin
+    using TransitionMatrices: Spheroid, transition_matrix, albedo
+
+    @testset "non-absorbing scatterers should be equal to 1.0" begin
+        s = Spheroid(1.5, 1.0, complex(1.311))
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test albedo(𝐓) ≈ 1.0
+    end
+
+    @testset "absorbing scatterers should be less than 1.0" begin
+        s = Spheroid(1.5, 1.0, 1.5 + 0.01im)
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test albedo(𝐓) < 1.0
+    end
+end
+
+"""
+```
+absorption_cross_section(𝐓::AbstractTransitionMatrix, λ=2π)
+```
+
+Calculate the absorption cross section from the given T-Matrix.
+"""
+function absorption_cross_section(𝐓::AbstractTransitionMatrix, λ = 2π)
+    extinction_cross_section(𝐓, λ) - scattering_cross_section(𝐓, λ)
+end
+
+@testitem "absorption cross section of" begin
+    using TransitionMatrices: Spheroid, transition_matrix, absorption_cross_section
+
+    @testset "non-absorbing scatterers should be approximate to 0.0" begin
+        s = Spheroid(1.5, 1.0, complex(1.311))
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+
+        # The result may be slightly negative due to numerical errors
+        @test abs(absorption_cross_section(𝐓)) < 1e-8
+    end
+
+    @testset "absorbing scatterers should be less than 1.0" begin
+        s = Spheroid(1.5, 1.0, 1.5 + 0.01im)
+        𝐓 = transition_matrix(s, 2π, 5, 40)
+        @test absorption_cross_section(𝐓) > 0.0
+    end
+end
+
+@doc raw"""
+```
+asymmetry_parameter(𝐓, λ)
+```
+
+Calculate the asymmetry parameter from the given transition matrix, using Eq. (4.92) in Mishchenko et al. (2002):
+
+```math
+\langle\cos\Theta\rangle=\frac{\alpha_1^1}{3}
+```
+
+"""
+function asymmetry_parameter(𝐓::AbstractTransitionMatrix, λ)
+    α₁, _ = expansion_coefficients(𝐓, λ)
+    return α₁[1] / 3
+end
+
+@doc raw"""
+```
+scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, θs)
+```
+
+Calculate the scatterering matrix elements from the given expansion coefficients.
+
+Parameters:
+
+- `α₁`, `α₂`, `α₃`, `α₄`, `β₁`, `β₂`: The precalculated expansion coefficients.
+- `θs`: The scattering angles to be evaluated in degrees.
+"""
+function scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, θs::AbstractVector)
+    lmax = length(α₁) - 1
+    θs = deg2rad.(θs)
+    Nθ = length(θs)
+
+    F = zeros(Nθ, 6)
+    Threads.@threads for i in eachindex(θs)
+        θ = θs[i]
+        d₀₀ = wigner_d_recursion(0, 0, lmax, θ)
+        d₂₂ = wigner_d_recursion(2, 2, lmax, θ)
+        d₂₋₂ = wigner_d_recursion(2, -2, lmax, θ)
+        d₀₂ = wigner_d_recursion(0, 2, lmax, θ)
+
+        F₁₁ = sum(α₁[l] * d₀₀[l] for l in 0:lmax)
+        F₂₂₊₃₃ = sum((α₂[l] + α₃[l]) * d₂₂[l] for l in 2:lmax)
+        F₂₂₋₃₃ = sum((α₂[l] - α₃[l]) * d₂₋₂[l] for l in 2:lmax)
+        F₂₂ = (F₂₂₊₃₃ + F₂₂₋₃₃) / 2
+        F₃₃ = F₂₂₊₃₃ - F₂₂
+        F₄₄ = sum(α₄[l] * d₀₀[l] for l in 0:lmax)
+        F₁₂ = -sum(β₁[l] * d₀₂[l] for l in 2:lmax)
+        F₃₄ = -sum(β₂[l] * d₀₂[l] for l in 2:lmax)
+
+        F[i, :] .= F₁₁, F₁₂, F₂₂, F₃₃, F₃₄, F₄₄
+    end
+
+    return F
+end

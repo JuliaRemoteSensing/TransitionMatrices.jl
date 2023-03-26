@@ -9,7 +9,7 @@ The transition matrix method, or T-Matrix method, is one of the most powerful an
 - Calculate the T-Matrix of various types of scatterers
   - Homogeneous spheres (via `bhmie`)
   - Coated spheres (via `bhcoat`)
-  - Homogeneous axisymmetric shapes:
+  - Homogeneous axisymmetric shapes (via EBCM and IITM)
     - Spheroids
     - Cylinders
     - Chebyshev particles
