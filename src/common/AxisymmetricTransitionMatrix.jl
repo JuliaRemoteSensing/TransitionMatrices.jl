@@ -120,7 +120,7 @@ end
 
 @doc raw"""
 ```
-expansion_coefficients(𝐓, λ)
+expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T}, λ) where {CT, N, V, T}
 ```
 
 Calculate the expansion coefficients from a given T-Matrix.

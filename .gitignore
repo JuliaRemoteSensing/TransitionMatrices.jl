@@ -6,6 +6,7 @@
 /coverage-lcov.info
 /lcov
 /docs/build/
+.CondaPkg
 Manifest.toml
 
 # IDE configurations
