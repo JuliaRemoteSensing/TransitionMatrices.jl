@@ -207,3 +207,33 @@ end
     @test abs(Cˢᶜᵃₑ - Cˢᶜᵃᵢ) < 1e-2
     @test abs(Cᵉˣᵗₑ - Cᵉˣᵗᵢ) < 1e-2
 end
+
+@testitem "Prisms can be solved by the arbitrary-shape solver" begin
+    struct ArbitraryPrism{N, T, CT} <: AbstractShape{T, CT}
+        s::Prism{N, T, CT}
+        m::CT
+    end
+
+    TransitionMatrices.rmin(s::ArbitraryPrism) = rmin(s.s)
+    TransitionMatrices.rmax(s::ArbitraryPrism) = rmax(s.s)
+    TransitionMatrices.refractive_index(s::ArbitraryPrism, x) = refractive_index(s.s, x)
+
+    s = Prism(5, 4.0, 5.0, complex(1.5))
+    ss = ArbitraryPrism(s, s.m)
+
+    nₘₐₓ = 5
+    Nϑ = 50
+    Nr = 50
+    Nφ = 300
+
+    𝐓ₐ = calc_T_iitm(s, 2π, nₘₐₓ, Nr, Nϑ, Nφ)
+    𝐓ₙ = calc_T_iitm(ss, 2π, nₘₐₓ, Nr, Nϑ, Nφ)
+
+    Cˢᶜᵃₐ = calc_Csca(𝐓ₐ)
+    Cˢᶜᵃₙ = calc_Csca(𝐓ₙ)
+    Cᵉˣᵗₐ = calc_Cext(𝐓ₐ)
+    Cᵉˣᵗₙ = calc_Cext(𝐓ₙ)
+
+    @test abs(Cˢᶜᵃₐ - Cˢᶜᵃₙ) < 1e-2
+    @test abs(Cᵉˣᵗₐ - Cᵉˣᵗₙ) < 1e-2
+end

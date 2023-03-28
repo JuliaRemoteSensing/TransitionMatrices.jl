@@ -13,6 +13,8 @@ The transition matrix method, or T-Matrix method, is one of the most powerful an
     - Spheroids
     - Cylinders
     - Chebyshev particles
+  - Arbitrary shapes (via IITM)
+    - Prisms
 - Calculate far-field scattering properties using the T-Matrix
   - Cross sections and single scattering albedo (SSA)
   - Amplitude scattering matrix
