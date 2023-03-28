@@ -35,6 +35,7 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
     # Zenithal quadrature nodes and weights
     x, w = gausslegendre(T, Nϑ)
     ϑ = acos.(x)
+    Nϑ = has_symmetric_plane(s) ? Nϑ ÷ 2 : Nϑ
 
     xφ = range(0, 2 * T(π), length = Nφ + 1)[1:(end - 1)]
     wφ = 2 * T(π) / Nφ
@@ -114,22 +115,31 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
         # Calculate for each point whether it is within the scatterer
         ε = [refractive_index(s,
                               (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
-                               r * x[i]))^2 for φ in xφ, i in eachindex(ϑ)]
+                               r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
 
         Threads.@threads for (q, (n′, m′)) in enumerate(it)
             for (p, (n, m)) in enumerate(it)
                 sig = iseven(m + m′) ? 1 : -1
+
+                if has_symmetric_plane(s)
+                    c = iseven(n + m + n′ + m′) ? 2 : 0
+                    c̃ = 2 - c
+                else
+                    c = 1
+                    c̃ = 1
+                end
+
                 U = zero(SMatrix{3, 3, CT})
 
-                for i in eachindex(ϑ)
+                for i in 1:Nϑ
                     pptt = 𝜋[i, n, m] * 𝜋[i, n′, m′] + τ[i, n, m] * τ[i, n′, m′]
                     pttp = 𝜋[i, n, m] * τ[i, n′, m′] + τ[i, n, m] * 𝜋[i, n′, m′]
                     dd = d[i, n, m] * d[i, n′, m′]
 
                     for (j, φ) in enumerate(xφ)
-                        ΔU = @SMatrix [pptt -im*pttp 0
-                                       im*pttp pptt 0
-                                       0 0 a½[n] * a½[n′] * dd/ε[j, i]]
+                        ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
+                                       c̃*im*pttp c*pptt 0
+                                       0 0 c * a½[n] * a½[n′] * dd/ε[j, i]]
                         U += w[i] * wφ * cis((m′ - m) * φ) * (ε[j, i] - 1) * ΔU
                     end
                 end

@@ -34,6 +34,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     # Zenithal quadrature nodes and weights
     x, w = gausslegendre(T, Nϑ)
     ϑ = acos.(x)
+    Nϑ = has_symmetric_plane(s) ? Nϑ ÷ 2 : Nϑ
 
     # Initialize T-Matrix with Mie coefficients
     a, b = bhmie(T, k * rₘᵢₙ, s.m; nₘₐₓ = nₘₐₓ)
@@ -69,6 +70,17 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     a½ = [√(T(n * (n + 1))) for n in 1:nₘₐₓ]
     A = [√(T(2n + 1) / (2n * (n + 1))) for n in 1:nₘₐₓ]
 
+    𝐉 = zeros(CT, 3nₘₐₓ, 2nₘₐₓ)
+    𝐇 = zeros(CT, 3nₘₐₓ, 2nₘₐₓ)
+    𝐆 = zeros(CT, 3nₘₐₓ, 3nₘₐₓ)
+
+    nₑₓₜᵣₐ = TransitionMatrices.estimate_ricattibesselj_extra_terms(nₘₐₓ, k * rₘₐₓ)
+    ψ = zeros(T, nₘₐₓ)
+    z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ)
+    ψ′ = similar(ψ)
+    χ = similar(ψ)
+    χ′ = similar(ψ)
+
     # Radial recursion
     for (r, wri) in zip(xr, wr)
         @debug "Calculating layer r = $r"
@@ -76,34 +88,31 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         # Calculate Ricatti-Bessel functions and derivatives
         kr = k * r
         nₑₓₜᵣₐ = estimate_ricattibesselj_extra_terms(nₘₐₓ, kr)
-        ψ = zeros(T, nₘₐₓ)
-        z = zeros(T, nₘₐₓ + nₑₓₜᵣₐ)
-        ψ′ = similar(ψ)
-        χ = similar(ψ)
-        χ′ = similar(ψ)
         ricattibesselj!(ψ, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, kr)
         ricattibessely!(χ, χ′, nₘₐₓ, kr)
 
         # Since we use Ricatti-Bessel instead of spherical Bessel functions,
         # we need to divide the values by an extra `kr`
-        𝐉 = [@SMatrix [ψ[n]/kr 0
-                       0 ψ′[n]/kr
-                       0 a½[n] * ψ[n]/(kr)^2] for n in 1:nₘₐₓ]
-        𝐘 = [@SMatrix [χ[n]/kr 0
-                       0 χ′[n]/kr
-                       0 a½[n] * χ[n]/(kr)^2] for n in 1:nₘₐₓ]
-        𝐇 = @. 𝐉 + 1im * 𝐘
-
-        # G_n is averaged from both sides
-        𝐆 = [(H * transpose(J) + J * transpose(H)) * (im * k / 2) for (J, H) in zip(𝐉, 𝐇)]
+        𝐉ᵈ = [@SMatrix [ψ[n]/kr 0
+                        0 ψ′[n]/kr
+                        0 a½[n] * ψ[n]/(kr)^2] for n in 1:nₘₐₓ]
+        𝐘ᵈ = [@SMatrix [χ[n]/kr 0
+                        0 χ′[n]/kr
+                        0 a½[n] * χ[n]/(kr)^2] for n in 1:nₘₐₓ]
+        𝐇ᵈ = @. 𝐉ᵈ + 1im * 𝐘ᵈ
 
         # Make block diagonal matrices
-        𝐉 = collect(mortar(GenericLinearAlgebra.Diagonal(𝐉)))
-        𝐇 = collect(mortar(GenericLinearAlgebra.Diagonal(𝐇)))
-        𝐆 = collect(mortar(GenericLinearAlgebra.Diagonal(𝐆)))
+        for n in 1:nₘₐₓ
+            𝐉[(3n - 2):(3n), (2n - 1):(2n)] .= 𝐉ᵈ[n]
+            𝐇[(3n - 2):(3n), (2n - 1):(2n)] .= 𝐇ᵈ[n]
+
+            # 𝐆 is averaged from both sides
+            𝐆[(3n - 2):(3n), (3n - 2):(3n)] .= (𝐇ᵈ[n] * transpose(𝐉ᵈ[n]) .+
+                                                𝐉ᵈ[n] * transpose(𝐇ᵈ[n])) .* (im * k / 2)
+        end
 
         # Calculate for each point whether it is within the scatterer
-        within = [(r * sin(ϑ[i]), 0, r * x[i]) ∈ s for i in eachindex(ϑ)]
+        within = [(r * sin(ϑ[i]), 0, r * x[i]) ∈ s for i in 1:Nϑ]
         ε = [within[i] ? s.m^2 : one(CT) for i in eachindex(within)]
 
         # Calculate for each m
@@ -114,13 +123,21 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
             for n in nₘᵢₙ:nₘₐₓ, n′ in nₘᵢₙ:nₘₐₓ
                 U = zero(SMatrix{3, 3, CT})
-                for i in eachindex(ϑ)
+                if has_symmetric_plane(s)
+                    c = iseven(n + n′) ? 2 : 0
+                    c̃ = 2 - c
+                else
+                    c = 1
+                    c̃ = 1
+                end
+
+                for i in 1:Nϑ
                     pptt = 𝜋[i, n, m] * 𝜋[i, n′, m] + τ[i, n, m] * τ[i, n′, m]
                     pttp = 𝜋[i, n, m] * τ[i, n′, m] + τ[i, n, m] * 𝜋[i, n′, m]
                     dd = d[i, n, m] * d[i, n′, m]
-                    ΔU = @SMatrix [pptt -im*pttp 0
-                                   im*pttp pptt 0
-                                   0 0 a½[n] * a½[n′] * dd/ε[i]]
+                    ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
+                                   c̃*im*pttp c*pptt 0
+                                   0 0 c * a½[n] * a½[n′] * dd/ε[i]]
                     U += w[i] * (ε[i] - 1) * ΔU
                 end
 
