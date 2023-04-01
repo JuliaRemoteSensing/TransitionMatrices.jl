@@ -3,7 +3,6 @@ module TransitionMatrices
 using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using ArbNumerics: ArbFloat, ArbReal, ArbComplex
-using BlockArrays: mortar
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
@@ -32,6 +31,7 @@ export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMa
 
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,
+       expansion_coefficients,
        orientation_average, scattering_cross_section, extinction_cross_section,
        absorption_cross_section,
        albedo, asymmetry_parameter,

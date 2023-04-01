@@ -123,7 +123,7 @@ end
 expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T}, λ) where {CT, N, V, T}
 ```
 
-Calculate the expansion coefficients from a given T-Matrix.
+Calculate the expansion coefficients from an axisymmetric T-Matrix. Translated from Mishchenko et al.'s Fortran code.
 
 Parameters:
 
@@ -239,11 +239,13 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
                 cg1 = clebschgordan(n, 1, l, 0, n′)
                 sm₀₀ = 0.0
                 sm₀₋₀ = 0.0
+
                 for m in (-min(n, n′)):min(n, n′)
                     cg = clebschgordan(n, m, l, 0, n′)
                     sm₀₀ += cg * D₀₀[m, n′, n]
                     sm₀₋₀ += cg * D₀₋₀[m, n′, n]
                 end
+
                 g₀₀[l] += h[l, n, n′] * cg1 * sm₀₀
                 g₀₋₀[l] += h[l, n, n′] * cg1 * sig[n + n′ + l] * sm₀₋₀
 
@@ -252,12 +254,14 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
                     sm₂₂ = 0.0
                     sm₂₋₂ = 0.0
                     sm₀₂ = complex(0.0)
+
                     for m in max(-n, -n′ + 2):min(n, n′ + 2)
                         cg = clebschgordan(n, -m, l, 2, n′)
                         sm₂₂ += cg * D₂₂[m, n′, n]
                         sm₂₋₂ += cg * D₂₋₂[m, n′, n]
                         sm₀₂ += cg * D₀₂[m, n′, n]
                     end
+
                     g₂₂[l] += h[l, n, n′] * cg2 * sm₂₂
                     g₂₋₂[l] += h[l, n, n′] * cg2 * sig[n + n′ + l] * sm₂₋₂
                     g₀₂[l] += -h[l, n, n′] * cg1 * sm₀₂
@@ -279,25 +283,7 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
     return α₁, α₂, α₃, α₄, β₁, β₂
 end
 
-@doc raw"""
-```
-scattering_matrix(𝐓, λ, θs)
-```
-
-Calculate expansion coefficients first and then calculate scatterering matrix elements.
-
-Parameters:
-
-- `𝐓`: The transition matrix.
-- `λ`: The wavelength.
-- `θs`: The scattering angles to be evaluated in degrees.
-"""
-function scattering_matrix(𝐓::AxisymmetricTransitionMatrix, λ, θs::AbstractVector)
-    α₁, α₂, α₃, α₄, β₁, β₂ = expansion_coefficients(𝐓, λ)
-    return scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, θs)
-end
-
-@testitem "Can calculate scattering matrix" begin
+@testitem "Can calculate scattering matrix from axisymmetric T-matrix" begin
     s = Spheroid(1.0, 2.0, complex(1.311))
     λ = 2π
     𝐓 = transition_matrix(s, λ)
