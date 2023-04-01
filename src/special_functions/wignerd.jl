@@ -134,7 +134,7 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
     sig = iseven(m + n) ? 1 :
           (m > n ? -sign(sinϑ) : sign(sinϑ))
     d₀ = 0
-    d₁ = d[smin] = sig * T(2)^(-smin) *
+    d₁ = d[smin] = sig * 2.0^(-smin) *
                    √(factorial(T, 2smin) / factorial(T, abs(m - n)) /
                      factorial(T, abs(m + n))) *
                    (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)

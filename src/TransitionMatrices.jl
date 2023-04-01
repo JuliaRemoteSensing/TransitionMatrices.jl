@@ -6,6 +6,7 @@ using ArbNumerics: ArbFloat, ArbReal, ArbComplex
 using BlockArrays: mortar
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
+using FixedPointDecimals: FixedDecimal
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using OffsetArrays: OffsetArray

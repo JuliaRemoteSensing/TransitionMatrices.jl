@@ -67,3 +67,15 @@ function Base.convert(::Type{Complex{Arb}}, x::AcbLike)
     im = Arb(imag(x))
     return Complex{Arb}(re, im)
 end
+
+function Base.convert(T::Type{<:FixedDecimal}, x::Irrational)
+    return convert(T, BigFloat(x))
+end
+
+function Base.convert(T::Type{<:FixedDecimal}, x::Union{ArbLike, AcbLike})
+    return convert(T, BigFloat(x))
+end
+
+function Base.precision(::Type{FixedDecimal{F, N}}) where {F, N}
+    return floor(Int, N * log(10))
+end
