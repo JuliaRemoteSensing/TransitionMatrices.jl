@@ -418,9 +418,10 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                                 full = false) where {CT, N}
     Cˢᶜᵃ = Float64(scattering_cross_section(𝐓, λ))
     λ = Float64(λ)
-    ci = OffsetArray([(1im)^(i & 4) for i in (-N):N], (-N):N)
+    ci = OffsetArray([(1im)^(i & 3) for i in (-N):N], (-N):N)
     s = OffsetArray([Float64(2i + 1) for i in 0:(2N)], 0:(2N))
     ss = sqrt.(s)
+    a = [inv(√(2n + 1)) for n in 1:(2N)]
     sig = OffsetArray([1 - 2 * (i % 2) for i in 0:(4N)], 0:(4N))
 
     wig_table_init(4N, 3)
@@ -445,48 +446,6 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
         end
     end
 
-    # A₁ = zeros(ComplexF64, N)
-    # A₂ = zeros(ComplexF64, N)
-    # A₃ = zeros(ComplexF64, N)
-    # A₄ = zeros(ComplexF64, N)
-
-    A₁ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N, 2N + 1), (-N):N, 1:N, 1:N, 0:(2N))
-    A₂ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N, 2N + 1), (-N):N, 1:N, 1:N, 0:(2N))
-    A₃ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N, 2N + 1), (-N):N, 1:N, 1:N, 0:(2N))
-    A₄ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N, 2N + 1), (-N):N, 1:N, 1:N, 0:(2N))
-
-    a = [inv(√(2n + 1)) for n in 1:(2N)]
-
-    # #TODO: not finished
-    # for n in 1:N
-    #     for n₁ in 0:(N + n)
-    #         for n′ in max(1, abs(n - n₁)):min(N, n₁ + n)
-    #             A₁[n′] = 0.0
-    #             A₂[n′] = 0.0
-    #             A₃[n′] = 0.0
-    #             A₄[n′] = 0.0
-    #         end
-    #     end
-    # end
-
-    for n₁ in 0:(2N), n′ in 1:N, n in 1:N, k in (-N):N
-        lb = max(-N - k, -N)
-        ub = min(N - k, N)
-
-        A₁[k, n, n′, n₁] = im^((n′ - n) & 3) * a[n′] *
-                           sum(clebschgordan(n, m₁, n₁, k, n′) * T₁[m₁, n, m₁ + k, n′]
-                               for m₁ in lb:ub)
-        A₂[k, n, n′, n₁] = im^((n′ - n) & 3) * a[n′] *
-                           sum(clebschgordan(n, m₁, n₁, k, n′) * T₂[m₁, n, m₁ + k, n′]
-                               for m₁ in lb:ub)
-        A₃[k, n, n′, n₁] = im^((n′ - n) & 3) * a[n′] *
-                           sum(clebschgordan(n, m₁, n₁, k, n′) * T₃[m₁, n, m₁ + k, n′]
-                               for m₁ in lb:ub)
-        A₄[k, n, n′, n₁] = im^((n′ - n) & 3) * a[n′] *
-                           sum(clebschgordan(n, m₁, n₁, k, n′) * T₄[m₁, n, m₁ + k, n′]
-                               for m₁ in lb:ub)
-    end
-
     B₁ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
                      0:(2N))
     B₂ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
@@ -497,17 +456,36 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                      0:(2N))
 
     for n₁ in 0:(2N), n in 1:N, m in (-N):N, k in (-N):N
-        lb = max(1, abs(n - n₁))
-        ub = min(n + n₁, N)
+        b₁ = 0.0
+        b₂ = 0.0
+        b₃ = 0.0
+        b₄ = 0.0
 
-        B₁[k, m, n, n₁] = sum(clebschgordan(n, m, n₁, 1 - m, n′) * A₁[k, n, n′, n₁]
-                              for n′ in lb:ub; init = 0)
-        B₂[k, m, n, n₁] = sum(clebschgordan(n, m, n₁, 1 - m, n′) * A₂[k, n, n′, n₁]
-                              for n′ in lb:ub; init = 0)
-        B₃[k, m, n, n₁] = sum(clebschgordan(n, m, n₁, 1 - m, n′) * A₃[k, n, n′, n₁]
-                              for n′ in lb:ub; init = 0)
-        B₄[k, m, n, n₁] = sum(clebschgordan(n, m, n₁, 1 - m, n′) * A₄[k, n, n′, n₁]
-                              for n′ in lb:ub; init = 0)
+        for n′ in max(1, abs(n - n₁)):min(n + n₁, N)
+            a₁ = 0.0
+            a₂ = 0.0
+            a₃ = 0.0
+            a₄ = 0.0
+
+            for m₁ in max(-N - k, -N):min(N - k, N)
+                cg = clebschgordan(n, m₁, n₁, k, n′)
+                a₁ += cg * T₁[m₁, n, m₁ + k, n′]
+                a₂ += cg * T₂[m₁, n, m₁ + k, n′]
+                a₃ += cg * T₃[m₁, n, m₁ + k, n′]
+                a₄ += cg * T₄[m₁, n, m₁ + k, n′]
+            end
+
+            coeff = clebschgordan(n, m, n₁, 1 - m, n′) * ci[n′ - n] * a[n′]
+            b₁ += coeff * a₁
+            b₂ += coeff * a₂
+            b₃ += coeff * a₃
+            b₄ += coeff * a₄
+        end
+
+        B₁[k, m, n, n₁] = b₁
+        B₂[k, m, n, n₁] = b₂
+        B₃[k, m, n, n₁] = b₃
+        B₄[k, m, n, n₁] = b₄
     end
 
     D₀₀ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
@@ -521,47 +499,47 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
 
     for n′ in 1:N, n in 1:N
         for m in (-min(n, n′)):min(n, n′)
-            lb = abs(m - 1)
-            ub = min(n, n′) + N
-
-            D₀₀[m, n, n′] = sum((2n₁ + 1) *
-                                sum(B₃[k, m, n, n₁] * B₃[k, m, n′, n₁]'
-                                    for k in max(-N, -n₁):min(N, n₁))
-                                for n₁ in lb:ub; init = 0)
-            D₀₋₀[m, n, n′] = sum((2n₁ + 1) *
-                                 sum(B₂[k, m, n, n₁] * B₂[k, m, n′, n₁]'
-                                     for k in max(-N, -n₁):min(N, n₁))
-                                 for n₁ in lb:ub; init = 0)
-            D₋₀₋₀[m, n, n′] = sum((2n₁ + 1) *
-                                  sum(B₁[k, m, n, n₁] * B₁[k, m, n′, n₁]'
-                                      for k in max(-N, -n₁):min(N, n₁))
-                                  for n₁ in lb:ub; init = 0)
+            d₀₀ = 0.0
+            d₀₋₀ = 0.0
+            d₋₀₋₀ = 0.0
+            for n₁ in abs(m - 1):(min(n, n′) + N)
+                d₀₀ += (2n₁ + 1) * sum(B₃[k, m, n, n₁] * B₃[k, m, n′, n₁]'
+                           for k in max(-N, -n₁):min(N, n₁))
+                d₀₋₀ += (2n₁ + 1) * sum(B₂[k, m, n, n₁] * B₂[k, m, n′, n₁]'
+                            for k in max(-N, -n₁):min(N, n₁))
+                d₋₀₋₀ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₁[k, m, n′, n₁]'
+                             for k in max(-N, -n₁):min(N, n₁))
+            end
+            D₀₀[m, n, n′] = d₀₀
+            D₀₋₀[m, n, n′] = d₀₋₀
+            D₋₀₋₀[m, n, n′] = d₋₀₋₀
         end
 
         for m in max(-n, -n′ + 2):min(n, n′ + 2)
-            lb = abs(m - 1)
-            ub = min(n, n′) + N
+            d₂₂ = 0.0
+            d₂₋₂ = 0.0
+            d₋₂₋₂ = 0.0
+            d₀₂ = 0.0
+            d₋₀₂ = 0.0
 
-            D₂₂[m, n, n′] = sum((2n₁ + 1) *
-                                sum(B₁[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
-                                    for k in max(-N, -n₁):min(N, n₁))
-                                for n₁ in lb:ub; init = 0)
-            D₂₋₂[m, n, n′] = sum((2n₁ + 1) *
-                                 sum(B₄[k, m, n, n₁] * B₂[-k, 2 - m, n′, n₁]'
-                                     for k in max(-N, -n₁):min(N, n₁))
-                                 for n₁ in lb:ub; init = 0)
-            D₋₂₋₂[m, n, n′] = sum((2n₁ + 1) *
-                                  sum(B₃[k, m, n, n₁] * B₁[-k, 2 - m, n′, n₁]'
-                                      for k in max(-N, -n₁):min(N, n₁))
-                                  for n₁ in lb:ub; init = 0)
-            D₀₂[m, n, n′] = sum((2n₁ + 1) *
-                                sum(B₂[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
-                                    for k in max(-N, -n₁):min(N, n₁))
-                                for n₁ in lb:ub; init = 0)
-            D₋₀₂[m, n, n′] = sum((2n₁ + 1) *
-                                 sum(B₁[k, m, n, n₁] * B₄[-k, 2 - m, n′, n₁]'
-                                     for k in max(-N, -n₁):min(N, n₁))
-                                 for n₁ in lb:ub; init = 0)
+            for n₁ in abs(m - 1):(min(n, n′) + N)
+                d₂₂ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
+                           for k in max(-N, -n₁):min(N, n₁))
+                d₂₋₂ += (2n₁ + 1) * sum(B₄[k, m, n, n₁] * B₂[-k, 2 - m, n′, n₁]'
+                            for k in max(-N, -n₁):min(N, n₁))
+                d₋₂₋₂ += (2n₁ + 1) * sum(B₃[k, m, n, n₁] * B₁[-k, 2 - m, n′, n₁]'
+                             for k in max(-N, -n₁):min(N, n₁))
+                d₀₂ += (2n₁ + 1) * sum(B₂[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
+                           for k in max(-N, -n₁):min(N, n₁))
+                d₋₀₂ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₄[-k, 2 - m, n′, n₁]'
+                            for k in max(-N, -n₁):min(N, n₁))
+            end
+
+            D₂₂[m, n, n′] = d₂₂
+            D₂₋₂[m, n, n′] = d₂₋₂
+            D₋₂₋₂[m, n, n′] = d₋₂₋₂
+            D₀₂[m, n, n′] = d₀₂
+            D₋₀₂[m, n, n′] = d₋₀₂
         end
     end
 
@@ -779,4 +757,16 @@ function scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, β₃, β�
     end
 
     return F
+end
+
+@testitem "Can calculate full scattering matrix" begin
+    s = Spheroid(1.0, 2.0, complex(1.311))
+    λ = 2π
+    𝐓 = transition_matrix(s, λ)
+    T = TransitionMatrix{ComplexF64, size(𝐓, 2), typeof(𝐓)}(𝐓)
+    coeffs = expansion_coefficients(T, λ; full = true)
+    θs = collect(0:180)
+    𝐅 = scattering_matrix(coeffs..., θs)
+
+    @test size(𝐅) == (181, 10)
 end

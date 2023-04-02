@@ -283,12 +283,29 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
     return α₁, α₂, α₃, α₄, β₁, β₂
 end
 
-@testitem "Can calculate scattering matrix from axisymmetric T-matrix" begin
+@testitem "Can calculate scattering matrix from axisymmetric T-Matrix" begin
     s = Spheroid(1.0, 2.0, complex(1.311))
     λ = 2π
     𝐓 = transition_matrix(s, λ)
     θs = collect(0:180)
-    F = scattering_matrix(𝐓, λ, θs)
+    𝐅 = scattering_matrix(𝐓, λ, θs)
 
-    @test size(F) == (181, 6)
+    @test size(𝐅) == (181, 6)
+end
+
+@testitem "Expansion coefficients can also be calculated by general function" begin
+    s = Spheroid(1.0, 2.0, complex(1.311))
+    λ = 2π
+    𝐓 = transition_matrix(s, λ)
+    T = TransitionMatrix{ComplexF64, size(𝐓, 2), typeof(𝐓)}(𝐓)
+
+    α₁, α₂, α₃, α₄, β₁, β₂ = expansion_coefficients(𝐓, λ)
+    α₁′, α₂′, α₃′, α₄′, β₁′, β₂′ = expansion_coefficients(T, λ)
+
+    @test all(isapprox.(α₁, α₁′, atol = 1e-14))
+    @test all(isapprox.(α₂, α₂′, atol = 1e-14))
+    @test all(isapprox.(α₃, α₃′, atol = 1e-14))
+    @test all(isapprox.(α₄, α₄′, atol = 1e-14))
+    @test all(isapprox.(β₁, β₁′, atol = 1e-14))
+    @test all(isapprox.(β₂, β₂′, atol = 1e-14))
 end
