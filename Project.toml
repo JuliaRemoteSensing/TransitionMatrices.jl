@@ -1,7 +1,7 @@
 authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 name = "TransitionMatrices"
 uuid = "057c4241-e127-4181-840e-6b4b92e6eef5"
-version = "0.2.0"
+version = "0.3.0"
 
 [deps]
 ArbNumerics = "7e558dbc-694d-5a72-987c-6f4ebed21442"
@@ -15,6 +15,7 @@ Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TestItems = "1c621080-faea-4a02-84b6-bbd5e436b8fe"
+ThreadPools = "b189fb0b-2eb5-4ed4-bc0c-d34c51242431"
 Wigxjpf = "af901252-fd8a-4391-8647-10b4fde07a1e"
 
 [compat]
@@ -29,5 +30,6 @@ Quadmath = "0.5"
 Rotations = "1"
 StaticArrays = "1"
 TestItems = "0.1"
+ThreadPools = "2"
 Wigxjpf = "0.1"
 julia = "1.6"

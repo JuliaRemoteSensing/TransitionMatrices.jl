@@ -108,6 +108,7 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 
             else
                 Ts = [T₀]
                 for m in 1:nₘₐₓ
+                    @debug "Calculating for m = $m"
                     Tₘ = transition_matrix_m(m, s, λ, nₘₐₓ, Ng;
                                              cache = reuse ? cache : nothing)
                     push!(Ts, Tₘ)

@@ -11,5 +11,5 @@ TransitionMatrices = "057c4241-e127-4181-840e-6b4b92e6eef5"
 [compat]
 MLJ = "0.19"
 MLJXGBoostInterface = "0.3"
-TransitionMatrices = "0.1"
+TransitionMatrices = "0.1, 0.2, 0.3"
 julia = "1.8"

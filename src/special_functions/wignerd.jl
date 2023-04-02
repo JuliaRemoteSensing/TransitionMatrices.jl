@@ -53,7 +53,7 @@ end
 
 @doc raw"""
 ```
-wigner_d_recursion([T=Float64,], m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv::Bool = false) where {T}
+wigner_d_recursion([T=Float64,], m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number; deriv::Bool = false) where {T}
 ```
 
 Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (alternatively, its derivative as well) via upward recursion, using Eq. (B.22) of Mishchenko et al. (2002).
@@ -83,32 +83,32 @@ where
 \end{array}\right.
 ```
 """
-function wigner_d_recursion(::Type{T}, m::Integer, n::Integer, smax::Integer, ϑ::Number;
+function wigner_d_recursion(::Type{T}, m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number;
                             deriv::Bool = false) where {T}
-    smax >= max(abs(m), abs(n)) || error("Error: smax < max(|m|, |n|)")
-    smin = max(abs(m), abs(n))
+    sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
+    sₘᵢₙ = max(abs(m), abs(n))
 
-    d = zeros(T, smax - smin + 1)
-    d_deriv = deriv ? zeros(T, smax - smin + 1) : nothing
+    d = zeros(T, sₘₐₓ - sₘᵢₙ + 1)
+    d_deriv = deriv ? zeros(T, sₘₐₓ - sₘᵢₙ + 1) : nothing
 
-    wigner_d_recursion!(d, m, n, smax, ϑ; deriv = d_deriv)
+    wigner_d_recursion!(d, m, n, sₘₐₓ, ϑ; deriv = d_deriv)
 end
 
-@inline function wigner_d_recursion(m::Integer, n::Integer, smax::Integer, ϑ::Number;
+@inline function wigner_d_recursion(m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number;
                                     deriv::Bool = false)
-    return wigner_d_recursion(Float64, m, n, smax, ϑ; deriv)
+    return wigner_d_recursion(Float64, m, n, sₘₐₓ, ϑ; deriv)
 end
 
 """
 ```
-wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer, ϑ::Number; deriv=nothing)
+wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number; deriv=nothing)
 ```
 
 Calculate the Wigner d-function recursively, in place.
 """
-function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer,
+function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer,
                              ϑ::Number; deriv = nothing) where {T}
-    smax >= max(abs(m), abs(n)) || error("Error: smax < max(|m|, |n|)")
+    sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
 
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
@@ -125,21 +125,29 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
         error("Error: wigner_d_recursion! can only calculate derivatives for |cosϑ| < 1 when |m| != 0 and |n| != 0")
 
     sinϑ = sin(ϑ)
-    smin = max(abs(m), abs(n))
-    d = OffsetArray(d, smin:smax)
+    sₘᵢₙ = max(abs(m), abs(n))
+    d = OffsetArray(d, sₘᵢₙ:sₘₐₓ)
     if !isnothing(deriv)
-        deriv = OffsetArray(deriv, smin:smax)
+        deriv = OffsetArray(deriv, sₘᵢₙ:sₘₐₓ)
     end
 
-    sig = iseven(m + n) ? 1 :
+    sig = iseven(m + n) ? one(T) :
           (m > n ? -sign(sinϑ) : sign(sinϑ))
-    d₀ = 0
-    d₁ = d[smin] = sig * T(2)^(-smin) *
-                   √(factorial(T, 2smin) / factorial(T, abs(m - n)) /
-                     factorial(T, abs(m + n))) *
-                   (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)
+    d₀ = zero(T)
+    if m == 0 || n == 0
+        d₁ = sig
+        for i in 1:sₘᵢₙ
+            d₁ *= √(T((2i - 1) // (2i))) * abs(sinϑ)
+        end
+        d[sₘᵢₙ] = d₁
+    else
+        d₁ = d[sₘᵢₙ] = sig * T(2)^(-sₘᵢₙ) *
+                       √(factorial(T, 2sₘᵢₙ) / factorial(T, abs(m - n)) /
+                         factorial(T, abs(m + n))) *
+                       (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)
+    end
 
-    for s in smin:smax
+    for s in sₘᵢₙ:sₘₐₓ
         s1m = √T((s + 1)^2 - m^2)
         s1n = √T((s + 1)^2 - n^2)
         sm = √T(s^2 - m^2)
@@ -152,7 +160,7 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
                  ((2s + 1) * (s * (s + 1) * cosϑ - m * n) * d₁ -
                   (s + 1) * sm * sn * d₀)
         end
-        if s < smax
+        if s < sₘₐₓ
             d[s + 1] = d₂
         end
 
@@ -179,10 +187,10 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax:
 end
 
 # Workaround to avoid NaNs in ForwardDiff
-function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, smax::Integer,
+function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer,
                              ϑ::Number; deriv = nothing) where {T <: ForwardDiff.Dual}
     dv = map(x -> x.value, d)
-    wigner_d_recursion!(dv, m, n, smax, ϑ.value; deriv = deriv)
+    wigner_d_recursion!(dv, m, n, sₘₐₓ, ϑ.value; deriv = deriv)
     d .= map(x -> eltype(d)(x), dv)
     return isnothing(deriv) ? d : (d, deriv)
 end
