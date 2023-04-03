@@ -142,6 +142,8 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
 
     T1 = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
     T2 = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
+    A1 = zeros(ComplexF64, N, N)
+    A2 = zeros(ComplexF64, N, N)
     B1 = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N), 0:(2N), (-N):N, 1:N)
     B2 = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N), 0:(2N), (-N):N, 1:N)
 
@@ -150,7 +152,10 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
         @tspawnat i wig_thread_temp_init(4N)
     end
 
+    @debug "Calculating B..."
     Threads.@threads for n in 1:N
+        @debug "n = $n..."
+
         # Calculate T1 and T2
         for n′ in 1:N
             for m in 0:min(n, n′)
@@ -169,34 +174,37 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
         end
 
         for n₁ in 0:(N + n)
+            # Calculate A1 and A2
+            for n′ in max(1, abs(n - n₁)):min(N, n₁ + n)
+                a₁ = 0.0im
+                a₂ = 0.0im
+                for m₁ in (-min(n, n′)):min(n, n′)
+                    cg = clebschgordan(n, m₁, n₁, 0, n′)
+                    a₁ += cg * T1[m₁, n′, n]
+                    a₂ += cg * T2[m₁, n′, n]
+                end
+                a₁ *= ci[n′ - n] / ss[n′]
+                a₂ *= ci[n′ - n] / ss[n′]
+                A1[n′, n] = a₁
+                A2[n′, n] = a₂
+            end
+
+            # Calculate B1 and B2
             for m in max(1 - n₁, -n):min(n₁ + 1, n)
-                # Calculate B1 and B2
                 b₁ = 0.0im
                 b₂ = 0.0im
-
                 for n′ in max(1, abs(n - n₁)):min(N, n₁ + n)
-                    a₁ = 0.0im
-                    a₂ = 0.0im
-                    for m₁ in (-min(n, n′)):min(n, n′)
-                        cg1 = clebschgordan(n, m₁, n₁, 0, n′)
-                        a₁ += cg1 * T1[m₁, n′, n]
-                        a₂ += cg1 * T2[m₁, n′, n]
-                    end
-                    a₁ *= ci[n′ - n] / ss[n′]
-                    a₂ *= ci[n′ - n] / ss[n′]
-
                     cg = clebschgordan(n, m, n₁, 1 - m, n′)
-                    b₁ += cg * a₁
-                    b₂ += cg * a₂
+                    b₁ += cg * A1[n′, n]
+                    b₂ += cg * A2[n′, n]
                 end
-
                 B1[n₁, m, n] = b₁
                 B2[n₁, m, n] = b₂
             end
         end
     end
 
-    # Calculate D
+    @debug "Calculating D..."
     D₀₀ = OffsetArray(zeros(2N + 1, N, N), (-N):N, 1:N, 1:N)
     D₀₋₀ = OffsetArray(zeros(2N + 1, N, N), (-N):N, 1:N, 1:N)
     D₂₂ = OffsetArray(zeros(2N + 1, N, N), (-N):N, 1:N, 1:N)
@@ -229,7 +237,7 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
                     1:N,
                     1:N)
 
-    # Calculate g
+    @debug "Calculating g..."
     g₀₀ = OffsetArray(zeros(2N + 1), 0:(2N))
     g₀₋₀ = OffsetArray(zeros(2N + 1), 0:(2N))
     g₂₂ = OffsetArray(zeros(2N + 1), 0:(2N))

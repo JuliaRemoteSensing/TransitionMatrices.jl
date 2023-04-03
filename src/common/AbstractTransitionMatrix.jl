@@ -435,6 +435,7 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
     T₃ = OffsetArray(zeros(ComplexF64, 2N + 1, N, 2N + 1, N), (-N):N, 1:N, (-N):N, 1:N)
     T₄ = OffsetArray(zeros(ComplexF64, 2N + 1, N, 2N + 1, N), (-N):N, 1:N, (-N):N, 1:N)
 
+    @debug "Calculating T..."
     Threads.@threads for (n, m) in collect(it)
         for (n′, m′) in it
             T₁[m, n, m′, n′] = 𝐓[m, n, m′, n′, 1, 1] + 𝐓[m, n, m′, n′, 1, 2] +
@@ -448,6 +449,12 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
         end
     end
 
+    @debug "Calculating B..."
+    A₁ = OffsetArray(zeros(ComplexF64, N, 2N + 1), 1:N, 0:(2N))
+    A₂ = OffsetArray(zeros(ComplexF64, N, 2N + 1), 1:N, 0:(2N))
+    A₃ = OffsetArray(zeros(ComplexF64, N, 2N + 1), 1:N, 0:(2N))
+    A₄ = OffsetArray(zeros(ComplexF64, N, 2N + 1), 1:N, 0:(2N))
+
     B₁ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
                      0:(2N))
     B₂ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
@@ -458,12 +465,9 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                      0:(2N))
 
     Threads.@threads for n₁ in 0:(2N)
-        for n in 1:N, m in (-N):N, k in (-N):N
-            b₁ = 0.0
-            b₂ = 0.0
-            b₃ = 0.0
-            b₄ = 0.0
+        @debug "n₁ = $n₁..."
 
+        for n in 1:N, k in (-N):N
             for n′ in max(1, abs(n - n₁)):min(n + n₁, N)
                 a₁ = 0.0
                 a₂ = 0.0
@@ -478,20 +482,35 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                     a₄ += cg * T₄[m₁, n, m₁ + k, n′]
                 end
 
-                coeff = clebschgordan(n, m, n₁, 1 - m, n′) * ci[n′ - n] * a[n′]
-                b₁ += coeff * a₁
-                b₂ += coeff * a₂
-                b₃ += coeff * a₃
-                b₄ += coeff * a₄
+                A₁[n′, n₁] = a₁
+                A₂[n′, n₁] = a₂
+                A₃[n′, n₁] = a₃
+                A₄[n′, n₁] = a₄
             end
 
-            B₁[k, m, n, n₁] = b₁
-            B₂[k, m, n, n₁] = b₂
-            B₃[k, m, n, n₁] = b₃
-            B₄[k, m, n, n₁] = b₄
+            for m in (-N):N
+                b₁ = 0.0
+                b₂ = 0.0
+                b₃ = 0.0
+                b₄ = 0.0
+
+                for n′ in max(1, abs(n - n₁)):min(n + n₁, N)
+                    coeff = clebschgordan(n, m, n₁, 1 - m, n′) * ci[n′ - n] * a[n′]
+                    b₁ += coeff * A₁[n′, n₁]
+                    b₂ += coeff * A₂[n′, n₁]
+                    b₃ += coeff * A₃[n′, n₁]
+                    b₄ += coeff * A₄[n′, n₁]
+                end
+
+                B₁[k, m, n, n₁] = b₁
+                B₂[k, m, n, n₁] = b₂
+                B₃[k, m, n, n₁] = b₃
+                B₄[k, m, n, n₁] = b₄
+            end
         end
     end
 
+    @debug "Calculating D..."
     D₀₀ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
     D₀₋₀ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
     D₋₀₋₀ = OffsetArray(zeros(ComplexF64, 2N + 1, N, N), (-N):N, 1:N, 1:N)
@@ -556,7 +575,7 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                     1:N,
                     1:N)
 
-    # Calculate g
+    @debug "Calculating g..."
     g₀₀ = OffsetArray(zeros(ComplexF64, 2N + 1), 0:(2N))
     g₀₋₀ = OffsetArray(zeros(ComplexF64, 2N + 1), 0:(2N))
     g₋₀₋₀ = OffsetArray(zeros(ComplexF64, 2N + 1), 0:(2N))
