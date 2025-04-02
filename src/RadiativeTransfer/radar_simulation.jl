@@ -6,6 +6,10 @@
 # "Validation of Simulated Hurricane Drop Size Distributions
 # using Polarimetric Radar", Geophys. Res. Lett., 42,
 # doi:10.1002/2015GL067278.
+#Download WRF sample data from:  
+#🔗 **Link:** https://pan.baidu.com/s/1xFomb3d1TYG66LD_NZMghw  
+#**Extraction code:** `hbub`
+
 using SpecialFunctions
 using ArgParse
 using NetCDF
