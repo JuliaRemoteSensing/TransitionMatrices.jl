@@ -2,7 +2,6 @@ module TransitionMatrices
 
 using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
-using ArbNumerics: ArbFloat, ArbReal, ArbComplex
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 using ForwardDiff: ForwardDiff
@@ -61,6 +60,6 @@ export AbstractShape, AbstractAxisymmetricShape, AbstractNFoldShape, volume,
        rmin, rmax, Spheroid, Cylinder, Chebyshev, Prism
 
 # Re-exports
-export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb, ArbFloat, ArbReal, ArbComplex
+export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb
 
 end

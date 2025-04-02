@@ -30,3 +30,7 @@ Compared to existing packages, `TransitionMatrices.jl` is special in that it is 
 - `ArbFloat` from [`ArbNumerics.jl`](https://github.com/JeffreySarnoff/ArbNumerics.jl)
 
 By using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.
+
+Note that the types from `DoubleFloats.jl`, `Quadmath.jl` and `Arblib.jl` are re-exported by `TransitionMatrices.jl` and can be directly used.
+
+Types from `ArbNumerics.jl`, however, needs to be imported manually due to compatibility issues.
