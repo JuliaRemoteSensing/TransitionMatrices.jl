@@ -9,9 +9,9 @@ using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Angle2d, Rotation, RotMatrix2, RotZYZ
+using StableTasks: StableTasks
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
 using TestItems: @testitem
-using ThreadPools: @tspawnat
 using Wigxjpf: wig3jj, wig_table_init, wig_table_free, wig_temp_init, wig_thread_temp_init,
                wig_temp_free
 

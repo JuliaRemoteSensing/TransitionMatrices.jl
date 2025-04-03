@@ -147,9 +147,10 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
     B1 = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N), 0:(2N), (-N):N, 1:N)
     B2 = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N), 0:(2N), (-N):N, 1:N)
 
+    tid_offset = VERSION >= v"1.11" ? Threads.nthreads(:interactive) : 0
     wig_table_init(4N, 3)
     @sync for i in 1:Threads.nthreads()
-        @tspawnat i wig_thread_temp_init(4N)
+        StableTasks.@spawnat i + tid_offset wig_thread_temp_init(4N)
     end
 
     @debug "Calculating B..."
@@ -289,7 +290,7 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
     β₂ = 2imag.(g₀₂)
 
     @sync for i in 1:Threads.nthreads()
-        @tspawnat i wig_temp_free()
+        StableTasks.@spawnat i + tid_offset wig_temp_free()
     end
     wig_table_free()
 

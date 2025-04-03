@@ -424,9 +424,10 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
     a = [inv(√(2n + 1)) for n in 1:(2N)]
     sig = OffsetArray([1 - 2 * (i % 2) for i in 0:(4N)], 0:(4N))
 
+    tid_offset = VERSION >= v"1.11" ? Threads.nthreads(:interactive) : 0
     wig_table_init(4N, 3)
     @sync for i in 1:Threads.nthreads()
-        @tspawnat i wig_thread_temp_init(4N)
+        StableTasks.@spawnat i + tid_offset wig_thread_temp_init(4N)
     end
 
     it = OrderDegreeIterator(N)
@@ -643,7 +644,7 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
     β₆ = @. real(g₀₂ - g₋₀₂)
 
     @sync for i in 1:Threads.nthreads()
-        @tspawnat i wig_temp_free()
+        StableTasks.@spawnat i + tid_offset wig_temp_free()
     end
     wig_table_free()
 
