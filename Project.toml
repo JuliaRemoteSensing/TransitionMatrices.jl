@@ -1,6 +1,6 @@
 name = "TransitionMatrices"
 uuid = "057c4241-e127-4181-840e-6b4b92e6eef5"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 
 [deps]
@@ -29,5 +29,5 @@ Rotations = "1"
 StableTasks = "0.1.7"
 StaticArrays = "1"
 TestItems = "1"
-Wigxjpf = "0.1"
+Wigxjpf = "0.2"
 julia = "1.10"
