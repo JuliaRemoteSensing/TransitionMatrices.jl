@@ -4,6 +4,7 @@ using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
+using FFTW: fft
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using OffsetArrays: OffsetArray
