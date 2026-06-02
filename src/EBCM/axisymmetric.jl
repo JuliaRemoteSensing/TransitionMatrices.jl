@@ -372,7 +372,9 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
     ng = sym ? Ng ÷ 2 : Ng
 
     if !isnothing(cache)
-        x, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, χₛ, χₛ′ = cache
+        _, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, _, _ = cache
+        return _transition_matrix_m_core(m, s, k, nₘₐₓ, Ng, nₘᵢₙ, nn, ng, sym, zerofn,
+                                         w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′)
     else
         x, w, r, r′ = gaussquad(s, Ng)
         ϑ = acos.(x)
@@ -397,17 +399,21 @@ function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         ψₛ = zeros(CT, ng, nₘₐₓ)
         zₛ = zeros(CT, nₘₐₓ + nₑₓₜᵣₐ, ng)
         ψₛ′ = similar(ψₛ)
-        χₛ = similar(ψₛ)
-        χₛ′ = similar(ψₛ)
 
         Threads.@threads for i in 1:ng
             kₛr = k * s.m * r[i]
             ricattibesselj!(view(ψₛ, i, :), view(ψₛ′, i, :), view(zₛ, :, i), nₘₐₓ, nₑₓₜᵣₐ,
                             kₛr)
-            ricattibessely!(view(χₛ, i, :), view(χₛ′, i, :), nₘₐₓ, kₛr)
         end
-    end
 
+        return _transition_matrix_m_core(m, s, k, nₘₐₓ, Ng, nₘᵢₙ, nn, ng, sym, zerofn,
+                                         w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′)
+    end
+end
+
+function _transition_matrix_m_core(m, s::AbstractAxisymmetricShape{T, CT}, k, nₘₐₓ, Ng,
+                                   nₘᵢₙ, nn, ng, sym, zerofn, w, r, r′, ϑ, a, A, ψ,
+                                   ψ′, χ, χ′, ψₛ, ψₛ′) where {T, CT}
     d = OffsetArray(zeros(T, Ng, nₘₐₓ - m + 1), 1:Ng, m:nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
