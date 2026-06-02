@@ -704,27 +704,60 @@ Parameters:
 """
 function scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, θs::AbstractVector)
     lmax = length(α₁) - 1
-    θs = deg2rad.(θs)
     Nθ = length(θs)
 
     F = zeros(Nθ, 6)
-    Threads.@threads for i in eachindex(θs)
-        θ = θs[i]
-        d₀₀ = wigner_d_recursion(0, 0, lmax, θ)
-        d₂₂ = wigner_d_recursion(2, 2, lmax, θ)
-        d₂₋₂ = wigner_d_recursion(2, -2, lmax, θ)
-        d₀₂ = wigner_d_recursion(0, 2, lmax, θ)
+    Nθ == 0 && return F
+    lmax >= 2 || error("Error: sₘₐₓ < max(|m|, |n|)")
+    ntasks = min(Threads.nthreads(), Nθ)
+    chunk = cld(Nθ, ntasks)
 
-        F₁₁ = sum(α₁[l] * d₀₀[l] for l in 0:lmax)
-        F₂₂₊₃₃ = sum((α₂[l] + α₃[l]) * d₂₂[l] for l in 2:lmax)
-        F₂₂₋₃₃ = sum((α₂[l] - α₃[l]) * d₂₋₂[l] for l in 2:lmax)
-        F₂₂ = (F₂₂₊₃₃ + F₂₂₋₃₃) / 2
-        F₃₃ = F₂₂₊₃₃ - F₂₂
-        F₄₄ = sum(α₄[l] * d₀₀[l] for l in 0:lmax)
-        F₁₂ = -sum(β₁[l] * d₀₂[l] for l in 2:lmax)
-        F₃₄ = -sum(β₂[l] * d₀₂[l] for l in 2:lmax)
+    @sync for task in 1:ntasks
+        first = (task - 1) * chunk + 1
+        last = min(task * chunk, Nθ)
+        let first = first, last = last
+            Threads.@spawn begin
+                d₀₀_buf = zeros(lmax + 1)
+                d₂₂_buf = zeros(lmax - 1)
+                d₂₋₂_buf = zeros(lmax - 1)
+                d₀₂_buf = zeros(lmax - 1)
 
-        F[i, :] .= F₁₁, F₁₂, F₂₂, F₃₃, F₃₄, F₄₄
+                for i in first:last
+                    θ = deg2rad(θs[i])
+                    d₀₀ = wigner_d_recursion!(d₀₀_buf, 0, 0, lmax, θ)
+                    d₂₂ = wigner_d_recursion!(d₂₂_buf, 2, 2, lmax, θ)
+                    d₂₋₂ = wigner_d_recursion!(d₂₋₂_buf, 2, -2, lmax, θ)
+                    d₀₂ = wigner_d_recursion!(d₀₂_buf, 0, 2, lmax, θ)
+
+                    F₁₁ = 0.0
+                    F₂₂₊₃₃ = 0.0
+                    F₂₂₋₃₃ = 0.0
+                    F₄₄ = 0.0
+                    F₁₂ = 0.0
+                    F₃₄ = 0.0
+
+                    @inbounds for l in 0:lmax
+                        F₁₁ += α₁[l] * d₀₀[l]
+                        F₄₄ += α₄[l] * d₀₀[l]
+                    end
+                    @inbounds for l in 2:lmax
+                        F₂₂₊₃₃ += (α₂[l] + α₃[l]) * d₂₂[l]
+                        F₂₂₋₃₃ += (α₂[l] - α₃[l]) * d₂₋₂[l]
+                        F₁₂ -= β₁[l] * d₀₂[l]
+                        F₃₄ -= β₂[l] * d₀₂[l]
+                    end
+                    F₂₂ = (F₂₂₊₃₃ + F₂₂₋₃₃) / 2
+                    F₃₃ = F₂₂₊₃₃ - F₂₂
+
+                    F[i, 1] = F₁₁
+                    F[i, 2] = F₁₂
+                    F[i, 3] = F₂₂
+                    F[i, 4] = F₃₃
+                    F[i, 5] = F₃₄
+                    F[i, 6] = F₄₄
+                end
+            end
+        end
     end
 
     return F
@@ -755,33 +788,74 @@ Parameters:
 """
 function scattering_matrix(α₁, α₂, α₃, α₄, β₁, β₂, β₃, β₄, β₅, β₆, θs::AbstractVector)
     lmax = length(α₁) - 1
-    θs = deg2rad.(θs)
     Nθ = length(θs)
 
     F = zeros(Nθ, 10)
-    Threads.@threads for i in eachindex(θs)
-        θ = θs[i]
-        d₀₀ = wigner_d_recursion(0, 0, lmax, θ)
-        d₂₂ = wigner_d_recursion(2, 2, lmax, θ)
-        d₂₋₂ = wigner_d_recursion(2, -2, lmax, θ)
-        d₀₂ = wigner_d_recursion(0, 2, lmax, θ)
-        d₂₀ = wigner_d_recursion(2, 0, lmax, θ)
+    Nθ == 0 && return F
+    lmax >= 2 || error("Error: sₘₐₓ < max(|m|, |n|)")
+    ntasks = min(Threads.nthreads(), Nθ)
+    chunk = cld(Nθ, ntasks)
 
-        F₁₁ = sum(α₁[l] * d₀₀[l] for l in 0:lmax)
-        F₂₂₊₃₃ = sum((α₂[l] + α₃[l]) * d₂₂[l] for l in 2:lmax)
-        F₂₂₋₃₃ = sum((α₂[l] - α₃[l]) * d₂₋₂[l] for l in 2:lmax)
-        F₂₂ = (F₂₂₊₃₃ + F₂₂₋₃₃) / 2
-        F₃₃ = F₂₂₊₃₃ - F₂₂
-        F₄₄ = sum(α₄[l] * d₀₀[l] for l in 0:lmax)
-        F₁₂ = -sum(β₁[l] * d₀₂[l] for l in 2:lmax)
-        F₃₄ = -sum(β₂[l] * d₀₂[l] for l in 2:lmax)
+    @sync for task in 1:ntasks
+        first = (task - 1) * chunk + 1
+        last = min(task * chunk, Nθ)
+        let first = first, last = last
+            Threads.@spawn begin
+                d₀₀_buf = zeros(lmax + 1)
+                d₂₂_buf = zeros(lmax - 1)
+                d₂₋₂_buf = zeros(lmax - 1)
+                d₀₂_buf = zeros(lmax - 1)
+                d₂₀_buf = zeros(lmax - 1)
 
-        F₁₃ = sum(β₃[l] * d₀₂[l] for l in 2:lmax)
-        F₂₃ = sum(β₄[l] * d₂₂[l] for l in 2:lmax)
-        F₁₄ = sum(β₅[l] * d₀₀[l] for l in 0:lmax)
-        F₂₄ = sum(β₆[l] * d₂₀[l] for l in 2:lmax)
+                for i in first:last
+                    θ = deg2rad(θs[i])
+                    d₀₀ = wigner_d_recursion!(d₀₀_buf, 0, 0, lmax, θ)
+                    d₂₂ = wigner_d_recursion!(d₂₂_buf, 2, 2, lmax, θ)
+                    d₂₋₂ = wigner_d_recursion!(d₂₋₂_buf, 2, -2, lmax, θ)
+                    d₀₂ = wigner_d_recursion!(d₀₂_buf, 0, 2, lmax, θ)
+                    d₂₀ = wigner_d_recursion!(d₂₀_buf, 2, 0, lmax, θ)
 
-        F[i, :] .= F₁₁, F₁₂, F₁₃, F₁₄, F₂₂, F₂₃, F₂₄, F₃₃, F₃₄, F₄₄
+                    F₁₁ = 0.0
+                    F₂₂₊₃₃ = 0.0
+                    F₂₂₋₃₃ = 0.0
+                    F₄₄ = 0.0
+                    F₁₂ = 0.0
+                    F₃₄ = 0.0
+                    F₁₃ = 0.0
+                    F₂₃ = 0.0
+                    F₁₄ = 0.0
+                    F₂₄ = 0.0
+
+                    @inbounds for l in 0:lmax
+                        F₁₁ += α₁[l] * d₀₀[l]
+                        F₄₄ += α₄[l] * d₀₀[l]
+                        F₁₄ += β₅[l] * d₀₀[l]
+                    end
+                    @inbounds for l in 2:lmax
+                        F₂₂₊₃₃ += (α₂[l] + α₃[l]) * d₂₂[l]
+                        F₂₂₋₃₃ += (α₂[l] - α₃[l]) * d₂₋₂[l]
+                        F₁₂ -= β₁[l] * d₀₂[l]
+                        F₃₄ -= β₂[l] * d₀₂[l]
+                        F₁₃ += β₃[l] * d₀₂[l]
+                        F₂₃ += β₄[l] * d₂₂[l]
+                        F₂₄ += β₆[l] * d₂₀[l]
+                    end
+                    F₂₂ = (F₂₂₊₃₃ + F₂₂₋₃₃) / 2
+                    F₃₃ = F₂₂₊₃₃ - F₂₂
+
+                    F[i, 1] = F₁₁
+                    F[i, 2] = F₁₂
+                    F[i, 3] = F₁₃
+                    F[i, 4] = F₁₄
+                    F[i, 5] = F₂₂
+                    F[i, 6] = F₂₃
+                    F[i, 7] = F₂₄
+                    F[i, 8] = F₃₃
+                    F[i, 9] = F₃₄
+                    F[i, 10] = F₄₄
+                end
+            end
+        end
     end
 
     return F
