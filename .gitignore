@@ -1,19 +1,24 @@
-# Julia
-
+# Julia package artifacts
 *.jl.*.cov
 *.jl.cov
 *.jl.mem
 /coverage-lcov.info
-/lcov
-/docs/build/
-.CondaPkg
+/lcov/
 Manifest.toml
+.CondaPkg/
 
-# IDE configurations
+# Documentation artifacts
+/docs/build/
 
-.vscode
-.idea
+# Editor and OS metadata
+.DS_Store
+.idea/
+.vscode/
 
-# Temporarily ignored
+# Local tool state
+.omc/
+
+# Local notebooks, scratch scripts, and generated manuscript artifacts
 /*.jl
-/notebooks
+/notebooks/
+manuscript/

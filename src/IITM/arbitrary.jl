@@ -22,30 +22,6 @@ Returns:
 
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
-function _azimuthal_fourier_coefficients(ε::AbstractMatrix{ComplexF64}, nₘₐₓ, wφ)
-    Nφ, Nϑ = size(ε)
-    contrast = similar(ε)
-    contrast_inv = similar(ε)
-    @. contrast = ε - 1
-    @. contrast_inv = (ε - 1) / ε
-
-    spectrum = fft(contrast, 1)
-    spectrum_inv = fft(contrast_inv, 1)
-    coeff = OffsetArray(zeros(ComplexF64, 4nₘₐₓ + 1, Nϑ), (-2nₘₐₓ):(2nₘₐₓ),
-                        1:Nϑ)
-    coeff_inv = similar(coeff)
-
-    for i in 1:Nϑ
-        for q in (-2nₘₐₓ):(2nₘₐₓ)
-            idx = mod(-q, Nφ) + 1
-            coeff[q, i] = wφ * spectrum[idx, i]
-            coeff_inv[q, i] = wφ * spectrum_inv[idx, i]
-        end
-    end
-
-    return coeff, coeff_inv
-end
-
 function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ,
                                 Nφ; rₘᵢₙ = rmin(s)) where {T, CT}
     k = 2 * T(π) / λ
@@ -63,6 +39,8 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
 
     xφ = range(0, 2 * T(π), length = Nφ + 1)[1:(end - 1)]
     wφ = 2 * T(π) / Nφ
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) : nothing
+    fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ) : nothing
 
     it = OrderDegreeIterator(nₘₐₓ)
     L = length(it)
@@ -141,7 +119,9 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
                               (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
                                r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
         fourier_coeffs = CT <: ComplexF64 ?
-                         _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ) : nothing
+                         _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
+                                                         fourier_workspace,
+                                                         fourier_modes) : nothing
 
         Threads.@threads for (q, (n′, m′)) in enumerate(it)
             for (p, (n, m)) in enumerate(it)
