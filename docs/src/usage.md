@@ -76,6 +76,9 @@ And the orientation-averaged scattering matrix:
 
 `TransitionMatrices.jl` supports automatic differentiation using [`ForwardDiff.jl`](https://github.com/JuliaDiff/ForwardDiff.jl).
 
+For analytical Jacobian infrastructure and backend support boundaries, see
+[Linearization Framework](@ref).
+
 Here is an example of calculating the gradient of the scattering cross section with respect to `a`, `c`, `mᵣ`, `mᵢ` and `λ`:
 
 ```jldoctest
