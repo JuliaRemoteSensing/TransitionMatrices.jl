@@ -86,6 +86,19 @@ wavelength-dependent wavenumber, and Ricatti-Bessel functions, then propagate
 `ForwardDiff.jl` is still used in tests as the reference, but not in the EBCM
 production linearization path.
 
+The IITM backend currently has fixed-geometry analytical slices for
+axisymmetric, n-fold, and arbitrary-shape solvers. `IITMLinearization()`,
+`IITMLinearization(:axisymmetric)`, `IITMLinearization(:nfold)`, and
+`IITMLinearization(:arbitrary)` support unique canonical variables drawn from
+`:mᵣ`, `:mᵢ`, and `:λ`. The axisymmetric slice requires canonical
+rebuild/config fields `shape`, `λ`, `nₘₐₓ`, `Nr`, and `Nϑ`; n-fold and
+arbitrary-shape slices also require `Nφ`. These slices differentiate the Mie
+initialization, radial Ricatti-Bessel blocks, shell interaction matrix,
+projected `Q` blocks, derivative Fourier coefficients where the value solver
+uses Fourier acceleration, and the IITM T-matrix recurrence. Geometry variables
+remain unsupported analytically until boundary-aware shape derivatives are
+implemented.
+
 ## Intended implementation layers
 
 The framework separates the work into two layers:
@@ -93,9 +106,10 @@ The framework separates the work into two layers:
 - Solver kernels compute `T` and `dT/dx`. Mie establishes the first vertical
   slice. EBCM now has analytical spheroid and Chebyshev slices for fixed solver
   order and quadrature, plus a cylinder slice that includes moving quadrature
-  and angular-function derivatives. IITM variants are represented by the same
-  API but can remain unsupported until their linearized recursions are
-  implemented.
+  and angular-function derivatives. IITM now has analytical fixed-geometry
+  slices for axisymmetric, n-fold, and arbitrary-shape material/wavelength
+  variables; the same backend API still reserves boundary-aware shape
+  derivatives for later slices.
 - Observable kernels propagate `T` and `dT/dx` to cross sections, albedo,
   asymmetry parameter, amplitude matrices, and scattering matrices.
 
@@ -114,6 +128,9 @@ dependence.
   should avoid materializing the full transition-matrix Jacobian when users only
   need gradients of scalar observables, and it should be validated against both
   the current forward analytical linearization and `ForwardDiff.jl`.
+- TODO: Extend IITM analytical linearization beyond the current fixed-geometry
+  material/wavelength slices following the recurrence and geometry plan in
+  [IITM Analytical Linearization Design](@ref).
 
 ## References
 

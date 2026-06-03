@@ -7,7 +7,7 @@ using FastGaussQuadrature: FastGaussQuadrature
 import FFTW
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
-using LinearAlgebra: mul!
+using LinearAlgebra: lu, mul!
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Angle2d, Rotation, RotMatrix2, RotZYZ
