@@ -8,28 +8,16 @@ const _MIE_LINEARIZATION_SUPPORTED_OUTPUTS = (
 )
 const _MIE_LINEARIZATION_VARIABLES = (:x, :mᵣ, :mᵢ, :λ)
 
-function _linearization_property(source, names::Tuple; default = nothing)
-    isnothing(source) && return default
-    for name in names
-        hasproperty(source, name) && return getproperty(source, name)
-    end
-    return default
-end
-
 function _mie_linearization_input(problem::LinearizationProblem, config)
     rebuilt = rebuild(problem)
-    x = _linearization_property(config, (:x, :size_parameter);
-                                default = _linearization_property(rebuilt,
-                                                                  (:x, :size_parameter)))
-    m = _linearization_property(config, (:m, :refractive_index);
-                                default = _linearization_property(rebuilt,
-                                                                  (:m, :refractive_index)))
-    nₘₐₓ = _linearization_property(config, (:nₘₐₓ, :nmax, :N);
-                                   default = _linearization_property(rebuilt,
-                                                                     (:nₘₐₓ, :nmax, :N)))
-    λ = _linearization_property(config, (:λ, :lambda);
-                                default = _linearization_property(rebuilt,
-                                                                  (:λ, :lambda);
+    x = _linearization_property(config, :x;
+                                default = _linearization_property(rebuilt, :x))
+    m = _linearization_property(config, :m;
+                                default = _linearization_property(rebuilt, :m))
+    nₘₐₓ = _linearization_property(config, :nₘₐₓ;
+                                   default = _linearization_property(rebuilt, :nₘₐₓ))
+    λ = _linearization_property(config, :λ;
+                                default = _linearization_property(rebuilt, :λ;
                                                                   default = 2π))
 
     if isnothing(x) || isnothing(m) || isnothing(nₘₐₓ)
@@ -41,7 +29,7 @@ end
 
 function _mie_linearization_variable_derivatives(problem::LinearizationProblem)
     vars = variables(problem)
-    all(var -> var in _MIE_LINEARIZATION_VARIABLES, vars) || return nothing
+    _linearization_variables_supported(vars, _MIE_LINEARIZATION_VARIABLES) || return nothing
 
     p = length(vars)
     ẋ = zeros(Float64, p)
@@ -64,13 +52,13 @@ function _mie_linearization_variable_derivatives(problem::LinearizationProblem)
 end
 
 function _mie_amplitude_angles(config)
-    angles = _linearization_property(config, (:angles,))
+    angles = _linearization_property(config, :angles)
     !isnothing(angles) && return Tuple(angles)
 
-    ϑᵢ = _linearization_property(config, (:ϑᵢ, :theta_i))
-    φᵢ = _linearization_property(config, (:φᵢ, :phi_i))
-    ϑₛ = _linearization_property(config, (:ϑₛ, :theta_s))
-    φₛ = _linearization_property(config, (:φₛ, :phi_s))
+    ϑᵢ = _linearization_property(config, :ϑᵢ)
+    φᵢ = _linearization_property(config, :φᵢ)
+    ϑₛ = _linearization_property(config, :ϑₛ)
+    φₛ = _linearization_property(config, :φₛ)
     any(isnothing, (ϑᵢ, φᵢ, ϑₛ, φₛ)) && return nothing
     return ϑᵢ, φᵢ, ϑₛ, φₛ
 end
@@ -88,7 +76,7 @@ function supports_linearization(problem::LinearizationProblem, ::MieLinearizatio
                                     "Mie linearization requires x, m, and nₘₐₓ")
     isnothing(_mie_linearization_variable_derivatives(problem)) &&
         return LinearizationSupport(false,
-                                    "Mie linearization supports exactly variables :x, :mᵣ, :mᵢ, and :λ")
+                                    "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ")
     output in _MIE_LINEARIZATION_SUPPORTED_OUTPUTS ||
         return LinearizationSupport(false, "Mie linearization does not support output :$output")
     output == :amplitude_matrix && isnothing(_mie_amplitude_angles(config)) &&
@@ -212,7 +200,7 @@ function _checked_mie_linearization_input(problem::LinearizationProblem,
     variable_derivatives = _mie_linearization_variable_derivatives(problem)
     isnothing(variable_derivatives) &&
         throw(UnsupportedLinearization(backend, output,
-                                       "Mie linearization supports exactly variables :x, :mᵣ, :mᵢ, and :λ"))
+                                       "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ"))
     output == :amplitude_matrix && isnothing(_mie_amplitude_angles(config)) &&
         throw(UnsupportedLinearization(backend, output,
                                        "Mie amplitude matrix linearization requires angle config"))

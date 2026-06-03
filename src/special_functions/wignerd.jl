@@ -1,5 +1,9 @@
 const WIGNER_D_EPS = 1e-12
 
+_wigner_sqrt_constant(::Type{T}, x) where {T} = √T(x)
+_wigner_sqrt_constant(::Type{T}, x) where {T <: ForwardDiff.Dual} =
+    T(sqrt(ForwardDiff.value(x)))
+
 @doc raw"""
 ```
 wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}
@@ -148,23 +152,25 @@ function _wigner_d_recursion_core!(d::AbstractVector{T}, m::Integer, n::Integer,
     if m == 0 || n == 0
         d₁ = sig
         for i in 1:sₘᵢₙ
-            d₁ *= √(T((2i - 1) // (2i))) * abs(sinϑ)
+            d₁ *= _wigner_sqrt_constant(T, (2i - 1) // (2i)) * abs(sinϑ)
         end
         d[d_offset + sₘᵢₙ] = d₁
     else
         normalization = abs(m) == sₘᵢₙ && abs(n) == sₘᵢₙ ? one(T) :
-                        √(factorial(T, 2sₘᵢₙ) / factorial(T, abs(m - n)) /
-                          factorial(T, abs(m + n)))
+                        _wigner_sqrt_constant(T,
+                                               factorial(T, 2sₘᵢₙ) /
+                                               factorial(T, abs(m - n)) /
+                                               factorial(T, abs(m + n)))
         d₁ = sig * T(2)^(-sₘᵢₙ) * normalization *
              (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)
         d[d_offset + sₘᵢₙ] = d₁
     end
 
     for s in sₘᵢₙ:sₘₐₓ
-        s1m = √T((s + 1)^2 - m^2)
-        s1n = √T((s + 1)^2 - n^2)
-        sm = √T(s^2 - m^2)
-        sn = √T(s^2 - n^2)
+        s1m = _wigner_sqrt_constant(T, (s + 1)^2 - m^2)
+        s1n = _wigner_sqrt_constant(T, (s + 1)^2 - n^2)
+        sm = _wigner_sqrt_constant(T, s^2 - m^2)
+        sn = _wigner_sqrt_constant(T, s^2 - n^2)
 
         if s == 0
             d₂ = T(2s + 1) * cosϑ * d₁
@@ -182,11 +188,14 @@ function _wigner_d_recursion_core!(d::AbstractVector{T}, m::Integer, n::Integer,
                 deriv[deriv_offset + s] = 0
             elseif abs(1 - cosϑ) < WIGNER_D_EPS
                 deriv[deriv_offset + s] = abs(m - n) == 1 ?
-                                          (n - m) * √T(s * (s + 1)) / 2 : 0
+                                          (n - m) *
+                                          _wigner_sqrt_constant(T, s * (s + 1)) /
+                                          2 : 0
             elseif abs(1 + cosϑ) < WIGNER_D_EPS
                 deriv[deriv_offset + s] = abs(m - n) == 1 ?
                                           (n - m) * (-1)^(s & 1) *
-                                          √T(s * (s + 1)) / 2 : 0
+                                          _wigner_sqrt_constant(T, s * (s + 1)) /
+                                          2 : 0
             else
                 deriv[deriv_offset + s] = 1 / sinϑ *
                                           (-(s + 1) * sm * sn / (s * (2s + 1)) *
@@ -205,10 +214,22 @@ end
 # Workaround to avoid NaNs in ForwardDiff
 function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer,
                              ϑ::Number; deriv = nothing) where {T <: ForwardDiff.Dual}
-    dv = map(x -> x.value, d)
-    wigner_d_recursion!(dv, m, n, sₘₐₓ, ϑ.value; deriv = deriv)
-    d .= map(x -> eltype(d)(x), dv)
-    return isnothing(deriv) ? d : (d, deriv)
+    if !(ϑ isa ForwardDiff.Dual) || iszero(ForwardDiff.partials(ϑ))
+        dv = map(ForwardDiff.value, d)
+        wigner_d_recursion!(dv, m, n, sₘₐₓ, ForwardDiff.value(ϑ); deriv = deriv)
+        d .= map(T, dv)
+        return isnothing(deriv) ? d : (d, deriv)
+    end
+
+    sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
+    sₘᵢₙ = max(abs(m), abs(n))
+
+    d = OffsetArray(d, sₘᵢₙ:sₘₐₓ)
+    if !isnothing(deriv)
+        deriv = OffsetArray(deriv, sₘᵢₙ:sₘₐₓ)
+    end
+
+    return _wigner_d_recursion_core!(d, m, n, sₘₐₓ, ϑ; deriv)
 end
 
 @testitem "Wigner d-function" begin

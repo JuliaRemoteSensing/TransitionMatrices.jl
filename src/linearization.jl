@@ -7,6 +7,16 @@ falling back to numerical differentiation.
 """
 abstract type AbstractLinearizationBackend end
 
+function _linearization_property(source, name::Symbol; default = nothing)
+    isnothing(source) && return default
+    return hasproperty(source, name) ? getproperty(source, name) : default
+end
+
+function _linearization_variables_supported(vars, canonical)
+    all(var -> var in canonical, vars) || return false
+    return length(Set(vars)) == length(vars)
+end
+
 """
     MieLinearization()
 
@@ -17,7 +27,10 @@ struct MieLinearization <: AbstractLinearizationBackend end
 """
     EBCMLinearization()
 
-Backend marker for future analytical derivatives of EBCM transition matrices.
+Backend marker for linearized EBCM transition matrices. The current supported
+slice uses analytical `P`/`U` derivatives for fixed-order, fixed-quadrature
+Spheroid, Chebyshev, and Cylinder problems, then propagates those derivatives
+through the analytical EBCM matrix identity.
 """
 struct EBCMLinearization <: AbstractLinearizationBackend end
 

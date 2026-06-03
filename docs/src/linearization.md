@@ -61,7 +61,8 @@ This explicit failure is part of the design. It prevents users from mistaking a
 numerical finite-difference fallback for an analytical Jacobian.
 
 The Mie backend is the first implemented backend. It supports the direct size
-parameter model with canonical variables `:x`, `:mᵣ`, `:mᵢ`, and `:λ`.
+parameter model with unique canonical variables drawn from `:x`, `:mᵣ`,
+`:mᵢ`, and `:λ`.
 `linearize_transition_matrix(problem, MieLinearization())` returns a
 `MieTransitionMatrix` value and one derivative `MieTransitionMatrix` per
 parameter. `linearize_observable` currently supports
@@ -70,24 +71,40 @@ parameter. `linearize_observable` currently supports
 this backend. The amplitude matrix observable requires angle configuration,
 for example `config = (; angles = (ϑᵢ, φᵢ, ϑₛ, φₛ))`.
 
+The EBCM backend currently has fixed-order analytical slices for spheroids,
+Chebyshev particles, and cylinders. Spheroids support unique
+canonical variables drawn from `:a`, `:c`, `:mᵣ`, `:mᵢ`, and `:λ`;
+Chebyshev particles support `:r₀`, `:ε`, `:mᵣ`, `:mᵢ`, and `:λ`, with the
+Chebyshev degree `n` treated as a fixed discrete parameter. Cylinders support
+`:r`, `:h`, `:mᵣ`, `:mᵢ`, and `:λ`; their geometry slice also differentiates
+the moving piecewise quadrature nodes, weights, and Wigner angular terms.
+These slices use canonical rebuild/config fields `shape`, `λ`, `nₘₐₓ`, and
+`Ng`. They compute analytical forward tangents for the quadrature radius terms,
+material index,
+wavelength-dependent wavenumber, and Ricatti-Bessel functions, then propagate
+`dP` and `dU` through the analytical identity `T = -P * inv(P + im * U)`.
+`ForwardDiff.jl` is still used in tests as the reference, but not in the EBCM
+production linearization path.
+
 ## Intended implementation layers
 
 The framework separates the work into two layers:
 
 - Solver kernels compute `T` and `dT/dx`. Mie establishes the first vertical
-  slice. EBCM is the next analytical target. IITM variants are represented by
-  the same API but can remain unsupported until their linearized recursions are
+  slice. EBCM now has analytical spheroid and Chebyshev slices for fixed solver
+  order and quadrature, plus a cylinder slice that includes moving quadrature
+  and angular-function derivatives. IITM variants are represented by the same
+  API but can remain unsupported until their linearized recursions are
   implemented.
 - Observable kernels propagate `T` and `dT/dx` to cross sections, albedo,
   asymmetry parameter, amplitude matrices, and scattering matrices.
 
 For EBCM, the central matrix identity is already visible in the implementation:
-`T = -P * inv(P + im * U)`. Future analytical kernels should linearize `P` and
-`U`, then propagate through this identity. Smooth axisymmetric shapes such as
-spheroids and Chebyshev particles are the first practical shape targets.
-Cylinders, prisms, and IITM shape derivatives need separate treatment because
-their indicator functions or piecewise boundaries introduce non-smooth
-parameter dependence.
+`T = -P * inv(P + im * U)`. Future analytical kernels should extend the current
+smooth-shape derivative pattern beyond spheroids and Chebyshev particles.
+Prisms and IITM shape derivatives need separate treatment because their
+indicator functions or piecewise boundaries introduce non-smooth parameter
+dependence.
 
 ## Optional follow-ups
 
@@ -104,5 +121,9 @@ parameter dependence.
   computations", 2012.
 - Xu and Davis, "Analytical derivatives of T-matrix light scattering
   quantities", 2011.
-- Recent linearized IITM work on analytical Jacobians for particle size and
-  aspect-ratio sensitivity.
+- Sun, Gao, Bi, and Spurr, "Analytical Jacobians of single scattering optical
+  properties using the invariant imbedding T-matrix method", Optics Express
+  29(6), 9635--9669, 2021, doi:10.1364/OE.421886.
+- Gao and Sun, "Improvement and application of linearized invariant imbedding
+  T-matrix scattering method", Journal of Quantitative Spectroscopy and
+  Radiative Transfer 290, 108322, 2022, doi:10.1016/j.jqsrt.2022.108322.

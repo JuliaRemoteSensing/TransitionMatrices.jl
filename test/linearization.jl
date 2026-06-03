@@ -67,6 +67,33 @@ end
         @test ∂T.b ≈ ∂b atol=1e-9 rtol=1e-9
     end
 
+    subset_x₀ = [x₀[2], x₀[1]]
+    subset_vars = (:mᵣ, :x)
+    subset_problem = LinearizationProblem(subset_x₀; variables = subset_vars) do x
+        (; x = x[2], m = complex(x[1], x₀[3]), λ = x₀[4], nₘₐₓ = N)
+    end
+
+    function subset_coefficient_vector(x)
+        T = eltype(x)
+        a, b = TransitionMatrices.bhmie(T, x[2], complex(x[1], x₀[3]); nₘₐₓ = N)
+        return vcat(real.(a), imag.(a), real.(b), imag.(b))
+    end
+
+    @test Bool(supports_linearization(subset_problem, MieLinearization()))
+    subset_result = linearize_transition_matrix(subset_problem, MieLinearization())
+    subset_coefficient_jacobian = ForwardDiff.jacobian(subset_coefficient_vector, subset_x₀)
+
+    for (j, var) in enumerate(subset_vars)
+        ∂T = derivative(subset_result, var)
+        ∂a = subset_coefficient_jacobian[1:N, j] .+
+             subset_coefficient_jacobian[(N + 1):(2N), j] .* im
+        ∂b = subset_coefficient_jacobian[(2N + 1):(3N), j] .+
+             subset_coefficient_jacobian[(3N + 1):(4N), j] .* im
+
+        @test ∂T.a ≈ ∂a atol=1e-9 rtol=1e-9
+        @test ∂T.b ≈ ∂b atol=1e-9 rtol=1e-9
+    end
+
     function mie_scattering(x)
         T = eltype(x)
         𝐓 = MieTransitionMatrix{Complex{T}, N}(x[1], complex(x[2], x[3]))
@@ -191,5 +218,156 @@ end
         @test 𝐓.𝐓[m + 1] ≈ 𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1])
         @test ∂𝐓.𝐓[m + 1] ≈ ∂𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1],
                                              ∂𝐏s[m + 1], ∂𝐔s[m + 1])
+    end
+end
+
+@testitem "EBCM fixed spheroid linearization matches ForwardDiff references" begin
+    using ForwardDiff
+
+    nₘₐₓ = 3
+    Ng = 24
+    x₀ = [1.0, 1.2, 1.311, 0.02, 2π]
+    vars = (:a, :c, :mᵣ, :mᵢ, :λ)
+    config = (; nₘₐₓ, Ng)
+
+    problem = LinearizationProblem(x₀; variables = vars) do x
+        (; shape = Spheroid(x[1], x[2], complex(x[3], x[4])), λ = x[5])
+    end
+
+    function transition_vector_from_parameters(x)
+        s = Spheroid(x[1], x[2], complex(x[3], x[4]))
+        𝐓 = TransitionMatrices.transition_matrix(s, x[5], nₘₐₓ, Ng)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    function transition_vector_from_matrix(𝐓)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    support = supports_linearization(problem, EBCMLinearization(); config)
+    @test Bool(support)
+
+    result = linearize_transition_matrix(problem, EBCMLinearization(); config)
+    @test result.metadata.backend == :ebcm_analytic
+    @test !hasproperty(result.metadata, :reference)
+    reference = TransitionMatrices.transition_matrix(Spheroid(x₀[1], x₀[2],
+                                                              complex(x₀[3], x₀[4])),
+                                                     x₀[5], nₘₐₓ, Ng)
+    reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
+
+    @test transition_vector_from_matrix(result.value) ≈ transition_vector_from_matrix(reference)
+
+    for (j, var) in enumerate(vars)
+        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+    end
+
+    subset_x₀ = [x₀[5], x₀[1]]
+    subset_vars = (:λ, :a)
+    subset_problem = LinearizationProblem(subset_x₀; variables = subset_vars) do x
+        c = zero(x[1]) + zero(x[2]) + x₀[2]
+        (; shape = Spheroid(x[2], c, complex(x₀[3], x₀[4])),
+         λ = x[1])
+    end
+
+    function transition_vector_from_subset(x)
+        base = zero(x[1]) + zero(x[2])
+        s = Spheroid(base + x[2], base + x₀[2],
+                     complex(base + x₀[3], base + x₀[4]))
+        𝐓 = TransitionMatrices.transition_matrix(s, x[1], nₘₐₓ, Ng)
+        return transition_vector_from_matrix(𝐓)
+    end
+
+    @test Bool(supports_linearization(subset_problem, EBCMLinearization(); config))
+    subset_result = linearize_transition_matrix(subset_problem, EBCMLinearization(); config)
+    subset_jacobian = ForwardDiff.jacobian(transition_vector_from_subset, subset_x₀)
+
+    for (j, var) in enumerate(subset_vars)
+        @test transition_vector_from_matrix(derivative(subset_result, var)) ≈ subset_jacobian[:, j] atol=1e-7 rtol=1e-7
+    end
+
+    real_m_problem = LinearizationProblem([x₀[5]]; variables = (:λ,)) do x
+        (; shape = Spheroid(x₀[1], x₀[2], x₀[3]), λ = x[1])
+    end
+    @test Bool(supports_linearization(real_m_problem, EBCMLinearization(); config))
+    real_m_result = linearize_transition_matrix(real_m_problem, EBCMLinearization(); config)
+    @test real_m_result.metadata.backend == :ebcm_analytic
+end
+
+@testitem "EBCM fixed Chebyshev linearization matches ForwardDiff references" begin
+    using ForwardDiff
+
+    nₘₐₓ = 3
+    Ng = 28
+    degree = 4
+    x₀ = [1.0, 0.08, 1.311, 0.02, 2π]
+    vars = (:r₀, :ε, :mᵣ, :mᵢ, :λ)
+    config = (; nₘₐₓ, Ng)
+
+    problem = LinearizationProblem(x₀; variables = vars) do x
+        (; shape = Chebyshev(x[1], x[2], degree, complex(x[3], x[4])), λ = x[5])
+    end
+
+    function transition_vector_from_parameters(x)
+        c = Chebyshev(x[1], x[2], degree, complex(x[3], x[4]))
+        𝐓 = TransitionMatrices.transition_matrix(c, x[5], nₘₐₓ, Ng)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    function transition_vector_from_matrix(𝐓)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    support = supports_linearization(problem, EBCMLinearization(); config)
+    @test Bool(support)
+
+    result = linearize_transition_matrix(problem, EBCMLinearization(); config)
+    @test result.metadata.backend == :ebcm_analytic
+    @test !hasproperty(result.metadata, :reference)
+
+    reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
+    for (j, var) in enumerate(vars)
+        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+    end
+end
+
+@testitem "EBCM cylinder linearization matches ForwardDiff references" begin
+    using ForwardDiff
+
+    nₘₐₓ = 3
+    Ng = 28
+    x₀ = [0.8, 1.4, 1.311, 0.02, 2π]
+    vars = (:r, :h, :mᵣ, :mᵢ, :λ)
+    config = (; nₘₐₓ, Ng)
+
+    problem = LinearizationProblem(x₀; variables = vars) do x
+        (; shape = Cylinder(x[1], x[2], complex(x[3], x[4])), λ = x[5])
+    end
+
+    function transition_vector_from_parameters(x)
+        c = Cylinder(x[1], x[2], complex(x[3], x[4]))
+        𝐓 = TransitionMatrices.transition_matrix(c, x[5], nₘₐₓ, Ng)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    function transition_vector_from_matrix(𝐓)
+        chunks = [vcat(real.(vec(block)), imag.(vec(block))) for block in 𝐓.𝐓]
+        return reduce(vcat, chunks)
+    end
+
+    support = supports_linearization(problem, EBCMLinearization(); config)
+    @test Bool(support)
+
+    result = linearize_transition_matrix(problem, EBCMLinearization(); config)
+    @test result.metadata.backend == :ebcm_analytic
+    @test !hasproperty(result.metadata, :reference)
+
+    reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
+    for (j, var) in enumerate(vars)
+        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 end
