@@ -124,3 +124,72 @@ end
         @test ∂S ≈ ∂S_ref atol=1e-8 rtol=1e-8
     end
 end
+
+@testitem "EBCM block linearization follows the P-U matrix identity" begin
+    using TransitionMatrices: 𝐓_from_𝐏_and_𝐔, ∂𝐓_from_𝐏_and_𝐔
+
+    𝐏 = ComplexF64[1.2 + 0.1im 0.05 - 0.03im
+                   -0.04 + 0.02im 0.9 + 0.2im]
+    𝐔 = ComplexF64[0.4 - 0.2im 0.08 + 0.04im
+                   0.03 - 0.06im 0.5 + 0.1im]
+    ∂𝐏 = ComplexF64[0.2 - 0.1im -0.04 + 0.03im
+                    0.01 + 0.05im -0.08 + 0.02im]
+    ∂𝐔 = ComplexF64[-0.1 + 0.03im 0.07 - 0.01im
+                    -0.02 + 0.04im 0.06 + 0.05im]
+
+    ∂𝐓 = ∂𝐓_from_𝐏_and_𝐔(𝐏, 𝐔, ∂𝐏, ∂𝐔)
+    ϵ = 1e-6
+    ∂𝐓_fd = (𝐓_from_𝐏_and_𝐔(𝐏 .+ ϵ .* ∂𝐏, 𝐔 .+ ϵ .* ∂𝐔) -
+             𝐓_from_𝐏_and_𝐔(𝐏 .- ϵ .* ∂𝐏, 𝐔 .- ϵ .* ∂𝐔)) ./ (2ϵ)
+
+    @test ∂𝐓 ≈ ∂𝐓_fd atol=1e-9 rtol=1e-8
+end
+
+@testitem "EBCM block assembly exposes P-U matrices" begin
+    using TransitionMatrices: Spheroid, 𝐓_from_𝐏_and_𝐔, ebcm_matrices_m,
+                              ebcm_matrices_m₀, transition_matrix_m,
+                              transition_matrix_m₀
+
+    s = Spheroid{Float64, ComplexF64}(1.0, 1.2, 1.311 + 0.02im)
+    λ = 2π
+    nₘₐₓ = 4
+    Ng = 40
+
+    𝐏₀, 𝐔₀ = ebcm_matrices_m₀(s, λ, nₘₐₓ, Ng)
+    @test 𝐓_from_𝐏_and_𝐔(𝐏₀, 𝐔₀) ≈ transition_matrix_m₀(s, λ, nₘₐₓ, Ng)
+
+    m = 2
+    𝐏ₘ, 𝐔ₘ = ebcm_matrices_m(m, s, λ, nₘₐₓ, Ng)
+    @test 𝐓_from_𝐏_and_𝐔(𝐏ₘ, 𝐔ₘ) ≈ transition_matrix_m(m, s, λ, nₘₐₓ, Ng)
+end
+
+@testitem "EBCM block matrices assemble axisymmetric transition linearization" begin
+    using TransitionMatrices: ebcm_transition_matrix_from_matrices,
+                              ∂ebcm_transition_matrix_from_matrices,
+                              𝐓_from_𝐏_and_𝐔, ∂𝐓_from_𝐏_and_𝐔
+
+    function test_matrix(n, offset; scale = 1.0)
+        [scale * ((i == j ? 1.5 + offset : 0.03 * (i + j + offset)) +
+                  0.02im * (i - j + offset)) for i in 1:n, j in 1:n]
+    end
+
+    𝐏s = [test_matrix(4, 1), test_matrix(4, 2), test_matrix(2, 3)]
+    𝐔s = [test_matrix(4, 4; scale = 0.2),
+          test_matrix(4, 5; scale = 0.2),
+          test_matrix(2, 6; scale = 0.2)]
+    ∂𝐏s = [test_matrix(4, 7; scale = 0.1),
+           test_matrix(4, 8; scale = 0.1),
+           test_matrix(2, 9; scale = 0.1)]
+    ∂𝐔s = [test_matrix(4, 10; scale = 0.1),
+           test_matrix(4, 11; scale = 0.1),
+           test_matrix(2, 12; scale = 0.1)]
+
+    𝐓 = ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s)
+    ∂𝐓 = ∂ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s, ∂𝐏s, ∂𝐔s)
+
+    for m in 0:2
+        @test 𝐓.𝐓[m + 1] ≈ 𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1])
+        @test ∂𝐓.𝐓[m + 1] ≈ ∂𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1],
+                                             ∂𝐏s[m + 1], ∂𝐔s[m + 1])
+    end
+end

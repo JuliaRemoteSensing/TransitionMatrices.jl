@@ -199,15 +199,47 @@ function 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
     𝐓 = -𝐏 * inv(𝐐)
 end
 
+function ∂𝐓_from_𝐏_and_𝐔(𝐏, 𝐔, ∂𝐏, ∂𝐔)
+    𝐐 = @. 𝐏 + 1im * 𝐔
+    ∂𝐐 = @. ∂𝐏 + 1im * ∂𝐔
+    𝐐⁻¹ = inv(𝐐)
+    -∂𝐏 * 𝐐⁻¹ + 𝐏 * 𝐐⁻¹ * ∂𝐐 * 𝐐⁻¹
+end
+
+function _axisymmetric_transition_matrix_from_blocks(𝐓s::AbstractVector)
+    N = length(𝐓s) - 1
+    CT = eltype(first(𝐓s))
+    T = real(CT)
+    AxisymmetricTransitionMatrix{CT, N, typeof(𝐓s), T}(𝐓s)
+end
+
+function ebcm_transition_matrix_from_matrices(𝐏s::AbstractVector, 𝐔s::AbstractVector)
+    length(𝐏s) == length(𝐔s) ||
+        throw(ArgumentError("EBCM P and U block counts must match"))
+    𝐓s = [𝐓_from_𝐏_and_𝐔(𝐏, 𝐔) for (𝐏, 𝐔) in zip(𝐏s, 𝐔s)]
+    _axisymmetric_transition_matrix_from_blocks(𝐓s)
+end
+
+function ∂ebcm_transition_matrix_from_matrices(𝐏s::AbstractVector,
+                                              𝐔s::AbstractVector,
+                                              ∂𝐏s::AbstractVector,
+                                              ∂𝐔s::AbstractVector)
+    length(𝐏s) == length(𝐔s) == length(∂𝐏s) == length(∂𝐔s) ||
+        throw(ArgumentError("EBCM P, U, ∂P, and ∂U block counts must match"))
+    ∂𝐓s = [∂𝐓_from_𝐏_and_𝐔(𝐏, 𝐔, ∂𝐏, ∂𝐔)
+           for (𝐏, 𝐔, ∂𝐏, ∂𝐔) in zip(𝐏s, 𝐔s, ∂𝐏s, ∂𝐔s)]
+    _axisymmetric_transition_matrix_from_blocks(∂𝐓s)
+end
+
 """
 ```
-transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+ebcm_matrices_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
 ```
 
-Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
+Calculate the `P` and `U` matrices for the `m=0` EBCM block.
 """
-function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                              Ng; zerofn = () -> zero(CT), reuse = false) where {T, CT}
+function ebcm_matrices_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
+                          Ng; zerofn = () -> zero(CT), reuse = false) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     k = 2 * T(π) / λ
@@ -344,25 +376,41 @@ function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
     end
 
-    𝐓 = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
-
     if reuse
         cache = x, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, χₛ, χₛ′
-        return 𝐓, cache
+        return 𝐏, 𝐔, cache
     end
 
-    return 𝐓
+    return 𝐏, 𝐔
 end
 
 """
 ```
-transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
 ```
 
-Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
+Calculate the `m=0` block of the T-Matrix for a given axisymmetric scatterer.
 """
-function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
-                             Ng; zerofn = () -> zero(CT), cache = nothing) where {T, CT}
+function transition_matrix_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
+                              Ng; zerofn = () -> zero(CT), reuse = false) where {T, CT}
+    if reuse
+        𝐏, 𝐔, cache = ebcm_matrices_m₀(s, λ, nₘₐₓ, Ng; zerofn, reuse)
+        return 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔), cache
+    end
+
+    𝐏, 𝐔 = ebcm_matrices_m₀(s, λ, nₘₐₓ, Ng; zerofn, reuse)
+    return 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
+end
+
+"""
+```
+ebcm_matrices_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+```
+
+Calculate the `P` and `U` matrices for the `m`-th EBCM block.
+"""
+function ebcm_matrices_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
+                         Ng; zerofn = () -> zero(CT), cache = nothing) where {T, CT}
     @assert iseven(Ng) "Ng must be even!"
 
     k = 2 * T(π) / λ
@@ -537,9 +585,20 @@ function _transition_matrix_m_core(m, s::AbstractAxisymmetricShape{T, CT}, k, n�
         end
     end
 
-    𝐓 = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
+    return 𝐏, 𝐔
+end
 
-    return 𝐓
+"""
+```
+transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+```
+
+Calculate the `m`-th block of the T-Matrix for a given axisymmetric scatterer.
+"""
+function transition_matrix_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
+                             Ng; zerofn = () -> zero(CT), cache = nothing) where {T, CT}
+    𝐏, 𝐔 = ebcm_matrices_m(m, s, λ, nₘₐₓ, Ng; zerofn, cache)
+    return 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
 end
 
 @testitem "transition_matrix_m should be equivalent to transition_matrix_m₀ when m = 0" begin
