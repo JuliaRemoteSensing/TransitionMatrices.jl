@@ -98,7 +98,7 @@ end
 function LinearizationResult(value, jacobian, variables; metadata = (;))
     vars = Tuple(variables)
     return LinearizationResult{typeof(value), typeof(jacobian), typeof(vars),
-                               typeof(metadata)}(value, jacobian, vars, metadata)
+        typeof(metadata)}(value, jacobian, vars, metadata)
 end
 
 variables(result::LinearizationResult) = result.variables
@@ -159,7 +159,7 @@ end
 
 function Base.showerror(io::IO, err::UnsupportedLinearization)
     print(io, "Unsupported linearization for output :", err.output,
-          " with backend ", typeof(err.backend), ": ", err.reason)
+        " with backend ", typeof(err.backend), ": ", err.reason)
 end
 
 """
@@ -169,11 +169,11 @@ Return a [`LinearizationSupport`](@ref) record describing whether an analytical
 linearization implementation is available for the requested output.
 """
 function supports_linearization(::LinearizationProblem,
-                                backend::AbstractLinearizationBackend;
-                                output::Symbol = :transition_matrix,
-                                config = nothing)
+        backend::AbstractLinearizationBackend;
+        output::Symbol = :transition_matrix,
+        config = nothing)
     return LinearizationSupport(false,
-                                "no analytical linearization implementation is registered")
+        "no analytical linearization implementation is registered")
 end
 
 """
@@ -184,8 +184,8 @@ Backends that do not implement analytical derivatives throw
 [`UnsupportedLinearization`](@ref).
 """
 function linearize_transition_matrix(problem::LinearizationProblem,
-                                     backend::AbstractLinearizationBackend;
-                                     config = nothing)
+        backend::AbstractLinearizationBackend;
+        config = nothing)
     support = supports_linearization(problem, backend; output = :transition_matrix, config)
     throw(UnsupportedLinearization(backend, :transition_matrix, support.reason))
 end
@@ -198,7 +198,7 @@ The default method only defines the unsupported boundary; analytical backends
 should add methods that reuse `linearize_transition_matrix`.
 """
 function linearize_observable(observable, problem::LinearizationProblem,
-                              backend::AbstractLinearizationBackend; config = nothing)
+        backend::AbstractLinearizationBackend; config = nothing)
     output = observable isa Symbol ? observable : :observable
     support = supports_linearization(problem, backend; output, config)
     throw(UnsupportedLinearization(backend, output, support.reason))

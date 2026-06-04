@@ -5,20 +5,20 @@ function _iitm_variable_list_message(canonical)
 end
 
 function _iitm_linearization_input(problem::LinearizationProblem, config,
-                                   x = problem.x)
+        x = problem.x)
     rebuilt = rebuild(problem, x)
     shape = _linearization_property(config, :shape;
-                                    default = _linearization_property(rebuilt, :shape))
+        default = _linearization_property(rebuilt, :shape))
     λ = _linearization_property(config, :λ;
-                                default = _linearization_property(rebuilt, :λ))
+        default = _linearization_property(rebuilt, :λ))
     nₘₐₓ = _linearization_property(config, :nₘₐₓ;
-                                   default = _linearization_property(rebuilt, :nₘₐₓ))
+        default = _linearization_property(rebuilt, :nₘₐₓ))
     Nr = _linearization_property(config, :Nr;
-                                 default = _linearization_property(rebuilt, :Nr))
+        default = _linearization_property(rebuilt, :Nr))
     Nϑ = _linearization_property(config, :Nϑ;
-                                 default = _linearization_property(rebuilt, :Nϑ))
+        default = _linearization_property(rebuilt, :Nϑ))
     Nφ = _linearization_property(config, :Nφ;
-                                 default = _linearization_property(rebuilt, :Nφ))
+        default = _linearization_property(rebuilt, :Nφ))
 
     if isnothing(shape) || isnothing(λ) || isnothing(nₘₐₓ) ||
        isnothing(Nr) || isnothing(Nϑ)
@@ -26,7 +26,7 @@ function _iitm_linearization_input(problem::LinearizationProblem, config,
     end
 
     return (; shape, λ, nₘₐₓ = Int(nₘₐₓ), Nr = Int(Nr), Nϑ = Int(Nϑ),
-            Nφ = isnothing(Nφ) ? nothing : Int(Nφ))
+        Nφ = isnothing(Nφ) ? nothing : Int(Nφ))
 end
 
 function _iitm_real_type(shape, λ)
@@ -69,9 +69,9 @@ function _iitm_ricatti_argument_derivatives!(∂f, ∂f′, f, f′, z, ∂z)
 end
 
 function _iitm_fill_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆s,
-                                   ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s, ∂χs, ∂χ′s,
-                                   kr, ∂kr, k, ∂k, a½, nₘₐₓ,
-                                   wavenumber_indices = eachindex(∂k))
+        ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s, ∂χs, ∂χ′s,
+        kr, ∂kr, k, ∂k, a½, nₘₐₓ,
+        wavenumber_indices = eachindex(∂k))
     CT = eltype(𝐉)
     fill!(𝐉, zero(CT))
     fill!(𝐇, zero(CT))
@@ -130,9 +130,9 @@ function _iitm_fill_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆
 end
 
 function _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ε, within, d, 𝜋,
-                                     τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, m_order,
-                                     ∂Us = nothing,
-                                     material_indices = _iitm_nonzero_derivative_indices(∂m))
+        τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, m_order,
+        ∂Us = nothing,
+        material_indices = _iitm_nonzero_derivative_indices(∂m))
     nₘᵢₙ = max(1, m_order)
     p = length(∂m)
     CT = typeof(m)
@@ -146,6 +146,7 @@ function _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ε, within, d, 
     end
 
     for n in nₘᵢₙ:nₘₐₓ, n′ in nₘᵢₙ:nₘₐₓ
+
         U = zero(SMatrix{3, 3, CT})
         fill!(∂Us, zero(SMatrix{3, 3, CT}))
         if has_symmetric_plane(s)
@@ -173,8 +174,7 @@ function _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ε, within, d, 
                     ∂ε = 2m * ∂m[j]
                     ∂ΔU = @SMatrix [zero(CT) zero(CT) zero(CT)
                                     zero(CT) zero(CT) zero(CT)
-                                    zero(CT) zero(CT) -c * a½[n] * a½[n′] *
-                                                            dd * ∂ε/ε[i]^2]
+                                    zero(CT) zero(CT) -c * a½[n] * a½[n′] * dd * ∂ε/ε[i]^2]
                     ∂Us[j] += w[i] * (∂ε * ΔU + contrast * ∂ΔU)
                 end
             end
@@ -200,15 +200,15 @@ function _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ε, within, d, 
 end
 
 function _iitm_axisymmetric_shell_u(s, r, x, w, ε, within, d, 𝜋, τ, a½, A,
-                                    k, ∂k, m, ∂m, nₘₐₓ, m_order)
+        k, ∂k, m, ∂m, nₘₐₓ, m_order)
     nₘᵢₙ = max(1, m_order)
     nn = nₘₐₓ - nₘᵢₙ + 1
     CT = typeof(m)
     𝐔 = zeros(CT, 3nn, 3nn)
     ∂𝐔s = [zeros(CT, 3nn, 3nn) for _ in eachindex(∂m)]
     return _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ε, within, d,
-                                       𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ,
-                                       m_order)
+        𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ,
+        m_order)
 end
 
 function _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
@@ -223,20 +223,20 @@ function _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
 end
 
 function _iitm_project_q_blocks(k, ∂k, 𝐉, 𝐇, 𝐐, ∂𝐉, ∂𝐇, ∂𝐐)
-    𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 =
-        _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
+    𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 = _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
 
-    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ =
-        _iitm_project_q_block_derivatives(k, ∂k, 𝐉, 𝐇, 𝐐, ∂𝐉, ∂𝐇, ∂𝐐,
-                                          𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
-                                          𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
+    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+    ∂𝐐ₕⱼ,
+    ∂𝐐ₕₕ = _iitm_project_q_block_derivatives(k, ∂k, 𝐉, 𝐇, 𝐐, ∂𝐉, ∂𝐇, ∂𝐐,
+        𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
+        𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
 
     return 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ
 end
 
 function _iitm_project_q_block_derivatives(k, ∂k, 𝐉, 𝐇, 𝐐, ∂𝐉, ∂𝐇, ∂𝐐,
-                                           𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
-                                           𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
+        𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
+        𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
     ∂𝐉ᵀ𝐐 = transpose(∂𝐉) * 𝐐
     ∂𝐇ᵀ𝐐 = transpose(∂𝐇) * 𝐐
     𝐉ᵀ∂𝐐 = transpose(𝐉) * ∂𝐐
@@ -267,10 +267,10 @@ function _iitm_project_q_block_material_derivatives(k, 𝐉, 𝐇, ∂𝐐)
 end
 
 function _iitm_update_transition_block(𝐓, ∂𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
-                                       ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ)
+        ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ)
     return _iitm_update_transition_solve_block(𝐓, ∂𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ,
-                                               𝐐ₕₕ, ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
-                                               ∂𝐐ₕₕ)
+        𝐐ₕₕ, ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
+        ∂𝐐ₕₕ)
 end
 
 function _iitm_transition_solve_cache(𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ)
@@ -285,25 +285,24 @@ function _iitm_transition_solve_cache(𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 
 end
 
 function _iitm_update_transition_solve_derivative_block(𝐓, ∂𝐓, 𝐐ₕₕ,
-                                                        ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
-                                                        ∂𝐐ₕⱼ, ∂𝐐ₕₕ,
-                                                        𝐀, 𝐂, 𝐁_factor,
-                                                        𝐗)
+        ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+        ∂𝐐ₕⱼ, ∂𝐐ₕₕ,
+        𝐀, 𝐂, 𝐁_factor,
+        𝐗)
     ∂𝐁 = -∂𝐓 * 𝐐ₕₕ - 𝐓 * ∂𝐐ₕₕ
     ∂𝐗 = 𝐁_factor \ (∂𝐓 * 𝐂 + 𝐓 * ∂𝐐ₕⱼ - ∂𝐁 * 𝐗)
     return ∂𝐐ⱼⱼ + ∂𝐐ⱼₕ * 𝐗 + 𝐀 * ∂𝐗
 end
 
 function _iitm_update_transition_solve_block(𝐓, ∂𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ,
-                                             𝐐ₕₕ, ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
-                                             ∂𝐐ₕₕ)
-    𝐓next, 𝐀, 𝐂, 𝐁_factor, 𝐗 =
-        _iitm_transition_solve_cache(𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ)
+        𝐐ₕₕ, ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
+        ∂𝐐ₕₕ)
+    𝐓next, 𝐀, 𝐂, 𝐁_factor, 𝐗 = _iitm_transition_solve_cache(𝐓, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ)
     ∂𝐓next = _iitm_update_transition_solve_derivative_block(𝐓, ∂𝐓,
-                                                            𝐐ₕₕ, ∂𝐐ⱼⱼ,
-                                                            ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
-                                                            ∂𝐐ₕₕ, 𝐀, 𝐂,
-                                                            𝐁_factor, 𝐗)
+        𝐐ₕₕ, ∂𝐐ⱼⱼ,
+        ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
+        ∂𝐐ₕₕ, 𝐀, 𝐂,
+        𝐁_factor, 𝐗)
     return 𝐓next, ∂𝐓next
 end
 
@@ -335,7 +334,7 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
     Nϑ_config = input.Nϑ
     p = length(variables)
     RT, CT, k, m, ∂k, ∂m = _iitm_fixed_geometry_parameter_derivatives(input,
-                                                                       variables)
+        variables)
     wavenumber_indices = _iitm_nonzero_derivative_indices(∂k)
     material_indices = _iitm_nonzero_derivative_indices(∂m)
 
@@ -379,18 +378,18 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
     end
 
     d = OffsetArray(zeros(RT, Nϑ, nₘₐₓ + 1, nₘₐₓ + 1), 1:Nϑ, 0:nₘₐₓ,
-                    0:nₘₐₓ)
+        0:nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
 
     Threads.@threads for (i, m_order) in collect(Iterators.product(1:Nϑ, 0:nₘₐₓ))
         wigner_d_recursion!(view(d, i, m_order:nₘₐₓ, m_order), 0, m_order,
-                            nₘₐₓ, ϑᵥ[i];
-                            deriv = view(τ, i, m_order:nₘₐₓ, m_order))
+            nₘₐₓ, ϑᵥ[i];
+            deriv = view(τ, i, m_order:nₘₐₓ, m_order))
 
         for n in max(m_order, 1):nₘₐₓ
             𝜋[i, n, m_order] = pi_func(RT, m_order, n, ϑᵥ[i];
-                                       d = d[i, n, m_order])
+                d = d[i, n, m_order])
         end
     end
 
@@ -439,14 +438,14 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
         for j in wavenumber_indices
             ∂kr[j] = ∂k[j] * r
             _iitm_ricatti_argument_derivatives!(∂ψs[j], ∂ψ′s[j], ψ, ψ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
             _iitm_ricatti_argument_derivatives!(∂χs[j], ∂χ′s[j], χ, χ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
         end
 
         _iitm_fill_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆s, ψ, ψ′, χ, χ′,
-                                  ∂ψs, ∂ψ′s, ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
-                                  a½, nₘₐₓ, wavenumber_indices)
+            ∂ψs, ∂ψ′s, ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
+            a½, nₘₐₓ, wavenumber_indices)
 
         for i in eachindex(xᵥ)
             inside = (r * sinϑᵥ[i], 0, r * xᵥ[i]) ∈ s
@@ -459,9 +458,9 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
             𝐔 = 𝐔_by_m[m_order + 1]
             ∂𝐔s = ∂𝐔s_by_m[m_order + 1]
             _iitm_axisymmetric_shell_u!(𝐔, ∂𝐔s, s, r, xᵥ, wᵥ, ε, within, d,
-                                        𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ,
-                                        m_order, ∂Us_by_m[m_order + 1],
-                                        material_indices)
+                𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ,
+                m_order, ∂Us_by_m[m_order + 1],
+                material_indices)
             𝐉ᵥ = view(𝐉, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐇ᵥ = view(𝐇, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐆ᵥ = view(𝐆, (3nₘᵢₙ - 2):(3nₘₐₓ), (3nₘᵢₙ - 2):(3nₘₐₓ))
@@ -469,49 +468,48 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
             𝐑_factor = lu(𝐑)
             𝐐 = wri * (𝐑_factor \ 𝐔)
 
-            𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 =
-                _iitm_project_q_block_values(k, 𝐉ᵥ, 𝐇ᵥ, 𝐐)
+            𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 = _iitm_project_q_block_values(k, 𝐉ᵥ, 𝐇ᵥ, 𝐐)
 
             𝐓_old = Ts[m_order + 1]
-            𝐓_next, 𝐀, 𝐂, 𝐁_factor, 𝐗 =
-                _iitm_transition_solve_cache(𝐓_old, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ,
-                                             𝐐ₕₕ)
+            𝐓_next, 𝐀, 𝐂, 𝐁_factor,
+            𝐗 = _iitm_transition_solve_cache(𝐓_old, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ,
+                𝐐ₕₕ)
             Ts[m_order + 1] = 𝐓_next
 
             for j in 1:p
                 if iszero(∂k[j])
                     ∂𝐑 = -wri * (∂𝐔s[j] * 𝐆ᵥ)
                     ∂𝐐 = 𝐑_factor \ (wri * ∂𝐔s[j] - ∂𝐑 * 𝐐)
-                    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ =
-                        _iitm_project_q_block_material_derivatives(k, 𝐉ᵥ,
-                                                                   𝐇ᵥ, ∂𝐐)
+                    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+                    ∂𝐐ₕⱼ, ∂𝐐ₕₕ = _iitm_project_q_block_material_derivatives(k, 𝐉ᵥ,
+                        𝐇ᵥ, ∂𝐐)
                 else
                     ∂𝐉ᵥ = view(∂𝐉s[j], (3nₘᵢₙ - 2):(3nₘₐₓ),
-                                (2nₘᵢₙ - 1):(2nₘₐₓ))
+                        (2nₘᵢₙ - 1):(2nₘₐₓ))
                     ∂𝐇ᵥ = view(∂𝐇s[j], (3nₘᵢₙ - 2):(3nₘₐₓ),
-                                (2nₘᵢₙ - 1):(2nₘₐₓ))
+                        (2nₘᵢₙ - 1):(2nₘₐₓ))
                     ∂𝐆ᵥ = view(∂𝐆s[j], (3nₘᵢₙ - 2):(3nₘₐₓ),
-                                (3nₘᵢₙ - 2):(3nₘₐₓ))
+                        (3nₘᵢₙ - 2):(3nₘₐₓ))
                     ∂𝐑 = -wri * (∂𝐔s[j] * 𝐆ᵥ + 𝐔 * ∂𝐆ᵥ)
                     ∂𝐐 = 𝐑_factor \ (wri * ∂𝐔s[j] - ∂𝐑 * 𝐐)
-                    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ =
-                        _iitm_project_q_block_derivatives(k, ∂k[j], 𝐉ᵥ, 𝐇ᵥ,
-                                                           𝐐, ∂𝐉ᵥ, ∂𝐇ᵥ,
-                                                           ∂𝐐, 𝐐ⱼⱼ, 𝐐ⱼₕ,
-                                                           𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐,
-                                                           𝐇ᵀ𝐐)
+                    ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+                    ∂𝐐ₕⱼ,
+                    ∂𝐐ₕₕ = _iitm_project_q_block_derivatives(k, ∂k[j], 𝐉ᵥ, 𝐇ᵥ,
+                        𝐐, ∂𝐉ᵥ, ∂𝐇ᵥ,
+                        ∂𝐐, 𝐐ⱼⱼ, 𝐐ⱼₕ,
+                        𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐,
+                        𝐇ᵀ𝐐)
                 end
-                ∂𝐓_next =
-                    _iitm_update_transition_solve_derivative_block(𝐓_old,
-                                                                   ∂Ts_by_var[j][m_order + 1],
-                                                                   𝐐ₕₕ,
-                                                                   ∂𝐐ⱼⱼ,
-                                                                   ∂𝐐ⱼₕ,
-                                                                   ∂𝐐ₕⱼ,
-                                                                   ∂𝐐ₕₕ,
-                                                                   𝐀, 𝐂,
-                                                                   𝐁_factor,
-                                                                   𝐗)
+                ∂𝐓_next = _iitm_update_transition_solve_derivative_block(𝐓_old,
+                    ∂Ts_by_var[j][m_order + 1],
+                    𝐐ₕₕ,
+                    ∂𝐐ⱼⱼ,
+                    ∂𝐐ⱼₕ,
+                    ∂𝐐ₕⱼ,
+                    ∂𝐐ₕₕ,
+                    𝐀, 𝐂,
+                    𝐁_factor,
+                    𝐗)
                 ∂Ts_by_var[j][m_order + 1] = ∂𝐓_next
             end
         end
@@ -525,12 +523,12 @@ function _iitm_axisymmetric_fixed_geometry_linearization(input, variables)
     value = AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(value_blocks), RT}(value_blocks)
 
     return LinearizationResult(value, jacobian, variables;
-                               metadata = (; backend = :iitm_axisymmetric_analytic,
-                                           variant = :axisymmetric,
-                                           λ = input.λ,
-                                           nₘₐₓ,
-                                           Nr,
-                                           Nϑ = Nϑ_config))
+        metadata = (; backend = :iitm_axisymmetric_analytic,
+            variant = :axisymmetric,
+            λ = input.λ,
+            nₘₐₓ,
+            Nr,
+            Nϑ = Nϑ_config))
 end
 
 _iitm_nfold_period(::AbstractNFoldShape{N}) where {N} = N
@@ -543,10 +541,10 @@ function _iitm_effective_variant(input, backend::IITMLinearization)
 end
 
 function _iitm_fill_ordered_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆s,
-                                           ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s,
-                                           ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
-                                           a½, order_degree,
-                                           wavenumber_indices = eachindex(∂k))
+        ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s,
+        ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
+        a½, order_degree,
+        wavenumber_indices = eachindex(∂k))
     CT = eltype(𝐉)
     fill!(𝐉, zero(CT))
     fill!(𝐇, zero(CT))
@@ -579,12 +577,10 @@ function _iitm_fill_ordered_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s,
             ∂krⱼ = ∂kr[j]
             ∂𝐉ᵈ = @SMatrix [∂ψs[j][n]/kr - ψ[n] * ∂krⱼ/kr^2 0
                             0 ∂ψ′s[j][n]/kr - ψ′[n] * ∂krⱼ/kr^2
-                            0 a½[n] * (∂ψs[j][n]/kr^2 -
-                                        2ψ[n] * ∂krⱼ/kr^3)]
+                            0 a½[n] * (∂ψs[j][n]/kr^2 - 2ψ[n] * ∂krⱼ/kr^3)]
             ∂𝐘ᵈ = @SMatrix [∂χs[j][n]/kr - χ[n] * ∂krⱼ/kr^2 0
                             0 ∂χ′s[j][n]/kr - χ′[n] * ∂krⱼ/kr^2
-                            0 a½[n] * (∂χs[j][n]/kr^2 -
-                                        2χ[n] * ∂krⱼ/kr^3)]
+                            0 a½[n] * (∂χs[j][n]/kr^2 - 2χ[n] * ∂krⱼ/kr^3)]
             ∂𝐇ᵈ = ∂𝐉ᵈ + 1im * ∂𝐘ᵈ
             ∂𝐆ᵈ_base = ∂𝐇ᵈ * transpose(𝐉ᵈ) + 𝐇ᵈ * transpose(∂𝐉ᵈ) +
                        ∂𝐉ᵈ * transpose(𝐇ᵈ) + 𝐉ᵈ * transpose(∂𝐇ᵈ)
@@ -606,10 +602,11 @@ function _iitm_material_tables(s, r, x, ϑ, xφ, m, ∂m, material_indices)
     ∂εs = [Matrix{CT}(undef, length(xφ), length(x)) for _ in material_indices]
 
     for (jφ, φ) in enumerate(xφ), i in eachindex(x)
+
         local_m = refractive_index(s,
-                                   (r * sin(ϑ[i]) * cos(φ),
-                                    r * sin(ϑ[i]) * sin(φ),
-                                    r * x[i]))
+            (r * sin(ϑ[i]) * cos(φ),
+                r * sin(ϑ[i]) * sin(φ),
+                r * x[i]))
         ε[jφ, i] = local_m^2
         material_matches = local_m == m
         for (jm, j) in enumerate(material_indices)
@@ -625,7 +622,7 @@ function _iitm_collect_fourier_coefficients(spectrum, nₘₐₓ, wφ, mode_bins
     _, Nϑ = size(spectrum)
     qs, bins = mode_bins
     coeff = OffsetArray(zeros(ComplexF64, 4nₘₐₓ + 1, Nϑ),
-                        (-2nₘₐₓ):(2nₘₐₓ), 1:Nϑ)
+        (-2nₘₐₓ):(2nₘₐₓ), 1:Nϑ)
 
     for i in 1:Nϑ
         for iq in eachindex(qs)
@@ -639,43 +636,43 @@ function _iitm_collect_fourier_coefficients(spectrum, nₘₐₓ, wφ, mode_bins
 end
 
 function _iitm_fourier_coefficients_with_derivatives(ε, ∂εs, nₘₐₓ, wφ,
-                                                     workspace,
-                                                     mode_bins)
+        workspace,
+        mode_bins)
     coeff_ε, coeff_εinv = _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
-                                                          workspace,
-                                                          mode_bins)
+        workspace,
+        mode_bins)
     ∂coeffs = map(∂εs) do ∂ε
         @. workspace.contrast = ∂ε
         @. workspace.contrast_inv = ∂ε / ε^2
         mul!(workspace.spectrum, workspace.plan, workspace.contrast)
         mul!(workspace.spectrum_inv, workspace.plan, workspace.contrast_inv)
         (_iitm_collect_fourier_coefficients(workspace.spectrum, nₘₐₓ, wφ,
-                                            mode_bins),
-         _iitm_collect_fourier_coefficients(workspace.spectrum_inv, nₘₐₓ, wφ,
-                                            mode_bins))
+                mode_bins),
+            _iitm_collect_fourier_coefficients(workspace.spectrum_inv, nₘₐₓ, wφ,
+                mode_bins))
     end
 
     return coeff_ε, coeff_εinv, ∂coeffs
 end
 
 function _iitm_ordered_shell_data(s, r, x, ϑ, xφ, m, ∂m, nₘₐₓ, wφ,
-                                  fourier_workspace, fourier_modes,
-                                  material_indices = _iitm_nonzero_derivative_indices(∂m))
+        fourier_workspace, fourier_modes,
+        material_indices = _iitm_nonzero_derivative_indices(∂m))
     ε, ∂εs = _iitm_material_tables(s, r, x, ϑ, xφ, m, ∂m,
-                                   material_indices)
+        material_indices)
     fourier_coeffs = isnothing(fourier_workspace) ? nothing :
                      _iitm_fourier_coefficients_with_derivatives(ε, ∂εs,
-                                                                 nₘₐₓ, wφ,
-                                                                 fourier_workspace,
-                                                                 fourier_modes)
+        nₘₐₓ, wφ,
+        fourier_workspace,
+        fourier_modes)
     return ε, ∂εs, fourier_coeffs, material_indices
 end
 
 function _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, 𝜋, τ,
-                                a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
-                                scale_factor, fourier_workspace,
-                                fourier_modes, shell_data = nothing,
-                                ∂Us = nothing)
+        a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
+        scale_factor, fourier_workspace,
+        fourier_modes, shell_data = nothing,
+        ∂Us = nothing)
     CT = typeof(m)
     pvars = length(∂m)
     fill!(𝐔, zero(CT))
@@ -683,11 +680,12 @@ function _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, �
         fill!(∂𝐔, zero(CT))
     end
     kr = k * r
-    ε, ∂εs, fourier_coeffs, material_indices =
-        isnothing(shell_data) ?
-        _iitm_ordered_shell_data(s, r, x, ϑ, xφ, m, ∂m, nₘₐₓ, wφ,
-                                 fourier_workspace, fourier_modes) :
-        shell_data
+    ε, ∂εs,
+    fourier_coeffs,
+    material_indices = isnothing(shell_data) ?
+                       _iitm_ordered_shell_data(s, r, x, ϑ, xφ, m, ∂m, nₘₐₓ, wφ,
+        fourier_workspace, fourier_modes) :
+                       shell_data
     if isnothing(∂Us)
         ∂Us = [zero(SMatrix{3, 3, CT}) for _ in 1:pvars]
     end
@@ -720,18 +718,14 @@ function _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, �
                         phase = cis(freq * φ)
                         ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
                                        c̃*im*pttp c*pptt 0
-                                       0 0 c * a½[n] * a½[n′] *
-                                           dd/ε[jφ, i]]
+                                       0 0 c * a½[n] * a½[n′] * dd/ε[jφ, i]]
                         contrast = ε[jφ, i] - 1
                         U += w[i] * wφⱼ * phase * contrast * ΔU
                         for (jm, j) in enumerate(material_indices)
                             ∂ε = ∂εs[jm][jφ, i]
                             ∂ΔU = @SMatrix [zero(CT) zero(CT) zero(CT)
                                             zero(CT) zero(CT) zero(CT)
-                                            zero(CT) zero(CT) -c * a½[n] *
-                                                                    a½[n′] *
-                                                                    dd * ∂ε /
-                                                                    ε[jφ, i]^2]
+                                            zero(CT) zero(CT) -c * a½[n] * a½[n′] * dd * ∂ε / ε[jφ, i]^2]
                             ∂Us[j] += w[i] * wφⱼ * phase *
                                       (∂ε * ΔU + contrast * ∂ΔU)
                         end
@@ -741,17 +735,15 @@ function _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, �
                     cε = coeff_ε[freq, i]
                     cεinv = coeff_εinv[freq, i]
                     U += w[i] * @SMatrix [c*pptt*cε -c̃*im*pttp*cε 0
-                                          c̃*im*pttp*cε c*pptt*cε 0
-                                          0 0 c * a½[n] * a½[n′] *
-                                              dd*cεinv]
+                                   c̃*im*pttp*cε c*pptt*cε 0
+                                   0 0 c * a½[n] * a½[n′] * dd * cεinv]
                     for (jm, j) in enumerate(material_indices)
                         ∂cε, ∂cεinv = ∂coeffs[jm]
                         dcε = ∂cε[freq, i]
                         dcεinv = ∂cεinv[freq, i]
                         ∂Us[j] += w[i] * @SMatrix [c*pptt*dcε -c̃*im*pttp*dcε 0
-                                                   c̃*im*pttp*dcε c*pptt*dcε 0
-                                                   0 0 c * a½[n] * a½[n′] *
-                                                       dd*dcεinv]
+                                            c̃*im*pttp*dcε c*pptt*dcε 0
+                                            0 0 c * a½[n] * a½[n′] * dd * dcεinv]
                     end
                 end
             end
@@ -778,30 +770,28 @@ function _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, �
 end
 
 function _iitm_ordered_shell_u(s, r, x, w, ϑ, xφ, wφ, d, 𝜋, τ, a½, A,
-                               k, ∂k, m, ∂m, nₘₐₓ, order_degree,
-                               scale_factor, fourier_workspace,
-                               fourier_modes)
+        k, ∂k, m, ∂m, nₘₐₓ, order_degree,
+        scale_factor, fourier_workspace,
+        fourier_modes)
     CT = typeof(m)
     L = length(order_degree)
     𝐔 = zeros(CT, 3L, 3L)
     ∂𝐔s = [zeros(CT, 3L, 3L) for _ in eachindex(∂m)]
     return _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, x, w, ϑ, xφ, wφ, d, 𝜋, τ,
-                                  a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
-                                  scale_factor, fourier_workspace,
-                                  fourier_modes)
+        a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
+        scale_factor, fourier_workspace,
+        fourier_modes)
 end
 
 function _iitm_update_general_block!(𝐓, ∂𝐓s, 𝐉, 𝐇, 𝐆, 𝐔, ∂𝐉s, ∂𝐇s,
-    ∂𝐆s, ∂𝐔s, wri, k, ∂k,
-                                     𝐓_old = copy(𝐓))
+        ∂𝐆s, ∂𝐔s, wri, k, ∂k,
+        𝐓_old = copy(𝐓))
     𝐑 = 𝐈 - wri * 𝐔 * 𝐆
     𝐑_factor = lu(𝐑)
     𝐐 = wri * (𝐑_factor \ 𝐔)
-    𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 =
-        _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
+    𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐 = _iitm_project_q_block_values(k, 𝐉, 𝐇, 𝐐)
     copyto!(𝐓_old, 𝐓)
-    𝐓_next, 𝐀, 𝐂, 𝐁_factor, 𝐗 =
-        _iitm_transition_solve_cache(𝐓_old, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ)
+    𝐓_next, 𝐀, 𝐂, 𝐁_factor, 𝐗 = _iitm_transition_solve_cache(𝐓_old, 𝐐ⱼⱼ, 𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ)
     𝐓 .= 𝐓_next
 
     for j in eachindex(∂𝐓s)
@@ -809,20 +799,19 @@ function _iitm_update_general_block!(𝐓, ∂𝐓s, 𝐉, 𝐇, 𝐆, 𝐔, ∂
              -wri * (∂𝐔s[j] * 𝐆 + 𝐔 * ∂𝐆s[j])
         ∂𝐐 = 𝐑_factor \ (wri * ∂𝐔s[j] - ∂𝐑 * 𝐐)
         if iszero(∂k[j])
-            ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ =
-                _iitm_project_q_block_material_derivatives(k, 𝐉, 𝐇, ∂𝐐)
+            ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ = _iitm_project_q_block_material_derivatives(k, 𝐉, 𝐇, ∂𝐐)
         else
-            ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ, ∂𝐐ₕⱼ, ∂𝐐ₕₕ =
-                _iitm_project_q_block_derivatives(k, ∂k[j], 𝐉, 𝐇, 𝐐, ∂𝐉s[j],
-                                                   ∂𝐇s[j], ∂𝐐, 𝐐ⱼⱼ, 𝐐ⱼₕ,
-                                                   𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
+            ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+            ∂𝐐ₕⱼ,
+            ∂𝐐ₕₕ = _iitm_project_q_block_derivatives(k, ∂k[j], 𝐉, 𝐇, 𝐐, ∂𝐉s[j],
+                ∂𝐇s[j], ∂𝐐, 𝐐ⱼⱼ, 𝐐ⱼₕ,
+                𝐐ₕⱼ, 𝐐ₕₕ, 𝐉ᵀ𝐐, 𝐇ᵀ𝐐)
         end
-        ∂𝐓s[j] .=
-            _iitm_update_transition_solve_derivative_block(𝐓_old, ∂𝐓s[j],
-                                                           𝐐ₕₕ, ∂𝐐ⱼⱼ,
-                                                           ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
-                                                           ∂𝐐ₕₕ, 𝐀, 𝐂,
-                                                           𝐁_factor, 𝐗)
+        ∂𝐓s[j] .= _iitm_update_transition_solve_derivative_block(𝐓_old, ∂𝐓s[j],
+            𝐐ₕₕ, ∂𝐐ⱼⱼ,
+            ∂𝐐ⱼₕ, ∂𝐐ₕⱼ,
+            ∂𝐐ₕₕ, 𝐀, 𝐂,
+            𝐁_factor, 𝐗)
     end
 
     return nothing
@@ -831,8 +820,8 @@ end
 function _iitm_repack_transition_matrix(𝐓, order_degree, nₘₐₓ)
     CT = eltype(𝐓)
     𝐓′ = OffsetArray(zeros(CT, 2nₘₐₓ + 1, nₘₐₓ, 2nₘₐₓ + 1, nₘₐₓ, 2, 2),
-                     (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2,
-                     1:2)
+        (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2,
+        1:2)
 
     for (j, (n′, m′)) in order_degree
         for (i, (n, m_order)) in order_degree
@@ -854,7 +843,7 @@ function _iitm_arbitrary_fixed_geometry_linearization(input, variables)
     Nφ = input.Nφ
     pvars = length(variables)
     RT, CT, k, m, ∂k, ∂m = _iitm_fixed_geometry_parameter_derivatives(input,
-                                                                       variables)
+        variables)
     wavenumber_indices = _iitm_nonzero_derivative_indices(∂k)
     material_indices = _iitm_nonzero_derivative_indices(∂m)
 
@@ -894,17 +883,17 @@ function _iitm_arbitrary_fixed_geometry_linearization(input, variables)
     end
 
     d = OffsetArray(zeros(RT, Nϑ, nₘₐₓ + 1, 2nₘₐₓ + 1), 1:Nϑ, 0:nₘₐₓ,
-                    (-nₘₐₓ):nₘₐₓ)
+        (-nₘₐₓ):nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
     Threads.@threads for (i, m_order) in collect(Iterators.product(1:Nϑ,
-                                                                   (-nₘₐₓ):nₘₐₓ))
+        (-nₘₐₓ):nₘₐₓ))
         wigner_d_recursion!(view(d, i, abs(m_order):nₘₐₓ, m_order), 0,
-                            m_order, nₘₐₓ, ϑᵥ[i];
-                            deriv = view(τ, i, abs(m_order):nₘₐₓ, m_order))
+            m_order, nₘₐₓ, ϑᵥ[i];
+            deriv = view(τ, i, abs(m_order):nₘₐₓ, m_order))
         for n in max(abs(m_order), 1):nₘₐₓ
             𝜋[i, n, m_order] = pi_func(RT, m_order, n, ϑᵥ[i];
-                                       d = d[i, n, m_order])
+                d = d[i, n, m_order])
         end
     end
 
@@ -940,23 +929,23 @@ function _iitm_arbitrary_fixed_geometry_linearization(input, variables)
         for j in wavenumber_indices
             ∂kr[j] = ∂k[j] * r
             _iitm_ricatti_argument_derivatives!(∂ψs[j], ∂ψ′s[j], ψ, ψ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
             _iitm_ricatti_argument_derivatives!(∂χs[j], ∂χ′s[j], χ, χ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
         end
         _iitm_fill_ordered_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆s, ψ, ψ′,
-                                          χ, χ′, ∂ψs, ∂ψ′s, ∂χs, ∂χ′s, kr,
-                                          ∂kr, k, ∂k, a½, order_degree,
-                                          wavenumber_indices)
+            χ, χ′, ∂ψs, ∂ψ′s, ∂χs, ∂χ′s, kr,
+            ∂kr, k, ∂k, a½, order_degree,
+            wavenumber_indices)
         shell_data = _iitm_ordered_shell_data(s, r, xᵥ, ϑᵥ, xφ, m, ∂m,
-                                              nₘₐₓ, wφ, fourier_workspace,
-                                              fourier_modes, material_indices)
+            nₘₐₓ, wφ, fourier_workspace,
+            fourier_modes, material_indices)
         _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, xᵥ, wᵥ, ϑᵥ, xφ, wφ, d, 𝜋,
-                               τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
-                               inv(2 * RT(π)), fourier_workspace,
-                               fourier_modes, shell_data, ∂Us)
+            τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, order_degree,
+            inv(2 * RT(π)), fourier_workspace,
+            fourier_modes, shell_data, ∂Us)
         _iitm_update_general_block!(𝐓, ∂𝐓s, 𝐉, 𝐇, 𝐆, 𝐔, ∂𝐉s, ∂𝐇s, ∂𝐆s,
-                                    ∂𝐔s, wri, k, ∂k, 𝐓_old)
+            ∂𝐔s, wri, k, ∂k, 𝐓_old)
     end
 
     value_container = _iitm_repack_transition_matrix(𝐓, order_degree, nₘₐₓ)
@@ -967,13 +956,13 @@ function _iitm_arbitrary_fixed_geometry_linearization(input, variables)
     end
 
     return LinearizationResult(value, jacobian, variables;
-                               metadata = (; backend = :iitm_arbitrary_analytic,
-                                           variant = :arbitrary,
-                                           λ = input.λ,
-                                           nₘₐₓ,
-                                           Nr,
-                                           Nϑ = Nϑ_config,
-                                           Nφ))
+        metadata = (; backend = :iitm_arbitrary_analytic,
+            variant = :arbitrary,
+            λ = input.λ,
+            nₘₐₓ,
+            Nr,
+            Nϑ = Nϑ_config,
+            Nφ))
 end
 
 function _iitm_nfold_fixed_geometry_linearization(input, variables)
@@ -985,7 +974,7 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
     Nφ = input.Nφ
     pvars = length(variables)
     RT, CT, k, m, ∂k, ∂m = _iitm_fixed_geometry_parameter_derivatives(input,
-                                                                       variables)
+        variables)
     wavenumber_indices = _iitm_nonzero_derivative_indices(∂k)
     material_indices = _iitm_nonzero_derivative_indices(∂m)
 
@@ -1039,17 +1028,17 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
                     for g in eachindex(𝐓s)]
 
     d = OffsetArray(zeros(RT, Nϑ, nₘₐₓ + 1, 2nₘₐₓ + 1), 1:Nϑ, 0:nₘₐₓ,
-                    (-nₘₐₓ):nₘₐₓ)
+        (-nₘₐₓ):nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
     Threads.@threads for (i, m_order) in collect(Iterators.product(1:Nϑ,
-                                                                   (-nₘₐₓ):nₘₐₓ))
+        (-nₘₐₓ):nₘₐₓ))
         wigner_d_recursion!(view(d, i, abs(m_order):nₘₐₓ, m_order), 0,
-                            m_order, nₘₐₓ, ϑᵥ[i];
-                            deriv = view(τ, i, abs(m_order):nₘₐₓ, m_order))
+            m_order, nₘₐₓ, ϑᵥ[i];
+            deriv = view(τ, i, abs(m_order):nₘₐₓ, m_order))
         for n in max(abs(m_order), 1):nₘₐₓ
             𝜋[i, n, m_order] = pi_func(RT, m_order, n, ϑᵥ[i];
-                                       d = d[i, n, m_order])
+                d = d[i, n, m_order])
         end
     end
 
@@ -1090,13 +1079,13 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
         for j in wavenumber_indices
             ∂kr[j] = ∂k[j] * r
             _iitm_ricatti_argument_derivatives!(∂ψs[j], ∂ψ′s[j], ψ, ψ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
             _iitm_ricatti_argument_derivatives!(∂χs[j], ∂χ′s[j], χ, χ′, kr,
-                                                ∂kr[j])
+                ∂kr[j])
         end
         shell_data = _iitm_ordered_shell_data(s, r, xᵥ, ϑᵥ, xφ, m, ∂m,
-                                              nₘₐₓ, wφ, fourier_workspace,
-                                              fourier_modes, material_indices)
+            nₘₐₓ, wφ, fourier_workspace,
+            fourier_modes, material_indices)
 
         for (g, group) in enumerate(order_groups)
             𝐉 = 𝐉_groups[g]
@@ -1108,23 +1097,23 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
             ∂𝐆s = ∂𝐆_groups[g]
             ∂𝐔s = ∂𝐔_groups[g]
             _iitm_fill_ordered_radial_blocks!(𝐉, 𝐇, 𝐆, ∂𝐉s, ∂𝐇s, ∂𝐆s,
-                                              ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s,
-                                              ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
-                                              a½, group, wavenumber_indices)
+                ψ, ψ′, χ, χ′, ∂ψs, ∂ψ′s,
+                ∂χs, ∂χ′s, kr, ∂kr, k, ∂k,
+                a½, group, wavenumber_indices)
             _iitm_ordered_shell_u!(𝐔, ∂𝐔s, s, r, xᵥ, wᵥ, ϑᵥ, xφ, wφ, d,
-                                   𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, group,
-                                   RT(N) / (2 * RT(π)), fourier_workspace,
-                                   fourier_modes, shell_data, ∂Us_groups[g])
+                𝜋, τ, a½, A, k, ∂k, m, ∂m, nₘₐₓ, group,
+                RT(N) / (2 * RT(π)), fourier_workspace,
+                fourier_modes, shell_data, ∂Us_groups[g])
             _iitm_update_general_block!(𝐓s[g], ∂𝐓s_by_group[g],
-                                        𝐉, 𝐇, 𝐆, 𝐔, ∂𝐉s, ∂𝐇s, ∂𝐆s, ∂𝐔s,
-                                        wri, k, ∂k, 𝐓_old_groups[g])
+                𝐉, 𝐇, 𝐆, 𝐔, ∂𝐉s, ∂𝐇s, ∂𝐆s, ∂𝐔s,
+                wri, k, ∂k, 𝐓_old_groups[g])
         end
     end
 
     value_container = OffsetArray(zeros(CT, 2nₘₐₓ + 1, nₘₐₓ, 2nₘₐₓ + 1,
-                                        nₘₐₓ, 2, 2),
-                                  (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ,
-                                  1:nₘₐₓ, 1:2, 1:2)
+            nₘₐₓ, 2, 2),
+        (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ,
+        1:nₘₐₓ, 1:2, 1:2)
     derivative_containers = [similar(value_container) for _ in 1:pvars]
     for container in derivative_containers
         fill!(container, zero(CT))
@@ -1135,9 +1124,9 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
         value_container .= value_container .+ partial
         for j in 1:pvars
             derivative_containers[j] .= derivative_containers[j] .+
-                                       _iitm_repack_transition_matrix(∂𝐓s_by_var[j][g],
-                                                                     group,
-                                                                     nₘₐₓ)
+                                        _iitm_repack_transition_matrix(∂𝐓s_by_var[j][g],
+                group,
+                nₘₐₓ)
         end
     end
 
@@ -1146,25 +1135,25 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
                 for container in derivative_containers]
 
     return LinearizationResult(value, jacobian, variables;
-                               metadata = (; backend = :iitm_nfold_analytic,
-                                           variant = :nfold,
-                                           λ = input.λ,
-                                           nₘₐₓ,
-                                           Nr,
-                                           Nϑ = Nϑ_config,
-                                           Nφ))
+        metadata = (; backend = :iitm_nfold_analytic,
+            variant = :nfold,
+            λ = input.λ,
+            nₘₐₓ,
+            Nr,
+            Nϑ = Nϑ_config,
+            Nφ))
 end
 
 function supports_linearization(problem::LinearizationProblem,
-                                backend::IITMLinearization;
-                                output::Symbol = :transition_matrix,
-                                config = nothing)
+        backend::IITMLinearization;
+        output::Symbol = :transition_matrix,
+        config = nothing)
     output == :transition_matrix ||
         return LinearizationSupport(false,
-                                    "IITM analytical linearization only supports transition matrices")
+            "IITM analytical linearization only supports transition matrices")
     backend.variant in (:auto, :axisymmetric, :nfold, :arbitrary) ||
         return LinearizationSupport(false,
-                                    "IITM analytical linearization variant must be :auto, :axisymmetric, :nfold, or :arbitrary")
+            "IITM analytical linearization variant must be :auto, :axisymmetric, :nfold, or :arbitrary")
 
     input = try
         _iitm_linearization_input(problem, config)
@@ -1173,53 +1162,53 @@ function supports_linearization(problem::LinearizationProblem,
     end
     isnothing(input) &&
         return LinearizationSupport(false,
-                                    "IITM analytical linearization requires shape, λ, nₘₐₓ, Nr, and Nϑ")
+            "IITM analytical linearization requires shape, λ, nₘₐₓ, Nr, and Nϑ")
     hasproperty(input.shape, :m) ||
         return LinearizationSupport(false,
-                                    "IITM fixed-geometry analytical linearization requires shapes with an `m` material field")
+            "IITM fixed-geometry analytical linearization requires shapes with an `m` material field")
     variant = _iitm_effective_variant(input, backend)
     if variant == :axisymmetric
         input.shape isa AbstractAxisymmetricShape ||
             return LinearizationSupport(false,
-                                        "IITM axisymmetric analytical linearization requires an axisymmetric shape")
+                "IITM axisymmetric analytical linearization requires an axisymmetric shape")
     elseif variant == :nfold
         input.shape isa AbstractNFoldShape ||
             return LinearizationSupport(false,
-                                        "IITM nfold analytical linearization requires an n-fold shape")
+                "IITM nfold analytical linearization requires an n-fold shape")
         isnothing(input.Nφ) &&
             return LinearizationSupport(false,
-                                        "IITM nfold analytical linearization requires Nφ")
+                "IITM nfold analytical linearization requires Nφ")
     elseif variant == :arbitrary
         input.shape isa AbstractShape ||
             return LinearizationSupport(false,
-                                        "IITM arbitrary analytical linearization requires an AbstractShape")
+                "IITM arbitrary analytical linearization requires an AbstractShape")
         isnothing(input.Nφ) &&
             return LinearizationSupport(false,
-                                        "IITM arbitrary analytical linearization requires Nφ")
+                "IITM arbitrary analytical linearization requires Nφ")
     else
         return LinearizationSupport(false,
-                                    "IITM analytical linearization variant must be :auto, :axisymmetric, :nfold, or :arbitrary")
+            "IITM analytical linearization variant must be :auto, :axisymmetric, :nfold, or :arbitrary")
     end
     _linearization_variables_supported(variables(problem),
-                                       _IITM_FIXED_GEOMETRY_LINEARIZATION_VARIABLES) ||
+        _IITM_FIXED_GEOMETRY_LINEARIZATION_VARIABLES) ||
         return LinearizationSupport(false,
-                                    "IITM fixed-geometry analytical linearization supports unique canonical variables drawn from $(_iitm_variable_list_message(_IITM_FIXED_GEOMETRY_LINEARIZATION_VARIABLES))")
+            "IITM fixed-geometry analytical linearization supports unique canonical variables drawn from $(_iitm_variable_list_message(_IITM_FIXED_GEOMETRY_LINEARIZATION_VARIABLES))")
 
     return LinearizationSupport(true, "")
 end
 
 function _checked_iitm_linearization_input(problem::LinearizationProblem,
-                                           backend::IITMLinearization,
-                                           config)
+        backend::IITMLinearization,
+        config)
     support = supports_linearization(problem, backend; output = :transition_matrix,
-                                     config)
+        config)
     Bool(support) ||
         throw(UnsupportedLinearization(backend, :transition_matrix, support.reason))
     return _iitm_linearization_input(problem, config)
 end
 
 function linearize_transition_matrix(problem::LinearizationProblem,
-                                     backend::IITMLinearization; config = nothing)
+        backend::IITMLinearization; config = nothing)
     input = _checked_iitm_linearization_input(problem, backend, config)
     variant = _iitm_effective_variant(input, backend)
     if variant == :axisymmetric

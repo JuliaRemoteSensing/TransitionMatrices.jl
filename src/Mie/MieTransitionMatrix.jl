@@ -36,16 +36,16 @@ function MieTransitionMatrix{CT, N}(x::Real, m::Number) where {CT, N}
 end
 
 function MieTransitionMatrix{CT, N}(x_core::Real, x_mantle::Real, m_core::Number,
-                                    m_mantle::Number) where {CT, N}
+        m_mantle::Number) where {CT, N}
     T = real(CT)
     a, b = bhcoat(T, x_core, x_mantle, m_core, m_mantle; nₘₐₓ = N)
     MieTransitionMatrix{CT, N, Vector{CT}}(a, b)
 end
 
 Base.@propagate_inbounds function Base.getindex(mie::MieTransitionMatrix{CT, N, V},
-                                                m::Integer, n::Integer, m′::Integer,
-                                                n′::Integer, p::Integer,
-                                                p′::Integer) where {CT, N, V}
+        m::Integer, n::Integer, m′::Integer,
+        n′::Integer, p::Integer,
+        p′::Integer) where {CT, N, V}
     if m != m′ || n != n′ || p != p′ || abs(m) > n
         zero(CT)
     else
@@ -72,7 +72,7 @@ The T-Matrix of a Mie scatterer is invariant under rotation. Therefore, the orig
 orientation_average(mie::MieTransitionMatrix, _pₒ; _kwargs...) = mie
 
 function scattering_cross_section(mie::MieTransitionMatrix{CT, N, V},
-                                  λ = 2π) where {CT, N, V}
+        λ = 2π) where {CT, N, V}
     Cˢᶜᵃ = zero(real(CT))
 
     @inbounds for n in 1:N
@@ -83,7 +83,7 @@ function scattering_cross_section(mie::MieTransitionMatrix{CT, N, V},
 end
 
 function extinction_cross_section(mie::MieTransitionMatrix{CT, N, V},
-                                  λ = 2π) where {CT, N, V}
+        λ = 2π) where {CT, N, V}
     Cᵉˣᵗ = zero(real(CT))
 
     @inbounds for n in 1:N
@@ -94,7 +94,7 @@ function extinction_cross_section(mie::MieTransitionMatrix{CT, N, V},
 end
 
 function amplitude_matrix(mie::MieTransitionMatrix{CT, N, V}, ϑᵢ, φᵢ, ϑₛ, φₛ;
-                          λ = 2π) where {CT, N, V}
+        λ = 2π) where {CT, N, V}
     T = real(CT)
     k₁ = 2π / λ
     𝐒₁₁, 𝐒₁₂, 𝐒₂₁, 𝐒₂₂ = zero(CT), zero(CT), zero(CT), zero(CT)
@@ -112,9 +112,9 @@ function amplitude_matrix(mie::MieTransitionMatrix{CT, N, V}, ϑᵢ, φᵢ, ϑ�
 
     for m in 0:N
         wigner_d_recursion!(view(πᵢ, m, m:N), 0, m, N, ϑᵢ;
-                            deriv = view(τᵢ, m, m:N))
+            deriv = view(τᵢ, m, m:N))
         wigner_d_recursion!(view(πₛ, m, m:N), 0, m, N, ϑₛ;
-                            deriv = view(τₛ, m, m:N))
+            deriv = view(τₛ, m, m:N))
     end
 
     for n in 1:N
@@ -160,21 +160,21 @@ end
     @testset "of a homogeneous sphere remains the same under rotations" begin
         𝐓 = MieTransitionMatrix{ComplexF64, 5}(1.0, 1.311)
         @test all(isapprox.(𝐓,
-                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
-                                   RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
+            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
         @test all(isapprox.(𝐓,
-                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
-                                   RotZYZ(0.8, 0.0, -1.0)); atol = eps(Float64)))
+            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                RotZYZ(0.8, 0.0, -1.0)); atol = eps(Float64)))
     end
 
     @testset "of a coated sphere remains the same under rotations" begin
         𝐓 = MieTransitionMatrix{ComplexF64, 5}(0.4, 0.8, 1.0, 1.311)
         @test all(isapprox.(𝐓,
-                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
-                                   RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
+            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                RotZYZ(0.2, 0.3, 0.4)); atol = eps(Float64)))
         @test all(isapprox.(𝐓,
-                            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
-                                   RotZYZ(0.8, 0.0, -1.0)); atol = eps(Float64)))
+            rotate(TransitionMatrix{ComplexF64, 5, typeof(𝐓)}(𝐓),
+                RotZYZ(0.8, 0.0, -1.0)); atol = eps(Float64)))
     end
 end
 
@@ -190,5 +190,5 @@ end
     @test scattering_cross_section(𝐓, λ) ≈ scattering_cross_section(𝐓_fallback, λ)
     @test extinction_cross_section(𝐓, λ) ≈ extinction_cross_section(𝐓_fallback, λ)
     @test all(isapprox.(amplitude_matrix(𝐓, angles...; λ = λ),
-                        amplitude_matrix(𝐓_fallback, angles...; λ = λ)))
+        amplitude_matrix(𝐓_fallback, angles...; λ = λ)))
 end

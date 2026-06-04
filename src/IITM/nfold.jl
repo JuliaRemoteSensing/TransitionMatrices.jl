@@ -23,7 +23,7 @@ Returns:
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
 function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ, Nr, Nϑ,
-                                Nφ; rₘᵢₙ = rmin(s)) where {N, T, CT}
+        Nφ; rₘᵢₙ = rmin(s)) where {N, T, CT}
     k = 2 * T(π) / λ
     rₘₐₓ = rmax(s)
 
@@ -69,8 +69,9 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
     τ = similar(d)
 
     Threads.@threads for (i, m) in collect(Iterators.product(1:Nϑ, (-nₘₐₓ):nₘₐₓ))
-        TransitionMatrices.wigner_d_recursion!(view(d, i, abs(m):nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
-                                               deriv = view(τ, i, abs(m):nₘₐₓ, m))
+        TransitionMatrices.wigner_d_recursion!(
+            view(d, i, abs(m):nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
+            deriv = view(τ, i, abs(m):nₘₐₓ, m))
 
         for n in max(abs(m), 1):nₘₐₓ
             𝜋[i, n, m] = TransitionMatrices.pi_func(T, m, n, ϑ[i]; d = d[i, n, m])
@@ -129,12 +130,12 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
 
         # Calculate for each point whether it is within the scatterer
         ε = [refractive_index(s,
-                              (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
-                               r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
+                 (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
+                     r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
         fourier_coeffs = CT <: ComplexF64 ?
                          _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
-                                                         fourier_workspace,
-                                                         fourier_modes) : nothing
+            fourier_workspace,
+            fourier_modes) : nothing
 
         # Calculate for each rem
         for (𝐓, 𝐉, 𝐇, 𝐆, 𝐔, it) in zip(𝐓s, 𝐉s, 𝐇s, 𝐆s, 𝐔s, its)
@@ -170,8 +171,8 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
                             cε = coeff_ε[freq, i]
                             cεinv = coeff_εinv[freq, i]
                             U += w[i] * @SMatrix [c*pptt*cε -c̃*im*pttp*cε 0
-                                                  c̃*im*pttp*cε c*pptt*cε 0
-                                                  0 0 c * a½[n] * a½[n′] * dd*cεinv]
+                                           c̃*im*pttp*cε c*pptt*cε 0
+                                           0 0 c * a½[n] * a½[n′] * dd * cεinv]
                         end
                     end
 
@@ -196,7 +197,7 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
     end
 
     𝐓′ = OffsetArray(zeros(CT, 2nₘₐₓ + 1, nₘₐₓ, 2nₘₐₓ + 1, nₘₐₓ, 2, 2), (-nₘₐₓ):nₘₐₓ,
-                     1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2, 1:2)
+        1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2, 1:2)
 
     for (𝐓, it) in zip(𝐓s, its)
         Threads.@threads for (j, (n′, m′)) in it

@@ -25,11 +25,11 @@ References:
 - Bohren, C.F., Huffman, D.R., 1983. Absorption and scattering of light by small particles. John Wiley & Sons.
 """
 function bhcoat(T, xᵢₙ,
-                xₒᵤₜ, mᵢₙ, mₒᵤₜ;
-                nₘₐₓ = ceil(Int,
-                            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
-                                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
-                tolerance = 1e-8)
+        xₒᵤₜ, mᵢₙ, mₒᵤₜ;
+        nₘₐₓ = ceil(Int,
+            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
+                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
+        tolerance = 1e-8)
     @assert xₒᵤₜ>=xᵢₙ "xₒᵤₜ must be greater than or equal to xᵢₙ"
 
     C = complex(T)
@@ -127,10 +127,10 @@ function bhcoat(T, xᵢₙ,
 end
 
 function bhcoat(xᵢₙ, xₒᵤₜ, mᵢₙ, mₒᵤₜ;
-                nₘₐₓ = ceil(Int,
-                            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
-                                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
-                tolerance = 1e-8)
+        nₘₐₓ = ceil(Int,
+            max(xₒᵤₜ + 4 * ∛xₒᵤₜ + 2,
+                xₒᵤₜ * max(abs(mᵢₙ), abs(mₒᵤₜ)))),
+        tolerance = 1e-8)
     bhcoat(Float64, xᵢₙ, xₒᵤₜ, mᵢₙ, mₒᵤₜ; nₘₐₓ = nₘₐₓ, tolerance = tolerance)
 end
 
@@ -139,7 +139,7 @@ end
 
     @testset "converges to bhmie when x = $x, m = $m" for (x, m) in [
         (1.0, 1.311),
-        (2.0, 1.5 + 0.01im),
+        (2.0, 1.5 + 0.01im)
     ]
         am, bm = bhmie(x, m)
         ac, bc = bhcoat(x, x, m, m)

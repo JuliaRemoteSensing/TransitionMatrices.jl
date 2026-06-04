@@ -44,16 +44,18 @@ let g = SUITE["special_functions"] = BenchmarkGroup(["math", "recurrence"])
     for nmax in (20, 50, 100)
         x = float(nmax)  # argument near the order: the demanding regime
         nextra = TransitionMatrices.estimate_ricattibesselj_extra_terms(nmax, x)
-        g["ricattibesselj_n$nmax"] = @benchmarkable TransitionMatrices.ricattibesselj($nmax,
-                                                                                      $nextra,
-                                                                                      $x)
+        g["ricattibesselj_n$nmax"] = @benchmarkable TransitionMatrices.ricattibesselj(
+            $nmax,
+            $nextra,
+            $x)
     end
     for smax in (20, 50, 100)
-        g["wigner_d_recursion_s$smax"] = @benchmarkable TransitionMatrices.wigner_d_recursion(0,
-                                                                                              2,
-                                                                                              $smax,
-                                                                                              0.7;
-                                                                                              deriv = true)
+        g["wigner_d_recursion_s$smax"] = @benchmarkable TransitionMatrices.wigner_d_recursion(
+            0,
+            2,
+            $smax,
+            0.7;
+            deriv = true)
     end
 end
 
@@ -81,7 +83,7 @@ let g = SUITE["ebcm"] = BenchmarkGroup(["core", "linalg"])
     let prolate = Spheroid(2.5198421, 10.079368, complex(1.55, 0.01))
         g["highaspect_std_n24"] = @benchmarkable transition_matrix($prolate, $λ, 24, 240)
         g["highaspect_stable_n24"] = @benchmarkable transition_matrix($prolate, $λ, 24,
-                                                                       240; stable = true)
+            240; stable = true)
     end
 end
 
@@ -100,16 +102,16 @@ end
 # --------------------------------------------------------------------------
 let g = SUITE["postprocessing"] = BenchmarkGroup(["farfield"])
     g["amplitude_matrix"] = @benchmarkable amplitude_matrix($T_REF, 0.0, 0.0, π / 4, 0.0;
-                                                            λ = $λ)
+        λ = $λ)
     g["expansion_coefficients"] = @benchmarkable expansion_coefficients($T_REF, $λ)
     g["scattering_matrix"] = @benchmarkable scattering_matrix($T_REF, $λ, $θs)
     g["extinction_cross_section"] = @benchmarkable extinction_cross_section($T_REF, $λ)
     g["scattering_cross_section"] = @benchmarkable scattering_cross_section($T_REF, $λ)
     g["orientation_average_analytic"] = @benchmarkable RandomOrientationTransitionMatrix($T_REF)
     g["orientation_average_numerical"] = @benchmarkable orientation_average($T_REF,
-                                                                           (α, β, γ) -> 1 / (8π^2);
-                                                                           Nα = 20, Nβ = 20,
-                                                                           Nγ = 1) seconds=30
+        (α, β, γ) -> 1 / (8π^2);
+        Nα = 20, Nβ = 20,
+        Nγ = 1) seconds=30
 end
 
 # --------------------------------------------------------------------------
@@ -124,8 +126,8 @@ let g = SUITE["linearization"] = BenchmarkGroup(["jacobian"])
         (; shape = Spheroid(x[1], x[2], complex(x[3], x[4])), λ = x[5])
     end
     g["ebcm_analytic_jacobian"] = @benchmarkable linearize_transition_matrix($problem,
-                                                                             EBCMLinearization();
-                                                                             config = $config) seconds=30
+        EBCMLinearization();
+        config = $config) seconds=30
 end
 
 # --------------------------------------------------------------------------
@@ -134,10 +136,10 @@ end
 # --------------------------------------------------------------------------
 let g = SUITE["precision"] = BenchmarkGroup(["multiprecision"])
     spheroid_d64 = Spheroid(Double64(2.0), Double64(1.0),
-                            Complex{Double64}(Double64(1.5), Double64(0.02)))
+        Complex{Double64}(Double64(1.5), Double64(0.02)))
     g["ebcm_m0_Float64"] = @benchmarkable transition_matrix_m₀($SPHEROID, $λ, 8, 32)
     g["ebcm_m0_Double64"] = @benchmarkable transition_matrix_m₀($spheroid_d64,
-                                                                2 * Double64(π), 8, 32) seconds=30
+        2 * Double64(π), 8, 32) seconds=30
 end
 
 # --------------------------------------------------------------------------

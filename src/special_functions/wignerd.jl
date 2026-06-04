@@ -1,8 +1,9 @@
 const WIGNER_D_EPS = 1e-12
 
 _wigner_sqrt_constant(::Type{T}, x) where {T} = √T(x)
-_wigner_sqrt_constant(::Type{T}, x) where {T <: ForwardDiff.Dual} =
+function _wigner_sqrt_constant(::Type{T}, x) where {T <: ForwardDiff.Dual}
     T(sqrt(ForwardDiff.value(x)))
+end
 
 @doc raw"""
 ```
@@ -88,7 +89,7 @@ where
 ```
 """
 function wigner_d_recursion(::Type{T}, m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number;
-                            deriv::Bool = false) where {T}
+        deriv::Bool = false) where {T}
     sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
     sₘᵢₙ = max(abs(m), abs(n))
 
@@ -99,7 +100,7 @@ function wigner_d_recursion(::Type{T}, m::Integer, n::Integer, sₘₐₓ::Integ
 end
 
 @inline function wigner_d_recursion(m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number;
-                                    deriv::Bool = false)
+        deriv::Bool = false)
     return wigner_d_recursion(Float64, m, n, sₘₐₓ, ϑ; deriv)
 end
 
@@ -111,7 +112,7 @@ wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::In
 Calculate the Wigner d-function recursively, in place.
 """
 function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer,
-                             ϑ::Number; deriv = nothing) where {T}
+        ϑ::Number; deriv = nothing) where {T}
     sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
     sₘᵢₙ = max(abs(m), abs(n))
 
@@ -124,8 +125,8 @@ function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘ�
 end
 
 function _wigner_d_recursion_core!(d::AbstractVector{T}, m::Integer, n::Integer,
-                                   sₘₐₓ::Integer, ϑ::Number;
-                                   deriv = nothing) where {T}
+        sₘₐₓ::Integer, ϑ::Number;
+        deriv = nothing) where {T}
     sₘₐₓ >= max(abs(m), abs(n)) || error("Error: sₘₐₓ < max(|m|, |n|)")
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
@@ -158,9 +159,9 @@ function _wigner_d_recursion_core!(d::AbstractVector{T}, m::Integer, n::Integer,
     else
         normalization = abs(m) == sₘᵢₙ && abs(n) == sₘᵢₙ ? one(T) :
                         _wigner_sqrt_constant(T,
-                                               factorial(T, 2sₘᵢₙ) /
-                                               factorial(T, abs(m - n)) /
-                                               factorial(T, abs(m + n)))
+            factorial(T, 2sₘᵢₙ) /
+            factorial(T, abs(m - n)) /
+            factorial(T, abs(m + n)))
         d₁ = sig * T(2)^(-sₘᵢₙ) * normalization *
              (1 - cosϑ)^(abs(m - n) / 2) * (1 + cosϑ)^(abs(m + n) / 2)
         d[d_offset + sₘᵢₙ] = d₁
@@ -213,7 +214,7 @@ end
 
 # Workaround to avoid NaNs in ForwardDiff
 function wigner_d_recursion!(d::AbstractVector{T}, m::Integer, n::Integer, sₘₐₓ::Integer,
-                             ϑ::Number; deriv = nothing) where {T <: ForwardDiff.Dual}
+        ϑ::Number; deriv = nothing) where {T <: ForwardDiff.Dual}
     if !(ϑ isa ForwardDiff.Dual) || iszero(ForwardDiff.partials(ϑ))
         dv = map(ForwardDiff.value, d)
         wigner_d_recursion!(dv, m, n, sₘₐₓ, ForwardDiff.value(ϑ); deriv = deriv)
@@ -236,8 +237,7 @@ end
     using TransitionMatrices: wigner_d, wigner_d_recursion, wigner_d_recursion!
 
     @testset "d($m, $m′, $n, $ϑ) is correct" for m in -2:2, m′ in -2:2, n in (5,),
-                                                 ϑ in (-2e-4, 2e-4, 0.5, π - 2e-4, π + 2e-4)
-
+        ϑ in (-2e-4, 2e-4, 0.5, π - 2e-4, π + 2e-4)
         d₁ = [wigner_d(m, m′, n, ϑ) for n in max(abs(m′), abs(m)):n]
         d₂ = wigner_d_recursion(m, m′, n, ϑ)
         @test all(d₁ .≈ collect(d₂))
@@ -319,12 +319,12 @@ where
     This function easily overflows for large values of `s`, and it is no faster than the recursive method. It is provided here only for checking the correctness of the recursive method. Users are recommended to use `wigner_D_recursion` instead.
 """
 @inline function wigner_D(::Type{T}, m::Integer, m′::Integer, n::Integer, α::Number,
-                          β::Number, γ::Number) where {T}
+        β::Number, γ::Number) where {T}
     return cis(-(m * T(α) + m′ * T(γ))) * wigner_d(T, m, m′, n, β)
 end
 
 @inline function wigner_D(m::Integer, m′::Integer, n::Integer, α::Number, β::Number,
-                          γ::Number)
+        γ::Number)
     return wigner_D(Float64, m, m′, n, α, β, γ)
 end
 
@@ -336,14 +336,14 @@ wigner_D_recursion([T=Float64,], m::Integer, m′::Integer, nmax::Integer, α::N
 Calculate the Wigner D-function recursively (use `wigner_d_recursion`).
 """
 function wigner_D_recursion(::Type{T}, m::Integer, m′::Integer, nmax::Integer, α::Number,
-                            β::Number,
-                            γ::Number) where {T}
+        β::Number,
+        γ::Number) where {T}
     d = wigner_d_recursion(T, m, m′, nmax, β)
     return cis(-(m * T(α) + m′ * T(γ))) * d
 end
 
 @inline function wigner_D_recursion(m::Integer, m′::Integer, nmax::Integer, α::Number,
-                                    β::Number, γ::Number)
+        β::Number, γ::Number)
     return wigner_D_recursion(Float64, m, m′, nmax, α, β, γ)
 end
 
@@ -355,8 +355,8 @@ wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Inte
 Calculate the Wigner D-function recursively, in place.
 """
 function wigner_D_recursion!(d::AbstractVector{CT}, m::Integer, m′::Integer, nmax::Integer,
-                             α::Number, β::Number,
-                             γ::Number) where {CT}
+        α::Number, β::Number,
+        γ::Number) where {CT}
     T = real(CT)
     α = T(α)
     β = T(β)
@@ -395,7 +395,7 @@ Calculate
 - If `d` is given, it is used as the value of ``d_{0 m}^n(\vartheta)``.
 """
 function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number;
-                 d = nothing) where {T}
+        d = nothing) where {T}
     ϑ = T(ϑ)
     cosϑ = cos(ϑ)
 
@@ -412,7 +412,7 @@ function pi_func(::Type{T}, m::Integer, n::Integer, ϑ::Number;
 end
 
 @inline function pi_func(m::Integer, n::Integer, ϑ::Number;
-                         d = nothing)
+        d = nothing)
     return pi_func(Float64, m, n, ϑ; d = d)
 end
 

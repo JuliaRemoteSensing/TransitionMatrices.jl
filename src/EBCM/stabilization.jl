@@ -104,7 +104,7 @@ accuracy floor of the stabilized assembly is instead the `Float64` round-off in
 `_eval_F⁺`, which extra coefficient precision cannot remove.
 """
 function _F⁺_coeffs(n::Integer, k::Integer, s::Number; nterms::Integer = 48,
-                       prec::Integer = max(256, 12n + 128))
+        prec::Integer = max(256, 12n + 128))
     qmin = max(0, (n - k - 2) ÷ 2)
     qmax = qmin + nterms - 1
     coeffs = Vector{Complex{BigFloat}}(undef, nterms)
@@ -139,7 +139,7 @@ conditioned in `Float64` when the order `n` exceeds the argument `x`; in that
 regime convergence is reached long before `xp` overflows.
 """
 function _eval_F⁺(qmin::Integer, coeffs::AbstractVector{<:Complex}, n::Integer,
-                     k::Integer, x::T) where {T <: Real}
+        k::Integer, x::T) where {T <: Real}
     p0 = 2qmin + k - n + 2
     x2 = x * x
     xp = x^p0
@@ -170,8 +170,8 @@ evaluated in the precision of `x`. `F⁺/x` is the cancellation-free replacement
 for `χ_n(x)·ψ_k(sx)` in the spheroid EBCM `U`-matrix integrand.
 """
 function F⁺(n::Integer, k::Integer, s::Number, x::T;
-               nterms::Integer = max(24, ceil(Int, 2 * abs(s) * x + 16)),
-               prec::Integer = max(256, 12n + 128)) where {T <: Real}
+        nterms::Integer = max(24, ceil(Int, 2 * abs(s) * x + 16)),
+        prec::Integer = max(256, 12n + 128)) where {T <: Real}
     qmin, coeffs = _F⁺_coeffs(n, k, s; nterms, prec)
     return _eval_F⁺(qmin, coeffs, n, k, x)
 end
@@ -189,8 +189,9 @@ end
 `[x·χ_n(x)·ψ′_k(sx)]⁺` (Somerville 2013, Eq. 59), from
 `(2k+1)ψ′_k(sx) = (k+1)ψ_{k-1}(sx) − k ψ_{k+1}(sx)`.
 """
-_xχψ′⁺(n, k, s, x; kw...) =
+function _xχψ′⁺(n, k, s, x; kw...)
     ((k + 1) * F⁺(n, k - 1, s, x; kw...) - k * F⁺(n, k + 1, s, x; kw...)) / (2k + 1)
+end
 
 """
     _xχ′ψ⁺(n, k, s, x) -> Complex
@@ -198,8 +199,9 @@ _xχψ′⁺(n, k, s, x; kw...) =
 `[x·χ′_n(x)·ψ_k(sx)]⁺` (Somerville 2013, Eq. 60), from
 `(2n+1)χ′_n(x) = (n+1)χ_{n-1}(x) − n χ_{n+1}(x)`.
 """
-_xχ′ψ⁺(n, k, s, x; kw...) =
+function _xχ′ψ⁺(n, k, s, x; kw...)
     ((n + 1) * F⁺(n - 1, k, s, x; kw...) - n * F⁺(n + 1, k, s, x; kw...)) / (2n + 1)
+end
 
 """
     _L⁷⁺(n, k, s, x) -> Complex
@@ -243,11 +245,11 @@ argument `xmax = k·rₘₐₓ` that will be evaluated (`_eval_F⁺` truncates a
 for smaller `x`). Element `k+1` holds `(qmin, coeffs)`, or `nothing` where unused.
 """
 function _F⁺_lastrow(s::Number, N::Integer, xmax::Real;
-                     prec::Integer = max(256, 12 * (N + 1) + 128),
-                     nterms::Integer = max(48, ceil(Int, 2 * abs(s) * xmax + 40)))
+        prec::Integer = max(256, 12 * (N + 1) + 128),
+        nterms::Integer = max(48, ceil(Int, 2 * abs(s) * xmax + 40)))
     M = N + 1
     lastrow = Vector{Union{Nothing, Tuple{Int, Vector{Complex{BigFloat}}}}}(nothing,
-                                                                            M + 1)
+        M + 1)
     for k in 0:(M - 4)
         iseven(M + k) || continue
         lastrow[k + 1] = _F⁺_coeffs(M, k, s; nterms, prec)
@@ -284,9 +286,9 @@ bottom-left block) to be accurate; this is comparable to the multipole order
 needed for convergence anyway.
 """
 function _F⁺_matrix(s::Number, x::T, N::Integer;
-                    prec::Integer = max(256, 12 * (N + 1) + 128),
-                    nterms::Integer = max(48, ceil(Int, 2 * abs(s) * x + 40)),
-                    lastrow = nothing) where {T <: Real}
+        prec::Integer = max(256, 12 * (N + 1) + 128),
+        nterms::Integer = max(48, ceil(Int, 2 * abs(s) * x + 40)),
+        lastrow = nothing) where {T <: Real}
     CT = Complex{T}
     M = N + 1
     # x-independent last-row series coefficients (precompute once across points).
@@ -310,6 +312,7 @@ function _F⁺_matrix(s::Number, x::T, N::Integer;
 
     # (1) direct products for n ≤ k+2 (covers all entries with no cancellation).
     @inbounds for k in 0:M, n in 0:min(k + 2, M)
+
         iseven(n + k) || continue
         F[n + 1, k + 1] = x * χv[n + 1] * ψv[k + 1]
     end
@@ -351,16 +354,20 @@ _xχ′ψ⁺_mat(F, n, k) = ((n + 1) * _Fp(F, n - 1, k) - n * _Fp(F, n + 1, k)) 
 
 "L⁷ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 62) from a precomputed F⁺ matrix."
 function _L⁷⁺_mat(F, n, k)
-    Fmm = _Fp(F, n - 1, k - 1); Fpp = _Fp(F, n + 1, k + 1)
-    Fmp = _Fp(F, n - 1, k + 1); Fpm = _Fp(F, n + 1, k - 1)
+    Fmm = _Fp(F, n - 1, k - 1);
+    Fpp = _Fp(F, n + 1, k + 1)
+    Fmp = _Fp(F, n - 1, k + 1);
+    Fpm = _Fp(F, n + 1, k - 1)
     return ((n + k + 1) * ((n + 1) * Fmm + n * Fpp) +
             (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
 end
 
 "L⁸ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 61) from a precomputed F⁺ matrix."
 function _L⁸⁺_mat(F, n, k)
-    Fmm = _Fp(F, n - 1, k - 1); Fpp = _Fp(F, n + 1, k + 1)
-    Fmp = _Fp(F, n - 1, k + 1); Fpm = _Fp(F, n + 1, k - 1)
+    Fmm = _Fp(F, n - 1, k - 1);
+    Fpp = _Fp(F, n + 1, k + 1)
+    Fmp = _Fp(F, n - 1, k + 1);
+    Fpm = _Fp(F, n + 1, k - 1)
     return ((n + k + 1) * ((k + 1) * Fmm + k * Fpp) +
             (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
 end
@@ -376,6 +383,7 @@ end
         nt = max(60, ceil(Int, 2 * abs(s) * x + 50))
         maxrel = 0.0
         for n in 4:N, k in 0:(n - 4)
+
             iseven(n + k) || continue
             vbig = setprecision(BigFloat, 600) do
                 qmin, co = _F⁺_coeffs(n, k, s; nterms = nt, prec = 600)
@@ -384,7 +392,7 @@ end
             ab = abs(ComplexF64(vbig))
             ab < 1e-285 && continue
             maxrel = max(maxrel,
-                         abs(ComplexF64(F[n + 1, k + 1]) - ComplexF64(vbig)) / ab)
+                abs(ComplexF64(F[n + 1, k + 1]) - ComplexF64(vbig)) / ab)
         end
         @test maxrel < 1e-9
     end
@@ -395,8 +403,9 @@ end
                               estimate_ricattibesselj_extra_terms
     setprecision(BigFloat, 320) do
         s = Complex{BigFloat}(1.5, 0.02)
-        for x in BigFloat.((0.3, 1.0, 2.5)), (n, k) in ((1, 1), (2, 2), (1, 3), (3, 5),
-                                                        (4, 4), (2, 4))
+        for x in BigFloat.((0.3, 1.0, 2.5)),
+            (n, k) in ((1, 1), (2, 2), (1, 3), (3, 5),
+                (4, 4), (2, 4))
             # n ≤ k+2  ⇒  F⁺ = F = x·χ_n(x)·ψ_k(s·x) (the full product, no truncation)
             @assert n ≤ k + 2
             # request ≥ 2 orders: ricattibessely! unconditionally writes χ[2].
@@ -416,6 +425,7 @@ end
     setprecision(BigFloat, 512) do
         s = Complex{BigFloat}(1.5, 0.02)
         for x in BigFloat.((0.1, 0.5, 2.0)), (n, k) in ((8, 3), (10, 2), (12, 6), (15, 4))
+
             nt = 80
             lhs = F⁺(n + 1, k, s, x; nterms = nt) + F⁺(n - 1, k, s, x; nterms = nt)
             rhs = s * (2n + 1) / (2k + 1) *
@@ -429,6 +439,7 @@ end
     using TransitionMatrices: _F⁺_coeffs, _eval_F⁺
     s = ComplexF64(1.5, 0.02)
     for (n, k) in ((10, 2), (16, 4), (20, 6)), x64 in (0.1, 0.5, 1.0, 2.0)
+
         qmin, coeffs = _F⁺_coeffs(n, k, s; nterms = 60, prec = 600)
         v64 = _eval_F⁺(qmin, coeffs, n, k, x64)
         vbig = _eval_F⁺(qmin, coeffs, n, k, BigFloat(x64))
@@ -441,8 +452,9 @@ end
                               ricattibessely, estimate_ricattibesselj_extra_terms
     setprecision(BigFloat, 320) do
         s = Complex{BigFloat}(1.5, 0.02)
-        for x in BigFloat.((0.5, 1.5)), (n, k) in ((1, 1), (2, 2), (3, 3), (1, 3),
-                                                   (2, 4), (3, 5), (2, 5), (4, 6))
+        for x in BigFloat.((0.5, 1.5)),
+            (n, k) in ((1, 1), (2, 2), (3, 3), (1, 3),
+                (2, 4), (3, 5), (2, 5), (4, 6))
             # n ≤ k ⇒ all four products have only non-negative powers ⇒ ⁺ = full.
             @assert n ≤ k
             χ, χ′ = ricattibessely(max(n, 2), x)
@@ -450,9 +462,9 @@ end
             ψ, ψ′ = ricattibesselj(max(k, 2), nextra, s * x)
             nt = 80
             @test isapprox(_xχψ′⁺(n, k, s, x; nterms = nt), x * χ[n] * ψ′[k];
-                           rtol = 1e-22, atol = 1e-22)
+                rtol = 1e-22, atol = 1e-22)
             @test isapprox(_xχ′ψ⁺(n, k, s, x; nterms = nt), x * χ′[n] * ψ[k];
-                           rtol = 1e-22, atol = 1e-22)
+                rtol = 1e-22, atol = 1e-22)
             l7 = x * (χ′[n] * ψ′[k] + n * (n + 1) * χ[n] * ψ[k] / (s * x^2))
             l8 = x * (χ′[n] * ψ′[k] + k * (k + 1) * χ[n] * ψ[k] / (s * x^2))
             @test isapprox(_L⁷⁺(n, k, s, x; nterms = nt), l7; rtol = 1e-22, atol = 1e-22)

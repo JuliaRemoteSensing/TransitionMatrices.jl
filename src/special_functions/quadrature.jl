@@ -26,14 +26,14 @@ end
 function gausslegendre!(x, w, n::Integer)
     for i in 1:(n ÷ 2)
         Arblib.hypgeom_legendre_p_ui_root!(x[n + 1 - i], w[n + 1 - i], UInt64(n),
-                                           UInt64(i - 1))
+            UInt64(i - 1))
         x[i] = -x[n + 1 - i]
         w[i] = w[n + 1 - i]
     end
 
     if n % 2 == 1
         Arblib.hypgeom_legendre_p_ui_root!(x[n ÷ 2 + 1], w[n ÷ 2 + 1], UInt64(n),
-                                           UInt64(n ÷ 2))
+            UInt64(n ÷ 2))
     end
 end
 

@@ -2,27 +2,27 @@ using TransitionMatrices
 using Documenter
 
 DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrices);
-                    recursive = true)
+    recursive = true)
 
 makedocs(;
-         modules = [TransitionMatrices],
-         authors = "Gabriel Wu <wuzihua@pku.edu.cn> and contributors",
-         repo = "https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/{commit}{path}#{line}",
-         sitename = "TransitionMatrices.jl",
-         format = Documenter.HTML(;
-                                  prettyurls = get(ENV, "CI", "false") == "true",
-                                  canonical = "https://JuliaRemoteSensing.github.io/TransitionMatrices.jl",
-                                  edit_link = "main",
-                                  assets = String[]),
-         pages = [
-             "Home" => "index.md",
-             "Usage" => "usage.md",
-             "Linearization" => "linearization.md",
-             "API" => "api.md",
-         ])
+    modules = [TransitionMatrices],
+    authors = "Gabriel Wu <wuzihua@pku.edu.cn> and contributors",
+    repo = "https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/{commit}{path}#{line}",
+    sitename = "TransitionMatrices.jl",
+    format = Documenter.HTML(;
+        prettyurls = get(ENV, "CI", "false") == "true",
+        canonical = "https://JuliaRemoteSensing.github.io/TransitionMatrices.jl",
+        edit_link = "main",
+        assets = String[]),
+    pages = [
+        "Home" => "index.md",
+        "Usage" => "usage.md",
+        "Linearization" => "linearization.md",
+        "API" => "api.md"
+    ])
 
 if get(ENV, "DOCUMENTER_SKIP_DEPLOY", "false") != "true"
     deploydocs(;
-               repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
-               devbranch = "main")
+        repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
+        devbranch = "main")
 end

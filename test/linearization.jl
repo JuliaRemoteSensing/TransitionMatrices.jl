@@ -1,6 +1,6 @@
 @testitem "Linearization framework" begin
     problem = LinearizationProblem([2.0, 3.0, 1.311, 0.02, 2π];
-                                   variables = (:a, :c, :mᵣ, :mᵢ, :λ)) do x
+        variables = (:a, :c, :mᵣ, :mᵢ, :λ)) do x
         (; shape = Spheroid(x[1], x[2], complex(x[3], x[4])), λ = x[5])
     end
 
@@ -20,7 +20,7 @@
     value = [1.0 2.0; 3.0 4.0]
     jacobian = reshape(collect(1.0:12.0), 2, 2, 3)
     matrix_result = LinearizationResult(value, jacobian, (:a, :c, :λ))
-    @test derivative(matrix_result, :c) == view(jacobian, :, :, 2)
+    @test derivative(matrix_result, :c) == view(jacobian,:,:,2)
     @test_throws BoundsError derivative(matrix_result, 0)
     @test_throws BoundsError derivative(matrix_result, 4)
     @test_throws ArgumentError derivative(matrix_result, :unknown)
@@ -36,11 +36,11 @@
     @test err isa UnsupportedLinearization
     @test occursin("Unsupported linearization", sprint(showerror, err))
     @test_throws UnsupportedLinearization linearize_observable(scattering_cross_section,
-                                                               problem,
-                                                               IITMLinearization())
+        problem,
+        IITMLinearization())
     @test_throws UnsupportedLinearization linearize_observable(:scattering_cross_section,
-                                                               problem,
-                                                               EBCMLinearization())
+        problem,
+        EBCMLinearization())
     @test_throws ArgumentError LinearizationProblem([1.0]; variables = ("x",)) do x
         x
     end
@@ -59,11 +59,11 @@ end
     @test Bool(supports_linearization(base_problem, IITMLinearization(); config))
     @test Bool(supports_linearization(base_problem, IITMLinearization(:auto); config))
     @test Bool(supports_linearization(base_problem, IITMLinearization(:axisymmetric);
-                                      config))
+        config))
 
     unsupported_output = supports_linearization(base_problem,
-                                                IITMLinearization(:axisymmetric);
-                                                output = :observable, config)
+        IITMLinearization(:axisymmetric);
+        output = :observable, config)
     @test !Bool(unsupported_output)
     @test occursin("only supports transition matrices", unsupported_output.reason)
 
@@ -75,18 +75,18 @@ end
         (; shape = Spheroid(x[1], 1.2, 1.311 + 0.02im), λ = 2π)
     end
     geometry_support = supports_linearization(geometry_problem,
-                                              IITMLinearization(:axisymmetric);
-                                              config)
+        IITMLinearization(:axisymmetric);
+        config)
     @test !Bool(geometry_support)
     @test occursin("fixed-geometry", geometry_support.reason)
 
     duplicate_problem = LinearizationProblem([1.311, 1.4];
-                                             variables = (:mᵣ, :mᵣ)) do x
+        variables = (:mᵣ, :mᵣ)) do x
         (; shape = Spheroid(0.9, 1.2, complex(x[1], 0.02)), λ = 2π)
     end
     duplicate_support = supports_linearization(duplicate_problem,
-                                               IITMLinearization(:axisymmetric);
-                                               config)
+        IITMLinearization(:axisymmetric);
+        config)
     @test !Bool(duplicate_support)
     @test occursin("unique canonical variables", duplicate_support.reason)
 
@@ -94,19 +94,19 @@ end
         (; shape = Prism(5, 0.8, 1.1, complex(x[1], 0.02)), λ = 2π)
     end
     axisymmetric_support = supports_linearization(prism_problem,
-                                                  IITMLinearization(:axisymmetric);
-                                                  config)
+        IITMLinearization(:axisymmetric);
+        config)
     @test !Bool(axisymmetric_support)
     @test occursin("requires an axisymmetric shape", axisymmetric_support.reason)
 
     nfold_missing_phi = supports_linearization(prism_problem,
-                                               IITMLinearization(:nfold); config)
+        IITMLinearization(:nfold); config)
     @test !Bool(nfold_missing_phi)
     @test occursin("requires Nφ", nfold_missing_phi.reason)
 
     arbitrary_missing_phi = supports_linearization(prism_problem,
-                                                   IITMLinearization(:arbitrary);
-                                                   config)
+        IITMLinearization(:arbitrary);
+        config)
     @test !Bool(arbitrary_missing_phi)
     @test occursin("requires Nφ", arbitrary_missing_phi.reason)
 end
@@ -143,8 +143,8 @@ end
         ∂b = coefficient_jacobian[(2N + 1):(3N), j] .+
              coefficient_jacobian[(3N + 1):(4N), j] .* im
 
-        @test ∂T.a ≈ ∂a atol=1e-9 rtol=1e-9
-        @test ∂T.b ≈ ∂b atol=1e-9 rtol=1e-9
+        @test ∂T.a≈∂a atol=1e-9 rtol=1e-9
+        @test ∂T.b≈∂b atol=1e-9 rtol=1e-9
     end
 
     subset_x₀ = [x₀[2], x₀[1]]
@@ -170,8 +170,8 @@ end
         ∂b = subset_coefficient_jacobian[(2N + 1):(3N), j] .+
              subset_coefficient_jacobian[(3N + 1):(4N), j] .* im
 
-        @test ∂T.a ≈ ∂a atol=1e-9 rtol=1e-9
-        @test ∂T.b ≈ ∂b atol=1e-9 rtol=1e-9
+        @test ∂T.a≈∂a atol=1e-9 rtol=1e-9
+        @test ∂T.b≈∂b atol=1e-9 rtol=1e-9
     end
 
     function mie_scattering(x)
@@ -211,24 +211,25 @@ end
     Cabs = linearize_observable(absorption_cross_section, problem, MieLinearization())
     ω = linearize_observable(albedo, problem, MieLinearization())
     S = linearize_observable(amplitude_matrix, problem, MieLinearization();
-                             config = (; angles))
+        config = (; angles))
 
     @test Csca.value ≈ mie_scattering(x₀)
     @test Cext.value ≈ mie_extinction(x₀)
     @test Cabs.value ≈ mie_absorption(x₀)
     @test ω.value ≈ mie_albedo(x₀)
     @test S.value ≈ amplitude_matrix(reference, angles...; λ = x₀[4])
-    @test Csca.jacobian ≈ ForwardDiff.gradient(mie_scattering, x₀) atol=1e-8 rtol=1e-8
-    @test Cext.jacobian ≈ ForwardDiff.gradient(mie_extinction, x₀) atol=1e-8 rtol=1e-8
-    @test Cabs.jacobian ≈ ForwardDiff.gradient(mie_absorption, x₀) atol=1e-8 rtol=1e-8
-    @test ω.jacobian ≈ ForwardDiff.gradient(mie_albedo, x₀) atol=1e-8 rtol=1e-8
+    @test Csca.jacobian≈ForwardDiff.gradient(mie_scattering, x₀) atol=1e-8 rtol=1e-8
+    @test Cext.jacobian≈ForwardDiff.gradient(mie_extinction, x₀) atol=1e-8 rtol=1e-8
+    @test Cabs.jacobian≈ForwardDiff.gradient(mie_absorption, x₀) atol=1e-8 rtol=1e-8
+    @test ω.jacobian≈ForwardDiff.gradient(mie_albedo, x₀) atol=1e-8 rtol=1e-8
 
     amplitude_jacobian = ForwardDiff.jacobian(mie_amplitude_vector, x₀)
     for (j, var) in enumerate(vars)
         ∂S = derivative(S, var)
-        ∂S_ref = reshape(amplitude_jacobian[1:4, j] .+
-                         amplitude_jacobian[5:8, j] .* im, 2, 2)
-        @test ∂S ≈ ∂S_ref atol=1e-8 rtol=1e-8
+        ∂S_ref = reshape(
+            amplitude_jacobian[1:4, j] .+
+            amplitude_jacobian[5:8, j] .* im, 2, 2)
+        @test ∂S≈∂S_ref atol=1e-8 rtol=1e-8
     end
 end
 
@@ -249,7 +250,7 @@ end
     ∂𝐓_fd = (𝐓_from_𝐏_and_𝐔(𝐏 .+ ϵ .* ∂𝐏, 𝐔 .+ ϵ .* ∂𝐔) -
              𝐓_from_𝐏_and_𝐔(𝐏 .- ϵ .* ∂𝐏, 𝐔 .- ϵ .* ∂𝐔)) ./ (2ϵ)
 
-    @test ∂𝐓 ≈ ∂𝐓_fd atol=1e-9 rtol=1e-8
+    @test ∂𝐓≈∂𝐓_fd atol=1e-9 rtol=1e-8
 end
 
 @testitem "EBCM block assembly exposes P-U matrices" begin
@@ -277,19 +278,19 @@ end
 
     function test_matrix(n, offset; scale = 1.0)
         [scale * ((i == j ? 1.5 + offset : 0.03 * (i + j + offset)) +
-                  0.02im * (i - j + offset)) for i in 1:n, j in 1:n]
+          0.02im * (i - j + offset)) for i in 1:n, j in 1:n]
     end
 
     𝐏s = [test_matrix(4, 1), test_matrix(4, 2), test_matrix(2, 3)]
     𝐔s = [test_matrix(4, 4; scale = 0.2),
-          test_matrix(4, 5; scale = 0.2),
-          test_matrix(2, 6; scale = 0.2)]
+        test_matrix(4, 5; scale = 0.2),
+        test_matrix(2, 6; scale = 0.2)]
     ∂𝐏s = [test_matrix(4, 7; scale = 0.1),
-           test_matrix(4, 8; scale = 0.1),
-           test_matrix(2, 9; scale = 0.1)]
+        test_matrix(4, 8; scale = 0.1),
+        test_matrix(2, 9; scale = 0.1)]
     ∂𝐔s = [test_matrix(4, 10; scale = 0.1),
-           test_matrix(4, 11; scale = 0.1),
-           test_matrix(2, 12; scale = 0.1)]
+        test_matrix(4, 11; scale = 0.1),
+        test_matrix(2, 12; scale = 0.1)]
 
     𝐓 = ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s)
     ∂𝐓 = ∂ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s, ∂𝐏s, ∂𝐔s)
@@ -297,7 +298,7 @@ end
     for m in 0:2
         @test 𝐓.𝐓[m + 1] ≈ 𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1])
         @test ∂𝐓.𝐓[m + 1] ≈ ∂𝐓_from_𝐏_and_𝐔(𝐏s[m + 1], 𝐔s[m + 1],
-                                             ∂𝐏s[m + 1], ∂𝐔s[m + 1])
+            ∂𝐏s[m + 1], ∂𝐔s[m + 1])
     end
 end
 
@@ -306,7 +307,7 @@ end
 
     function test_matrix(n, offset; scale = 1.0)
         [scale * ((i == j ? 1.3 + offset : 0.02 * (i + j + offset)) +
-                  0.03im * (i - j + offset)) for i in 1:n, j in 1:n]
+          0.03im * (i - j + offset)) for i in 1:n, j in 1:n]
     end
 
     𝐓 = test_matrix(4, 1; scale = 0.1)
@@ -320,24 +321,24 @@ end
     ∂𝐐ₕⱼ = test_matrix(4, 9; scale = 0.01)
     ∂𝐐ₕₕ = test_matrix(4, 10; scale = 0.01)
 
-    𝐓next, ∂𝐓next = _iitm_update_transition_solve_block(𝐓, ∂𝐓, 𝐐ⱼⱼ,
-                                                        𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
-                                                        ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
-                                                        ∂𝐐ₕⱼ, ∂𝐐ₕₕ)
+    𝐓next,
+    ∂𝐓next = _iitm_update_transition_solve_block(𝐓, ∂𝐓, 𝐐ⱼⱼ,
+        𝐐ⱼₕ, 𝐐ₕⱼ, 𝐐ₕₕ,
+        ∂𝐐ⱼⱼ, ∂𝐐ⱼₕ,
+        ∂𝐐ₕⱼ, ∂𝐐ₕₕ)
 
-    update_value(ϵ) =
-        _iitm_update_transition_solve_block(𝐓 .+ ϵ .* ∂𝐓, zero(∂𝐓),
-                                            𝐐ⱼⱼ .+ ϵ .* ∂𝐐ⱼⱼ,
-                                            𝐐ⱼₕ .+ ϵ .* ∂𝐐ⱼₕ,
-                                            𝐐ₕⱼ .+ ϵ .* ∂𝐐ₕⱼ,
-                                            𝐐ₕₕ .+ ϵ .* ∂𝐐ₕₕ,
-                                            zero(∂𝐐ⱼⱼ), zero(∂𝐐ⱼₕ),
-                                            zero(∂𝐐ₕⱼ), zero(∂𝐐ₕₕ))[1]
+    update_value(ϵ) = _iitm_update_transition_solve_block(𝐓 .+ ϵ .* ∂𝐓, zero(∂𝐓),
+        𝐐ⱼⱼ .+ ϵ .* ∂𝐐ⱼⱼ,
+        𝐐ⱼₕ .+ ϵ .* ∂𝐐ⱼₕ,
+        𝐐ₕⱼ .+ ϵ .* ∂𝐐ₕⱼ,
+        𝐐ₕₕ .+ ϵ .* ∂𝐐ₕₕ,
+        zero(∂𝐐ⱼⱼ), zero(∂𝐐ⱼₕ),
+        zero(∂𝐐ₕⱼ), zero(∂𝐐ₕₕ))[1]
 
     ϵ = 1e-6
     ∂𝐓_fd = (update_value(ϵ) - update_value(-ϵ)) ./ (2ϵ)
     @test 𝐓next ≈ update_value(0)
-    @test ∂𝐓next ≈ ∂𝐓_fd atol=1e-8 rtol=1e-7
+    @test ∂𝐓next≈∂𝐓_fd atol=1e-8 rtol=1e-7
 end
 
 @testitem "EBCM fixed spheroid linearization matches ForwardDiff references" begin
@@ -371,15 +372,17 @@ end
     result = linearize_transition_matrix(problem, EBCMLinearization(); config)
     @test result.metadata.backend == :ebcm_analytic
     @test !hasproperty(result.metadata, :reference)
-    reference = TransitionMatrices.transition_matrix(Spheroid(x₀[1], x₀[2],
-                                                              complex(x₀[3], x₀[4])),
-                                                     x₀[5], nₘₐₓ, Ng)
+    reference = TransitionMatrices.transition_matrix(
+        Spheroid(x₀[1], x₀[2],
+            complex(x₀[3], x₀[4])),
+        x₀[5], nₘₐₓ, Ng)
     reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
 
-    @test transition_vector_from_matrix(result.value) ≈ transition_vector_from_matrix(reference)
+    @test transition_vector_from_matrix(result.value) ≈
+          transition_vector_from_matrix(reference)
 
     for (j, var) in enumerate(vars)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(result, var))≈reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 
     subset_x₀ = [x₀[5], x₀[1]]
@@ -387,13 +390,13 @@ end
     subset_problem = LinearizationProblem(subset_x₀; variables = subset_vars) do x
         c = zero(x[1]) + zero(x[2]) + x₀[2]
         (; shape = Spheroid(x[2], c, complex(x₀[3], x₀[4])),
-         λ = x[1])
+            λ = x[1])
     end
 
     function transition_vector_from_subset(x)
         base = zero(x[1]) + zero(x[2])
         s = Spheroid(base + x[2], base + x₀[2],
-                     complex(base + x₀[3], base + x₀[4]))
+            complex(base + x₀[3], base + x₀[4]))
         𝐓 = TransitionMatrices.transition_matrix(s, x[1], nₘₐₓ, Ng)
         return transition_vector_from_matrix(𝐓)
     end
@@ -403,7 +406,7 @@ end
     subset_jacobian = ForwardDiff.jacobian(transition_vector_from_subset, subset_x₀)
 
     for (j, var) in enumerate(subset_vars)
-        @test transition_vector_from_matrix(derivative(subset_result, var)) ≈ subset_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(subset_result, var))≈subset_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 
     real_m_problem = LinearizationProblem([x₀[5]]; variables = (:λ,)) do x
@@ -449,7 +452,7 @@ end
 
     reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
     for (j, var) in enumerate(vars)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(result, var))≈reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 end
 
@@ -487,7 +490,7 @@ end
 
     reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
     for (j, var) in enumerate(vars)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(result, var))≈reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 end
 
@@ -506,7 +509,7 @@ end
     problem = LinearizationProblem(x₀; variables = vars) do x
         base = zero(x[1]) + zero(x[2]) + zero(x[3])
         (; shape = Spheroid(base + a, base + c, complex(x[3], x[2])),
-         λ = x[1])
+            λ = x[1])
     end
 
     function transition_vector_from_matrix(𝐓)
@@ -525,27 +528,29 @@ end
     @test Bool(support)
 
     result = linearize_transition_matrix(problem, IITMLinearization(:axisymmetric);
-                                         config)
+        config)
     @test result.metadata.backend == :iitm_axisymmetric_analytic
     @test !hasproperty(result.metadata, :reference)
 
-    reference = TransitionMatrices.transition_matrix_iitm(Spheroid(a, c,
-                                                                   complex(x₀[3],
-                                                                           x₀[2])),
-                                                         x₀[1], nₘₐₓ, Nr, Nϑ)
+    reference = TransitionMatrices.transition_matrix_iitm(
+        Spheroid(a, c,
+            complex(x₀[3],
+                x₀[2])),
+        x₀[1], nₘₐₓ, Nr, Nϑ)
     reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
 
-    @test transition_vector_from_matrix(result.value) ≈ transition_vector_from_matrix(reference)
+    @test transition_vector_from_matrix(result.value) ≈
+          transition_vector_from_matrix(reference)
     for (j, var) in enumerate(vars)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(result, var))≈reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 
     geometry_problem = LinearizationProblem([a]; variables = (:a,)) do x
         (; shape = Spheroid(x[1], c, complex(x₀[3], x₀[2])), λ = x₀[1])
     end
     geometry_support = supports_linearization(geometry_problem,
-                                              IITMLinearization(:axisymmetric);
-                                              config)
+        IITMLinearization(:axisymmetric);
+        config)
     @test !Bool(geometry_support)
     @test occursin("fixed-geometry", geometry_support.reason)
 end
@@ -560,8 +565,7 @@ end
 
     TransitionMatrices.rmin(s::LinearizationArbitraryPrism) = rmin(s.s)
     TransitionMatrices.rmax(s::LinearizationArbitraryPrism) = rmax(s.s)
-    TransitionMatrices.refractive_index(s::LinearizationArbitraryPrism, x) =
-        refractive_index(s.s, x)
+    TransitionMatrices.refractive_index(s::LinearizationArbitraryPrism, x) = refractive_index(s.s, x)
 
     nₘₐₓ = 2
     Nr = 3
@@ -581,12 +585,11 @@ end
         (; shape = shape_from_parameters(x), λ = x[1])
     end
 
-    transition_vector_from_matrix(𝐓) =
-        vcat(real.(vec(𝐓.container)), imag.(vec(𝐓.container)))
+    transition_vector_from_matrix(𝐓) = vcat(real.(vec(𝐓.container)), imag.(vec(𝐓.container)))
 
     function transition_vector_from_parameters(x)
         𝐓 = TransitionMatrices.transition_matrix_iitm(shape_from_parameters(x), x[1],
-                                                      nₘₐₓ, Nr, Nϑ, Nφ)
+            nₘₐₓ, Nr, Nϑ, Nφ)
         return transition_vector_from_matrix(𝐓)
     end
 
@@ -594,18 +597,19 @@ end
     @test Bool(support)
 
     result = linearize_transition_matrix(problem, IITMLinearization(:arbitrary);
-                                         config)
+        config)
     @test result.metadata.backend == :iitm_arbitrary_analytic
     @test !hasproperty(result.metadata, :reference)
 
     reference = TransitionMatrices.transition_matrix_iitm(shape_from_parameters(x₀),
-                                                          x₀[1], nₘₐₓ, Nr, Nϑ,
-                                                          Nφ)
+        x₀[1], nₘₐₓ, Nr, Nϑ,
+        Nφ)
     reference_jacobian = ForwardDiff.jacobian(transition_vector_from_parameters, x₀)
 
-    @test transition_vector_from_matrix(result.value) ≈ transition_vector_from_matrix(reference)
+    @test transition_vector_from_matrix(result.value) ≈
+          transition_vector_from_matrix(reference)
     for (j, var) in enumerate(vars)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ reference_jacobian[:, j] atol=1e-7 rtol=1e-7
+        @test transition_vector_from_matrix(derivative(result, var))≈reference_jacobian[:, j] atol=1e-7 rtol=1e-7
     end
 end
 
@@ -627,12 +631,11 @@ end
         (; shape = shape_from_parameters(x), λ = x[1])
     end
 
-    transition_vector_from_matrix(𝐓) =
-        vcat(real.(vec(𝐓.container)), imag.(vec(𝐓.container)))
+    transition_vector_from_matrix(𝐓) = vcat(real.(vec(𝐓.container)), imag.(vec(𝐓.container)))
 
     function transition_vector_from_parameters(x)
         𝐓 = TransitionMatrices.transition_matrix_iitm(shape_from_parameters(x), x[1],
-                                                      nₘₐₓ, Nr, Nϑ, Nφ)
+            nₘₐₓ, Nr, Nϑ, Nφ)
         return transition_vector_from_matrix(𝐓)
     end
 
@@ -640,14 +643,15 @@ end
     @test Bool(support)
 
     result = linearize_transition_matrix(problem, IITMLinearization(:nfold);
-                                         config)
+        config)
     @test result.metadata.backend == :iitm_nfold_analytic
     @test !hasproperty(result.metadata, :reference)
 
     reference = TransitionMatrices.transition_matrix_iitm(shape_from_parameters(x₀),
-                                                          x₀[1], nₘₐₓ, Nr, Nϑ,
-                                                          Nφ)
-    @test transition_vector_from_matrix(result.value) ≈ transition_vector_from_matrix(reference)
+        x₀[1], nₘₐₓ, Nr, Nϑ,
+        Nφ)
+    @test transition_vector_from_matrix(result.value) ≈
+          transition_vector_from_matrix(reference)
 
     δ = 1e-6
     for (j, var) in enumerate(vars)
@@ -657,6 +661,6 @@ end
         x⁻[j] -= δ
         ∂ref = (transition_vector_from_parameters(x⁺) .-
                 transition_vector_from_parameters(x⁻)) ./ (2δ)
-        @test transition_vector_from_matrix(derivative(result, var)) ≈ ∂ref atol=2e-5 rtol=2e-5
+        @test transition_vector_from_matrix(derivative(result, var))≈∂ref atol=2e-5 rtol=2e-5
     end
 end

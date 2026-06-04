@@ -73,10 +73,10 @@ n_{\text{start}} = \max(4, \lceil kr_{\max} + 4.05 \sqrt[3]{kr_{\max}} \rceil)
 - `zerofn`: Function that defines the type used for numerical integration, defaults to `() -> zero(CT)` where `CT` is defined by the shape
 """
 function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 0.0001,
-                           ndgs = 4, routine_generator = routine_mishchenko,
-                           nₛₜₐᵣₜ = 0, Ngₛₜₐᵣₜ = nₛₜₐᵣₜ * ndgs, nₘₐₓ_only = false,
-                           full = false, reuse = true, maxiter = 20,
-                           zerofn = () -> zero(CT)) where {T, CT}
+        ndgs = 4, routine_generator = routine_mishchenko,
+        nₛₜₐᵣₜ = 0, Ngₛₜₐᵣₜ = nₛₜₐᵣₜ * ndgs, nₘₐₓ_only = false,
+        full = false, reuse = true, maxiter = 20,
+        zerofn = () -> zero(CT)) where {T, CT}
     if nₛₜₐᵣₜ == 0
         kr = 2π * rmax(s) / λ
         if nₛₜₐᵣₜ == 0
@@ -110,7 +110,7 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ; threshold = 
                 for m in 1:nₘₐₓ
                     @debug "Calculating for m = $m"
                     Tₘ = transition_matrix_m(m, s, λ, nₘₐₓ, Ng;
-                                             cache = reuse ? cache : nothing)
+                        cache = reuse ? cache : nothing)
                     push!(Ts, Tₘ)
                 end
                 return AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(Ts), T}(Ts)

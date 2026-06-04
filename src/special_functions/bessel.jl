@@ -86,7 +86,7 @@ end
     using GSL: sf_bessel_jl_array
 
     @testset "x = $x, n ∈ [1, $n]" for x in (0.01, 0.1, 1.0, 10.0, 100.0, 1000.0),
-                                       n in (40,)
+        n in (40,)
 
         ψ, ψ′ = ricattibesselj(n, estimate_ricattibesselj_extra_terms(n, x), x)
 
@@ -169,6 +169,7 @@ end
     using GSL: sf_bessel_yl_array
 
     @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0, 100.0), n in (40,)
+
         χ, χ′ = ricattibessely(n, x)
 
         y = sf_bessel_yl_array(n, x)

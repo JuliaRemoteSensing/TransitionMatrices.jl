@@ -80,7 +80,7 @@ end
 
     # The bug surfaced through shape utilities; verify the realistic call path.
     s = Spheroid(Double64(2.0), Double64(1.0), Complex{Double64}(Double64(1.5),
-                                                                 Double64(0.02)))
+        Double64(0.02)))
     @test volume_equivalent_radius(s) isa Double64
     @test TransitionMatrices.transition_matrix_m₀(s, 2 * Double64(π), 6, 24) isa
           Matrix{Complex{Double64}}

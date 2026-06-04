@@ -49,8 +49,8 @@ Base.precision(::Type{ComplexF128}) = 113
 Base.precision(::Type{Complex{Arb}}) = precision(Arb)
 
 function Base.precision(::Type{
-                               Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T},
-                                                        T, N}}}) where {F, T, N}
+        Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T},
+        T, N}}}) where {F, T, N}
     precision(T)
 end
 
@@ -81,7 +81,7 @@ function Base.BigFloat(x::T) where {T <: ForwardDiff.Dual}
 end
 
 function Base.convert(::Type{Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}}},
-                      x::AcbLike) where {F, T, N}
+        x::AcbLike) where {F, T, N}
     re = ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}(real(x))
     im = ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}(imag(x))
     return Complex{ForwardDiff.Dual{ForwardDiff.Tag{F, T}, T, N}}(re, im)

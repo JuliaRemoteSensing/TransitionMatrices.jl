@@ -22,12 +22,13 @@ function RandomOrientationTransitionMatrix(𝐓::AbstractTransitionMatrix{CT, N}
     return RandomOrientationTransitionMatrix{CT, N, typeof(T̄)}(T̄)
 end
 
-Base.@propagate_inbounds function Base.getindex(oa::RandomOrientationTransitionMatrix{CT,
-                                                                                      N, V
-                                                                                      },
-                                                m::Integer, n::Integer, m′::Integer,
-                                                n′::Integer, p::Integer,
-                                                p′::Integer) where {CT, N, V}
+Base.@propagate_inbounds function Base.getindex(
+        oa::RandomOrientationTransitionMatrix{CT,
+            N, V
+        },
+        m::Integer, n::Integer, m′::Integer,
+        n′::Integer, p::Integer,
+        p′::Integer) where {CT, N, V}
     if m != m′ || n != n′ || abs(m) > n
         zero(CT)
     else
