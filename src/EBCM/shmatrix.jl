@@ -403,3 +403,105 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
 
     return 𝐏, 𝐔
 end
+
+# ── Two-step public API: `prepare_sh` then `transition_matrix(prep, λ, mᵣ)` ───
+"""
+    ShPreparation
+
+Precomputed shape-only moment tables for the Sh-matrix moment-separation method,
+returned by [`prepare_sh`](@ref). Holds the moments for every azimuthal index
+`m = 0:nmax`, which depend only on the particle geometry — not on the wavelength
+or refractive index — so a single preparation feeds an arbitrarily long sweep of
+`transition_matrix(prep, λ, mᵣ)` evaluations cheaply.
+
+The `stable` field records whether the analytic `𝐔` stabilization is valid: it
+is `true` only for spheroids, whose negative-`r`-power moments vanish (computed
+at high precision they contribute ≈0, removing the irregular-product
+cancellation). For other axisymmetric shapes the moment machinery and `𝐏` are
+still correct, but the `𝐔` reconstruction is not stabilized.
+"""
+struct ShPreparation{ST, MT}
+    shape::ST
+    nmax::Int
+    Ng::Int
+    B::Int
+    moments::MT
+    stable::Bool
+end
+
+"""
+    prepare_sh(shape, nmax, Ng; B, momtype, store) -> ShPreparation
+
+Precompute the Sh-matrix shape-only moment tables for `shape` up to order `nmax`
+with `Ng` Gauss–Legendre points. The result is reused across many
+`transition_matrix(prep, λ, mᵣ)` calls (a wavelength / refractive-index sweep)
+at the cost of only a cheap coefficient×moment sum each.
+
+Keyword arguments:
+
+- `B`: number of radial power-series terms per Riccati–Bessel function. It sets
+  the largest size parameter the reconstruction resolves (the series, like the
+  `F⁺` evaluation, needs more terms as `k·rₘₐₓ·|mᵣ|` grows); it is fixed at
+  preparation time because it determines the moment band. Default `max(30,
+  nmax+15)`.
+- `momtype`: precision used to accumulate the moments (default `BigFloat`, so a
+  spheroid's vanishing negative-power moments are accurate enough to cancel the
+  irregular-product blow-up).
+- `store`: element type the moments are stored as (default the shape's real
+  type); reconstruction runs in this precision.
+
+The analytic `𝐔` stabilization is enabled only for `Spheroid` (see
+[`ShPreparation`](@ref)).
+"""
+function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Integer;
+        B::Integer = max(30, nmax + 15), momtype::Type = BigFloat,
+        store::Type = T) where {T}
+    @assert iseven(Ng) "Ng must be even!"
+    qlo, qhi = _sh_qband(nmax, B)
+    moments = [_sh_moments_m(shape, m, nmax, Ng, qlo, qhi; momtype, store)
+               for m in 0:nmax]
+    return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, shape isa Spheroid)
+end
+
+"""
+    transition_matrix(prep::ShPreparation, λ, mᵣ) -> AxisymmetricTransitionMatrix
+    transition_matrix(prep::ShPreparation, λ)      # uses the prepared shape's mᵣ
+
+Assemble the full T-matrix at wavelength `λ` and relative refractive index `mᵣ`
+from a [`prepare_sh`](@ref) preparation, reconstructing every `m`-block from the
+precomputed moments. This is the cheap inner call of a parameter sweep; the
+expensive geometry quadrature was done once in `prepare_sh`.
+"""
+function transition_matrix(prep::ShPreparation, λ::Real, mᵣ::Number)
+    nmax, B = prep.nmax, prep.B
+    R = promote_type(eltype(prep.moments[1].Mτd), typeof(float(λ)),
+        typeof(float(real(mᵣ))))
+    CT = Complex{R}
+    k = 2R(π) / R(λ)
+    s = CT(mᵣ)
+
+    𝐓 = Vector{Matrix{CT}}(undef, nmax + 1)
+    𝐏, 𝐔 = _sh_matrices_m₀(prep.moments[1], k, s, nmax, B, CT)
+    𝐓[1] = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
+    for m in 1:nmax
+        𝐏ₘ, 𝐔ₘ = _sh_matrices_m(prep.moments[m + 1], m, k, s, nmax, B, CT)
+        𝐓[m + 1] = 𝐓_from_𝐏_and_𝐔(𝐏ₘ, 𝐔ₘ)
+    end
+
+    return AxisymmetricTransitionMatrix{CT, nmax, typeof(𝐓), R}(𝐓)
+end
+
+transition_matrix(prep::ShPreparation, λ::Real) = transition_matrix(prep, λ, prep.shape.m)
+
+"""
+    transition_matrix_spectrum(prep::ShPreparation, λs, mᵣs) -> Vector
+
+Reconstruct a T-matrix at each `(λ, mᵣ)` pair, reusing the prepared moments. If
+`mᵣs` is a single number it is held fixed across all `λs`; otherwise `λs` and
+`mᵣs` are iterated together (and must have equal length). Pass a dispersion
+table as `mᵣs` to sweep a material with wavelength-dependent index.
+"""
+function transition_matrix_spectrum(prep::ShPreparation, λs, mᵣs)
+    ms = mᵣs isa Number ? Iterators.repeated(mᵣs, length(λs)) : mᵣs
+    return [transition_matrix(prep, λ, m) for (λ, m) in zip(λs, ms)]
+end

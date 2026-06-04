@@ -46,7 +46,8 @@ export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_m
        absorption_cross_section,
        albedo, asymmetry_parameter,
        transition_matrix, transition_matrix_m, transition_matrix_m₀,
-       transition_matrix_iitm
+       transition_matrix_iitm, prepare_sh, transition_matrix_spectrum,
+       ShPreparation
 
 # Utility functions (short names)
 const calc_T = transition_matrix
