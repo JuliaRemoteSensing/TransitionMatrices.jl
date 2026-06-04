@@ -137,13 +137,14 @@ function _sh_moments_m(shape, m::Integer, nmax::Integer, Ng::Integer, qlo::Integ
     x, w, r, r′ = gaussquad(sh, Ng)
     ϑ = acos.(x)
 
-    d = OffsetArray(zeros(R, Ng, nmax + 1), 1:Ng, 0:nmax)
+    mm = Int(m)
+    d = OffsetArray(zeros(R, Ng, nmax - mm + 1), 1:Ng, mm:nmax)
     τ = similar(d)
     𝜋 = similar(d)
     for i in 1:Ng
-        wigner_d_recursion!(view(d, i, :), 0, Int(m), nmax, ϑ[i]; deriv = view(τ, i, :))
-        for n in 0:nmax
-            𝜋[i, n] = pi_func(R, Int(m), n, ϑ[i]; d = d[i, n])
+        wigner_d_recursion!(view(d, i, :), 0, mm, nmax, ϑ[i]; deriv = view(τ, i, :))
+        for n in mm:nmax
+            𝜋[i, n] = pi_func(R, mm, n, ϑ[i]; d = d[i, n])
         end
     end
 
@@ -288,6 +289,115 @@ function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
             𝐏₂₂[n, n] = -1im / sc * A[n]^2 * (PL̃₂ + (sc^2 - 1) * a[n] * PL̃₃)
             𝐔₁₁[n, n] = -1im / sc * A[n]^2 * UL̃₁
             𝐔₂₂[n, n] = -1im / sc * A[n]^2 * (UL̃₂ + (sc^2 - 1) * a[n] * UL̃₃)
+        end
+    end
+
+    return 𝐏, 𝐔
+end
+
+# ── m>0 assembly from moments (mirrors `_transition_matrix_m_core`) ───────────
+"""
+    _sh_matrices_m(mom, m, k, s, nmax, B, CT) -> (𝐏, 𝐔)
+
+Reconstruct the `m`-th `𝐏` and `𝐔` blocks (`2nn × 2nn`, `nn = nmax-m+1` for
+`m≥1`) from the precomputed moment tables `mom` for that `m`. The `K`-blocks use
+the `M^{πd}` family; the `L`-blocks reuse the same reconstruction as the `m=0`
+case (with the `m`-dependent Wigner functions baked into `mom`). The algebra
+reproduces `_transition_matrix_m_core` term by term.
+"""
+function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
+        B::Integer, ::Type{CT}) where {CT}
+    R = real(CT)
+    sym = mom.sym
+    qlo, qhi = mom.qlo, mom.qhi
+    Mτd, Mdτ, Mπd, Mππττ = mom.Mτd, mom.Mdτ, mom.Mπd, mom.Mππττ
+    nₘᵢₙ = max(1, Int(m))
+    nn = nmax - nₘᵢₙ + 1
+
+    a = OffsetArray([n * (n + 1) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+    A = OffsetArray([√(R(2n + 1) / (2n * (n + 1))) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+
+    ψ = OffsetArray([_sh_series(:ψ, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+    ψ′ = OffsetArray([_sh_series(:ψ′, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+    χ = OffsetArray([_sh_series(:χ, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+    χ′ = OffsetArray([_sh_series(:χ′, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+
+    𝐏 = zeros(CT, 2nn, 2nn)
+    𝐏₁₁ = OffsetArray(view(𝐏, 1:nn, 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐏₁₂ = OffsetArray(view(𝐏, 1:nn, (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐏₂₁ = OffsetArray(view(𝐏, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐏₂₂ = OffsetArray(view(𝐏, (nn + 1):(2nn), (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+
+    𝐔 = zeros(CT, 2nn, 2nn)
+    𝐔₁₁ = OffsetArray(view(𝐔, 1:nn, 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐔₁₂ = OffsetArray(view(𝐔, 1:nn, (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐔₂₁ = OffsetArray(view(𝐔, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+    𝐔₂₂ = OffsetArray(view(𝐔, (nn + 1):(2nn), (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
+
+    sc = Complex{R}(s)
+    Mτd_q(n, n′) = q -> _sh_lookup(Mτd, n, n′, q, qlo, qhi)
+    Mdτ_q(n, n′) = q -> _sh_lookup(Mdτ, n, n′, q, qlo, qhi)
+    Mπd_q(n, n′) = q -> _sh_lookup(Mπd, n, n′, q, qlo, qhi)
+    Mππττ_q(n) = q -> _sh_lookup(Mππττ, n, q, qlo, qhi)
+
+    for n in nₘᵢₙ:nmax, n′ in nₘᵢₙ:nmax
+
+        if !(sym && iseven(n + n′))
+            fπd = Mπd_q(n, n′)
+            PK₁ = k * _sh_recon(ψ[n], ψ′[n′], k, sc, fπd, 0)
+            PK₂ = k * _sh_recon(ψ′[n], ψ[n′], k, sc, fπd, 0)
+            UK₁ = k * _sh_recon(χ[n], ψ′[n′], k, sc, fπd, 0)
+            UK₂ = k * _sh_recon(χ′[n], ψ[n′], k, sc, fπd, 0)
+
+            𝐏₁₂[n, n′] = A[n] * A[n′] * (sc^2 - 1) / sc * PK₁
+            𝐏₂₁[n, n′] = A[n] * A[n′] * (1 - sc^2) / sc * PK₂
+            𝐔₁₂[n, n′] = A[n] * A[n′] * (sc^2 - 1) / sc * UK₁
+            𝐔₂₁[n, n′] = A[n] * A[n′] * (1 - sc^2) / sc * UK₂
+        end
+
+        if !(sym && isodd(n + n′))
+            if n != n′
+                fτd = Mτd_q(n, n′)
+                fdτ = Mdτ_q(n, n′)
+                PL₁ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, 0)
+                PL₂ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, 0)
+                PL₇ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fτd, 0) +
+                      (a[n] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, -2)
+                PL₈ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fdτ, 0) +
+                      (a[n′] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, -2)
+
+                UL₁ = k * _sh_recon(χ[n], ψ[n′], k, sc, fτd, 0)
+                UL₂ = k * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, 0)
+                UL₇ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fτd, 0) +
+                      (a[n] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fτd, -2)
+                UL₈ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fdτ, 0) +
+                      (a[n′] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, -2)
+
+                pref = 1im * A[n] * A[n′] * (sc^2 - 1) / (sc * (a[n] - a[n′]))
+                𝐏₁₁[n, n′] = pref * (a[n] * PL₂ - a[n′] * PL₁)
+                𝐏₂₂[n, n′] = pref * (a[n] * PL₈ - a[n′] * PL₇)
+                𝐔₁₁[n, n′] = pref * (a[n] * UL₂ - a[n′] * UL₁)
+                𝐔₂₂[n, n′] = pref * (a[n] * UL₈ - a[n′] * UL₇)
+            else
+                fππττ = Mππττ_q(n)
+                fτd = Mτd_q(n, n)
+                PL̃₁ = _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
+                       sc * _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
+                PL̃₂ = sc * _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
+                       _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
+                PL̃₃ = (1 / sc / k) * _sh_recon(ψ[n], ψ[n], k, sc, fτd, -2)
+
+                UL̃₁ = _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
+                       sc * _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
+                UL̃₂ = sc * _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
+                       _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
+                UL̃₃ = (1 / sc / k) * _sh_recon(χ[n], ψ[n], k, sc, fτd, -2)
+
+                𝐏₁₁[n, n] = -1im / sc * A[n]^2 * PL̃₁
+                𝐏₂₂[n, n] = -1im / sc * A[n]^2 * (PL̃₂ + (sc^2 - 1) * a[n] * PL̃₃)
+                𝐔₁₁[n, n] = -1im / sc * A[n]^2 * UL̃₁
+                𝐔₂₂[n, n] = -1im / sc * A[n]^2 * (UL̃₂ + (sc^2 - 1) * a[n] * UL̃₃)
+            end
         end
     end
 
