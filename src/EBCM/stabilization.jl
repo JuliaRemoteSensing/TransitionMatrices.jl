@@ -303,6 +303,35 @@ function _F⁺_matrix(s::Number, x::T, N::Integer;
     return F
 end
 
+# ── Modified products read from a precomputed `_F⁺_matrix` ────────────────────
+# The bare `_xχψ′⁺`/`_L⁷⁺`/… above call `F⁺` (the small-x-only series) directly
+# and are kept for testing. Production assembly uses these matrix-backed variants
+# instead, fed by `_F⁺_matrix`, which is stable for all x. `F` is the offset
+# matrix returned by `_F⁺_matrix` (`F[n+1,k+1] = F⁺_{nk}`).
+@inline _Fp(F, n, k) = @inbounds F[n + 1, k + 1]
+
+"`[x·χ_n·ψ′_k]⁺` (Somerville et al., JQSRT 123 (2013), Eq. 59) from a precomputed F⁺ matrix."
+_xχψ′⁺_mat(F, n, k) = ((k + 1) * _Fp(F, n, k - 1) - k * _Fp(F, n, k + 1)) / (2k + 1)
+
+"`[x·χ′_n·ψ_k]⁺` (Somerville et al., JQSRT 123 (2013), Eq. 60) from a precomputed F⁺ matrix."
+_xχ′ψ⁺_mat(F, n, k) = ((n + 1) * _Fp(F, n - 1, k) - n * _Fp(F, n + 1, k)) / (2n + 1)
+
+"L⁷ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 62) from a precomputed F⁺ matrix."
+function _L⁷⁺_mat(F, n, k)
+    Fmm = _Fp(F, n - 1, k - 1); Fpp = _Fp(F, n + 1, k + 1)
+    Fmp = _Fp(F, n - 1, k + 1); Fpm = _Fp(F, n + 1, k - 1)
+    return ((n + k + 1) * ((n + 1) * Fmm + n * Fpp) +
+            (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
+end
+
+"L⁸ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 61) from a precomputed F⁺ matrix."
+function _L⁸⁺_mat(F, n, k)
+    Fmm = _Fp(F, n - 1, k - 1); Fpp = _Fp(F, n + 1, k + 1)
+    Fmp = _Fp(F, n - 1, k + 1); Fpm = _Fp(F, n + 1, k - 1)
+    return ((n + k + 1) * ((k + 1) * Fmm + k * Fpp) +
+            (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
+end
+
 @testitem "_F⁺_matrix is stable across x (series-seeded Eq.51 recursion)" begin
     using TransitionMatrices: _F⁺_matrix, _F⁺_coeffs, _eval_F⁺
     s = 1.5 + 0.02im
@@ -397,4 +426,61 @@ end
             @test isapprox(_L⁸⁺(n, k, s, x; nterms = nt), l8; rtol = 1e-22, atol = 1e-22)
         end
     end
+end
+
+@testitem "ebcm_matrices_m₀(; stable=true) fixes high-aspect spheroid 𝐔 vs BigFloat" begin
+    using TransitionMatrices: Spheroid, ebcm_matrices_m₀, 𝐓_from_𝐏_and_𝐔
+
+    relmax(A, B) = begin
+        m = 0.0
+        for I in eachindex(B)
+            b = ComplexF64(B[I])
+            abs(b) < 1e-12 && continue
+            m = max(m, abs(ComplexF64(A[I]) - b) / abs(b))
+        end
+        m
+    end
+
+    λ = 2π
+    a, c, N, Ng = 0.3, 5.0, 16, 300       # prolate, aspect ≈ 17: std Float64 𝐔 is hopeless
+    mr = 1.5 + 0.01im
+    sb = Spheroid{BigFloat, Complex{BigFloat}}(big(a), big(c), Complex{BigFloat}(mr))
+    s64 = Spheroid{Float64, ComplexF64}(a, c, ComplexF64(mr))
+
+    Pb, Ub = setprecision(BigFloat, 320) do
+        ebcm_matrices_m₀(sb, big(λ), N, Ng)
+    end
+    Ps, Us = ebcm_matrices_m₀(s64, λ, N, Ng)
+    Pst, Ust = ebcm_matrices_m₀(s64, λ, N, Ng; stable = true)
+
+    @test relmax(Us, Ub) > 1e1            # standard products are catastrophically wrong
+    @test relmax(Ust, Ub) < 1e-6          # the F⁺ matrix recovers full precision
+    @test Pst == Ps                       # `stable` must leave 𝐏 untouched
+
+    Tb = 𝐓_from_𝐏_and_𝐔(ComplexF64.(Pb), ComplexF64.(Ub))
+    @test relmax(𝐓_from_𝐏_and_𝐔(Pst, Ust), Tb) < 1e-5
+end
+
+@testitem "stable=true reproduces Somerville 2013 Table 2 (prolate Qsca/Qext)" begin
+    using TransitionMatrices: Spheroid, transition_matrix, scattering_cross_section,
+                              extinction_cross_section
+
+    # Somerville, Auguié & Le Ru, JQSRT 123 (2013), Table 2 (Model 1 of their
+    # Ref. [35]): prolate, s = 1.55+0.01i, aspect h = 4, xmax = k·c = 10.079368.
+    # Reference (their New DP / AP): Qsca = 3.21290554203156, Qext = 3.36721292620922.
+    c = 10.079368
+    a = c / 4
+    s = Spheroid{Float64, ComplexF64}(a, c, 1.55 + 0.01im)
+
+    # efficiencies are normalised by the equal-surface-area radius (prolate, a<c)
+    e = √(1 - a^2 / c^2)
+    rsurf = √(2 * a^2 * (1 + (c / (a * e)) * asin(e)) / 4)
+    area = π * rsurf^2
+
+    𝐓 = transition_matrix(s, 2π, 32, 400; stable = true)
+    Qsca = scattering_cross_section(𝐓, 2π) / area
+    Qext = extinction_cross_section(𝐓, 2π) / area
+
+    @test isapprox(Qsca, 3.21290554203156; rtol = 1e-6)
+    @test isapprox(Qext, 3.36721292620922; rtol = 1e-6)
 end
