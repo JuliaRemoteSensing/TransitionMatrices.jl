@@ -180,7 +180,7 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
                 end
             end
 
-            𝐐 = wri * inv(𝐈 - wri * 𝐔 * 𝐆) * 𝐔
+            𝐐 = wri * _iitm_ldiv(𝐈 - wri * 𝐔 * 𝐆, 𝐔)
             𝐐ⱼⱼ = im * k * transpose(𝐉) * 𝐐 * 𝐉
             𝐐ⱼₕ = im * k * transpose(𝐉) * 𝐐 * 𝐇
             𝐐ₕⱼ = im * k * transpose(𝐇) * 𝐐 * 𝐉
@@ -191,7 +191,7 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
             # Eq (2.40) in Doicu & Wriedt (2018)
             # Eq (5.71) in Hu (2018)
             # Eq (4.2.36) in Sun et al. (2019) Note: incorrect multiplication order
-            𝐓 .= 𝐐ⱼⱼ + (𝐈 + 𝐐ⱼₕ) * inv(𝐈 - 𝐓 * 𝐐ₕₕ) * 𝐓 * (𝐈 + 𝐐ₕⱼ)
+            𝐓 .= 𝐐ⱼⱼ + (𝐈 + 𝐐ⱼₕ) * _iitm_ldiv(𝐈 - 𝐓 * 𝐐ₕₕ, 𝐓) * (𝐈 + 𝐐ₕⱼ)
         end
     end
 

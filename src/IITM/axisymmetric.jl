@@ -149,7 +149,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             𝐉ᵥ = view(𝐉, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐇ᵥ = view(𝐇, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐆ᵥ = view(𝐆, (3nₘᵢₙ - 2):(3nₘₐₓ), (3nₘᵢₙ - 2):(3nₘₐₓ))
-            𝐐 = wri * inv(𝐈 - wri * 𝐔 * 𝐆ᵥ) * 𝐔
+            𝐐 = wri * _iitm_ldiv(𝐈 - wri * 𝐔 * 𝐆ᵥ, 𝐔)
 
             𝐐ⱼⱼ = im * k * transpose(𝐉ᵥ) * 𝐐 * 𝐉ᵥ
             𝐐ⱼₕ = im * k * transpose(𝐉ᵥ) * 𝐐 * 𝐇ᵥ
@@ -162,7 +162,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             # Eq (5.71) in Hu (2018)
             # Eq (4.2.36) in Sun et al. (2019) Note: incorrect multiplication order
             Ts[m + 1] = 𝐐ⱼⱼ +
-                        (𝐈 + 𝐐ⱼₕ) * inv(𝐈 - Ts[m + 1] * 𝐐ₕₕ) * Ts[m + 1] *
+                        (𝐈 + 𝐐ⱼₕ) * _iitm_ldiv(𝐈 - Ts[m + 1] * 𝐐ₕₕ, Ts[m + 1]) *
                         (𝐈 + 𝐐ₕⱼ)
         end
     end

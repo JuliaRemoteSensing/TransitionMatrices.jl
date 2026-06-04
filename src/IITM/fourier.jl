@@ -1,3 +1,10 @@
+# Solve 𝐌 \ 𝐗 (= inv(𝐌) * 𝐗) through a factorization instead of forming the
+# explicit inverse and an extra matrix product — cheaper and numerically
+# cleaner on the IITM radial recursion's hot path. Arblib (Arb/Acb) matrices
+# have no generic `\`/`lu`, so they fall back to their dedicated `inv`.
+_iitm_ldiv(𝐌::AbstractMatrix{<:Union{Arb, Acb}}, 𝐗) = inv(𝐌) * 𝐗
+_iitm_ldiv(𝐌, 𝐗) = 𝐌 \ 𝐗
+
 struct _AzimuthalFourierWorkspace{P}
     contrast::Matrix{ComplexF64}
     contrast_inv::Matrix{ComplexF64}
