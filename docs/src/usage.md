@@ -56,6 +56,36 @@ You can also calculate the T-Matrix directly by specifying the truncation order 
 𝐓 = transition_matrix(spheroid, 2π, 10, 100)
 ```
 
+### High-aspect-ratio spheroids (`stable=true`)
+
+For spheroids of high aspect ratio the standard EBCM surface integrals lose all
+precision in `Float64`: the irregular Riccati–Bessel products develop large
+Laurent terms that cancel analytically on integration but not numerically. Pass
+`stable=true` to assemble the `𝐔`-matrix with the cancellation-free `F⁺`
+formulation of [Somerville, Auguié & Le Ru (2013)](https://doi.org/10.1016/j.jqsrt.2012.07.017),
+which removes the cancellation and restores a relative accuracy of about `1e-9`
+in `Float64`, independent of aspect ratio:
+
+```julia
+prolate = Spheroid{Float64, ComplexF64}(2.5198421, 10.079368, 1.55 + 0.01im)  # aspect 4
+𝐓 = transition_matrix(prolate, 2π, 32, 400; stable = true)
+```
+
+This option is **only valid for `Spheroid`** (the cancellation relies on the
+spheroid surface) and costs roughly 2–3× the default assembly, so it is opt-in.
+For it to help, choose `nₘₐₓ` large enough that `nₘₐₓ + 1 ≳ k·c + 15`, where `c`
+is the largest semi-axis — comparable to the order needed for convergence at that
+size anyway.
+
+`stable=true` and extended precision are **orthogonal** and stack. Just raising
+precision without `stable` (e.g. `Spheroid{Double64}`) only buys ~15 extra digits
+of headroom against the cancellation — enough for moderate aspect ratios but not
+high ones — and is several times slower; for a high-aspect spheroid `stable=true`
+in `Float64` is both more accurate and faster. When you need more than `~1e-9`,
+combine the two: `stable=true` with a `Double64` element type reaches `~1e-25` at
+high aspect ratio, and also lowers the residual `Float64` round-off floor that
+appears as the refractive index approaches `s → 1`.
+
 ## Post-processing
 
 After getting the T-Matrix, you can calculate the far-field scattering properties using the following functions:

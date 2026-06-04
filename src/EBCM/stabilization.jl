@@ -35,8 +35,9 @@
 # resulting F⁺ is a well-behaved series that is cheap and safe to evaluate in
 # the requested floating-point type.
 #
-# This module is self-contained and not yet wired into the EBCM solver; it is
-# the foundation (stage S1) for a stabilised spheroid integrand.
+# `_F⁺_matrix` assembles the whole F⁺ matrix stably for all x (series-seeded
+# recursion, §4.2); `transition_matrix(…; stable=true)` uses it to rebuild the
+# spheroid `𝐔`-matrix integrands for both m=0 and m>0.
 
 """
     _odd_dfact(m) -> BigInt
@@ -95,7 +96,12 @@ High-precision coefficients of `F⁺_{nk}(s,x) = Σ c_q x^{2q+k-n+2}` for
 `q = qmin, …, qmin+nterms-1`, returned as a `Vector{Complex{BigFloat}}`.
 `s` is the (generally complex) relative refractive index. The sum defining each
 `c_q` is accumulated in `BigFloat` at precision `prec` bits to defeat the
-`(2n-1)!!`-scale cancellation.
+`(2n-1)!!`-scale cancellation. This `BigFloat` accumulation also subsumes the
+additional `s≈1` cancellation that Somerville et al. 2013 handle analytically in
+their Appendix B (the leading coefficients vanish at `s=1`): the base precision
+has many digits of margin for it, so no special treatment is needed — the s≈1
+accuracy floor of the stabilized assembly is instead the `Float64` round-off in
+`_eval_F⁺`, which extra coefficient precision cannot remove.
 """
 function _F⁺_coeffs(n::Integer, k::Integer, s::Number; nterms::Integer = 48,
                        prec::Integer = max(256, 12n + 128))
@@ -225,8 +231,32 @@ function _L⁸⁺(n, k, s, x; kw...)
             (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
 end
 
+"""
+    _F⁺_lastrow(s, N, xmax; prec, nterms) -> Vector
+
+Precompute the *x-independent* power-series coefficients of the F⁺-matrix last row
+`n = N+1` (the entries with `n-k ≥ 4`, `n+k` even, that seed the recursion). These
+are the only expensive (`BigFloat`) part of `_F⁺_matrix`, so computing them once
+and passing them to every per-quadrature-point `_F⁺_matrix` call removes the
+dominant cost of the stabilized assembly. `nterms` is sized for the *largest*
+argument `xmax = k·rₘₐₓ` that will be evaluated (`_eval_F⁺` truncates adaptively
+for smaller `x`). Element `k+1` holds `(qmin, coeffs)`, or `nothing` where unused.
+"""
+function _F⁺_lastrow(s::Number, N::Integer, xmax::Real;
+                     prec::Integer = max(256, 12 * (N + 1) + 128),
+                     nterms::Integer = max(48, ceil(Int, 2 * abs(s) * xmax + 40)))
+    M = N + 1
+    lastrow = Vector{Union{Nothing, Tuple{Int, Vector{Complex{BigFloat}}}}}(nothing,
+                                                                            M + 1)
+    for k in 0:(M - 4)
+        iseven(M + k) || continue
+        lastrow[k + 1] = _F⁺_coeffs(M, k, s; nterms, prec)
+    end
+    return lastrow
+end
+
 @doc raw"""
-    _F⁺_matrix(s, x, N; prec, nterms) -> Matrix{Complex{T}}
+    _F⁺_matrix(s, x, N; prec, nterms, lastrow) -> Matrix{Complex{T}}
 
 Stably evaluate the whole matrix of `F⁺_{nk}(s,x)` for `0 ≤ n,k ≤ N+1`, returned
 with a 1-based offset (`F[n+1, k+1]` holds `F⁺_{nk}`). Only `n+k`-even entries are
@@ -255,9 +285,12 @@ needed for convergence anyway.
 """
 function _F⁺_matrix(s::Number, x::T, N::Integer;
                     prec::Integer = max(256, 12 * (N + 1) + 128),
-                    nterms::Integer = max(48, ceil(Int, 2 * abs(s) * x + 40))) where {T <: Real}
+                    nterms::Integer = max(48, ceil(Int, 2 * abs(s) * x + 40)),
+                    lastrow = nothing) where {T <: Real}
     CT = Complex{T}
     M = N + 1
+    # x-independent last-row series coefficients (precompute once across points).
+    lastrow === nothing && (lastrow = _F⁺_lastrow(s, N, x; prec, nterms))
     F = zeros(CT, M + 1, M + 1)          # F[n+1, k+1] = F⁺_{nk},  n,k ∈ 0:M
     at(n, k) = @inbounds F[n + 1, k + 1]
 
@@ -285,7 +318,7 @@ function _F⁺_matrix(s::Number, x::T, N::Integer;
     #     of the last row is already filled by the direct products above).
     @inbounds for k in 0:(M - 4)
         iseven(M + k) || continue
-        qmin, coeffs = _F⁺_coeffs(M, k, s; nterms, prec)
+        qmin, coeffs = lastrow[k + 1]
         F[M + 1, k + 1] = _eval_F⁺(qmin, coeffs, M, k, x)
     end
 

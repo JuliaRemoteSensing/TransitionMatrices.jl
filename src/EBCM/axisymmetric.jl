@@ -167,10 +167,10 @@ end
 
 @doc raw"""
 ```
-transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng) where {T, CT}
+transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Ng; stable = false) where {T, CT}
 ```
 
-Calculate the T-Matrix for a given scatterer and wavelengthg`.
+Calculate the T-Matrix for a given scatterer and wavelength.
 
 Parameters:
 
@@ -178,6 +178,21 @@ Parameters:
 - `λ`: the wavelength.
 - `nₘₐₓ`: the maximum order of the T-Matrix.
 - `Ng`: the number of Gauss-Legendre quadrature points to be used.
+- `stable`: when `true`, assemble the `𝐔`-matrix integrals with the
+  cancellation-free `F⁺` formulation of Somerville, Auguié & Le Ru, JQSRT 123
+  (2013). The standard integrands lose all precision for spheroids of high aspect
+  ratio (the irregular `χ_n·ψ_k` products develop huge Laurent terms that should
+  cancel on integration but do not numerically); `stable=true` removes that
+  cancellation, recovering a relative accuracy of about `1e-9` in `Float64`
+  regardless of aspect ratio. It is **only valid for `Spheroid`** (the
+  cancellation relies on the spheroid surface) and costs roughly 2–3× the default
+  assembly, so it is opt-in. For it to help, `nₘₐₓ` must be large enough that
+  `nₘₐₓ+1 ≳ k·c + 15`, where `c` is the largest semi-axis — comparable to the
+  order needed for convergence at that size anyway. The remaining `Float64`
+  round-off (in particular a `~1e-9` floor as the refractive index `s → 1`) is
+  orthogonal to the cancellation and is lowered by using an extended-precision
+  element type: `stable=true` with `Double64` reaches `~1e-25` at high aspect
+  ratio.
 
 Returns:
 
@@ -326,8 +341,14 @@ function ebcm_matrices_m₀(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
     # aspect ratio (the χ_n·ψ_k products have huge cancelling negative powers).
     # When `stable`, replace those products by the cancellation-free `F⁺` matrix
     # (Somerville et al. 2013); the diagonal (n=n′) has no cancellation and `𝐏`
-    # is regular, so both keep the standard direct products.
-    Fmats = stable ? [_F⁺_matrix(s.m, k * r[i], nₘₐₓ) for i in 1:ng] : nothing
+    # is regular, so both keep the standard direct products. The x-independent
+    # last-row series coefficients are computed once and shared across all points.
+    Fmats = if stable
+        lastrow = _F⁺_lastrow(s.m, nₘₐₓ, k * rₘₐₓ)
+        [_F⁺_matrix(s.m, k * r[i], nₘₐₓ; lastrow) for i in 1:ng]
+    else
+        nothing
+    end
 
     Threads.@threads for (n, n′) in collect(Iterators.product(1:nₘₐₓ, 1:nₘₐₓ))
         if sym && isodd(n + n′)
@@ -498,7 +519,12 @@ function ebcm_matrices_m(m, s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ,
                             kₛr)
         end
 
-        Fmats = stable ? [_F⁺_matrix(s.m, k * r[i], nₘₐₓ) for i in 1:ng] : nothing
+        Fmats = if stable
+            lastrow = _F⁺_lastrow(s.m, nₘₐₓ, k * rₘₐₓ)
+            [_F⁺_matrix(s.m, k * r[i], nₘₐₓ; lastrow) for i in 1:ng]
+        else
+            nothing
+        end
 
         return _transition_matrix_m_core(m, s, k, nₘₐₓ, Ng, nₘᵢₙ, nn, ng, sym, zerofn,
                                          w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′, Fmats)

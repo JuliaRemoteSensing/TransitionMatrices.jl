@@ -74,6 +74,15 @@ let g = SUITE["ebcm"] = BenchmarkGroup(["core", "linalg"])
 
     # Realistic user call: automatic nmax/Ng convergence from scratch.
     g["auto_converge_spheroid"] = @benchmarkable calc_T($SPHEROID, $λ) seconds=30
+
+    # Stabilized spheroid path (Somerville F⁺) vs the standard assembly, for a
+    # high-aspect prolate (h=4, xmax≈10) where the standard Float64 integrands
+    # lose precision. Matched (nₘₐₓ, Ng) so the ratio is the stabilization cost.
+    let prolate = Spheroid(2.5198421, 10.079368, complex(1.55, 0.01))
+        g["highaspect_std_n24"] = @benchmarkable transition_matrix($prolate, $λ, 24, 240)
+        g["highaspect_stable_n24"] = @benchmarkable transition_matrix($prolate, $λ, 24,
+                                                                       240; stable = true)
+    end
 end
 
 # --------------------------------------------------------------------------
