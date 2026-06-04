@@ -194,16 +194,32 @@ function transition_matrix(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, 
     AxisymmetricTransitionMatrix{CT, nₘₐₓ, typeof(𝐓), T}(𝐓)
 end
 
+# Factor 𝐐 once so the factorization can be reused for the value block and
+# every Jacobian slice (𝐐 depends only on 𝐏 and 𝐔, not on the differentiated
+# parameter). Arblib matrices have no generic `lu`/`\`, so fall back to their
+# dedicated `inv` and right-multiply. The `_ebcm_rdiv` methods dispatch on
+# whether the second argument is an explicit inverse (a `Matrix`) or an `lu`
+# factorization (which is not an `AbstractMatrix`).
+_ebcm_factor(𝐐::AbstractMatrix{<:Union{Arb, Acb}}) = inv(𝐐)
+_ebcm_factor(𝐐::AbstractMatrix) = lu(𝐐)
+
+_ebcm_rdiv(𝐀, 𝐐⁻¹::AbstractMatrix) = 𝐀 * 𝐐⁻¹
+_ebcm_rdiv(𝐀, F) = 𝐀 / F
+
 function 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
     𝐐 = @. 𝐏 + 1im * 𝐔
-    𝐓 = -𝐏 * inv(𝐐)
+    # 𝐓 = -𝐏 𝐐⁻¹, via a factorization instead of an explicit inverse.
+    return -_ebcm_rdiv(𝐏, _ebcm_factor(𝐐))
 end
 
 function ∂𝐓_from_𝐏_and_𝐔(𝐏, 𝐔, ∂𝐏, ∂𝐔)
     𝐐 = @. 𝐏 + 1im * 𝐔
     ∂𝐐 = @. ∂𝐏 + 1im * ∂𝐔
-    𝐐⁻¹ = inv(𝐐)
-    -∂𝐏 * 𝐐⁻¹ + 𝐏 * 𝐐⁻¹ * ∂𝐐 * 𝐐⁻¹
+    F = _ebcm_factor(𝐐)
+    𝐓 = -_ebcm_rdiv(𝐏, F)
+    # ∂𝐓 = -∂𝐏 𝐐⁻¹ + 𝐏 𝐐⁻¹ ∂𝐐 𝐐⁻¹ = -(∂𝐏 + 𝐓 ∂𝐐) 𝐐⁻¹  (since 𝐏 𝐐⁻¹ = -𝐓),
+    # reusing the single factorization `F` and the already-computed `𝐓`.
+    return -_ebcm_rdiv(∂𝐏 + 𝐓 * ∂𝐐, F)
 end
 
 function _axisymmetric_transition_matrix_from_blocks(𝐓s::AbstractVector)

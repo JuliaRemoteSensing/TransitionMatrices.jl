@@ -740,10 +740,22 @@ function linearize_transition_matrix(problem::LinearizationProblem,
                                      backend::EBCMLinearization; config = nothing)
     input = _checked_ebcm_linearization_input(problem, backend, config)
     𝐏s, 𝐔s = _ebcm_matrices(input)
-    value = ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s)
+
+    # 𝐐 = 𝐏 + i𝐔 per m-block depends only on 𝐏 and 𝐔, not on the differentiated
+    # parameter. Factor each block once here and reuse it for the value block and
+    # every Jacobian slice, instead of recomputing inv(𝐐) per parameter per block.
+    factors = [_ebcm_factor(@. 𝐏 + 1im * 𝐔) for (𝐏, 𝐔) in zip(𝐏s, 𝐔s)]
+    𝐓blocks = [-_ebcm_rdiv(𝐏, F) for (𝐏, F) in zip(𝐏s, factors)]
+    value = _axisymmetric_transition_matrix_from_blocks(𝐓blocks)
+
     matrix_derivatives = _ebcm_matrix_derivatives(input, variables(problem))
     jacobian = map(matrix_derivatives) do (∂𝐏s, ∂𝐔s)
-        ∂ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s, ∂𝐏s, ∂𝐔s)
+        ∂blocks = map(∂𝐏s, ∂𝐔s, 𝐓blocks, factors) do ∂𝐏, ∂𝐔, 𝐓, F
+            ∂𝐐 = @. ∂𝐏 + 1im * ∂𝐔
+            # ∂𝐓 = -(∂𝐏 + 𝐓 ∂𝐐) 𝐐⁻¹, reusing the block factor and value block.
+            -_ebcm_rdiv(∂𝐏 + 𝐓 * ∂𝐐, F)
+        end
+        _axisymmetric_transition_matrix_from_blocks(∂blocks)
     end
 
     return LinearizationResult(value, jacobian, variables(problem);
