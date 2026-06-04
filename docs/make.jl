@@ -22,6 +22,8 @@ makedocs(;
              "API" => "api.md",
          ])
 
-deploydocs(;
-           repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
-           devbranch = "main")
+if get(ENV, "DOCUMENTER_SKIP_DEPLOY", "false") != "true"
+    deploydocs(;
+               repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
+               devbranch = "main")
+end

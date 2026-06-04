@@ -3,6 +3,7 @@
 *.jl.cov
 *.jl.mem
 /coverage-lcov.info
+/lcov.info
 /lcov/
 Manifest.toml
 .CondaPkg/

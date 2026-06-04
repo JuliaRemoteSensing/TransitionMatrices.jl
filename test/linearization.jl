@@ -21,14 +21,94 @@
     jacobian = reshape(collect(1.0:12.0), 2, 2, 3)
     matrix_result = LinearizationResult(value, jacobian, (:a, :c, :λ))
     @test derivative(matrix_result, :c) == view(jacobian, :, :, 2)
+    @test_throws BoundsError derivative(matrix_result, 0)
+    @test_throws BoundsError derivative(matrix_result, 4)
+    @test_throws ArgumentError derivative(matrix_result, :unknown)
 
     support = supports_linearization(problem, EBCMLinearization())
     @test !Bool(support)
     @test !isempty(support.reason)
-    @test_throws UnsupportedLinearization linearize_transition_matrix(problem, EBCMLinearization())
+    err = try
+        linearize_transition_matrix(problem, EBCMLinearization())
+    catch caught
+        caught
+    end
+    @test err isa UnsupportedLinearization
+    @test occursin("Unsupported linearization", sprint(showerror, err))
     @test_throws UnsupportedLinearization linearize_observable(scattering_cross_section,
                                                                problem,
                                                                IITMLinearization())
+    @test_throws UnsupportedLinearization linearize_observable(:scattering_cross_section,
+                                                               problem,
+                                                               EBCMLinearization())
+    @test_throws ArgumentError LinearizationProblem([1.0]; variables = ("x",)) do x
+        x
+    end
+end
+
+@testitem "IITM linearization support contracts" begin
+    base_problem = LinearizationProblem([1.311]; variables = (:mᵣ,)) do x
+        (; shape = Spheroid(0.9, 1.2, complex(x[1], 0.02)), λ = 2π)
+    end
+
+    missing_config = supports_linearization(base_problem, IITMLinearization())
+    @test !Bool(missing_config)
+    @test occursin("requires shape", missing_config.reason)
+
+    config = (; nₘₐₓ = 2, Nr = 3, Nϑ = 8)
+    @test Bool(supports_linearization(base_problem, IITMLinearization(); config))
+    @test Bool(supports_linearization(base_problem, IITMLinearization(:auto); config))
+    @test Bool(supports_linearization(base_problem, IITMLinearization(:axisymmetric);
+                                      config))
+
+    unsupported_output = supports_linearization(base_problem,
+                                                IITMLinearization(:axisymmetric);
+                                                output = :observable, config)
+    @test !Bool(unsupported_output)
+    @test occursin("only supports transition matrices", unsupported_output.reason)
+
+    bad_variant = supports_linearization(base_problem, IITMLinearization(:bad); config)
+    @test !Bool(bad_variant)
+    @test occursin("variant must be", bad_variant.reason)
+
+    geometry_problem = LinearizationProblem([0.9]; variables = (:a,)) do x
+        (; shape = Spheroid(x[1], 1.2, 1.311 + 0.02im), λ = 2π)
+    end
+    geometry_support = supports_linearization(geometry_problem,
+                                              IITMLinearization(:axisymmetric);
+                                              config)
+    @test !Bool(geometry_support)
+    @test occursin("fixed-geometry", geometry_support.reason)
+
+    duplicate_problem = LinearizationProblem([1.311, 1.4];
+                                             variables = (:mᵣ, :mᵣ)) do x
+        (; shape = Spheroid(0.9, 1.2, complex(x[1], 0.02)), λ = 2π)
+    end
+    duplicate_support = supports_linearization(duplicate_problem,
+                                               IITMLinearization(:axisymmetric);
+                                               config)
+    @test !Bool(duplicate_support)
+    @test occursin("unique canonical variables", duplicate_support.reason)
+
+    prism_problem = LinearizationProblem([1.311]; variables = (:mᵣ,)) do x
+        (; shape = Prism(5, 0.8, 1.1, complex(x[1], 0.02)), λ = 2π)
+    end
+    axisymmetric_support = supports_linearization(prism_problem,
+                                                  IITMLinearization(:axisymmetric);
+                                                  config)
+    @test !Bool(axisymmetric_support)
+    @test occursin("requires an axisymmetric shape", axisymmetric_support.reason)
+
+    nfold_missing_phi = supports_linearization(prism_problem,
+                                               IITMLinearization(:nfold); config)
+    @test !Bool(nfold_missing_phi)
+    @test occursin("requires Nφ", nfold_missing_phi.reason)
+
+    arbitrary_missing_phi = supports_linearization(prism_problem,
+                                                   IITMLinearization(:arbitrary);
+                                                   config)
+    @test !Bool(arbitrary_missing_phi)
+    @test occursin("requires Nφ", arbitrary_missing_phi.reason)
 end
 
 @testitem "Mie linearization matches ForwardDiff references" begin

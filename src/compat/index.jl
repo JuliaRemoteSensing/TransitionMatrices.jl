@@ -46,7 +46,6 @@ function Base.Float16(x::T) where {T <: ForwardDiff.Dual}
     Float16(ForwardDiff.value(x))
 end
 
-Base.Float32(x::ArbLike) = Float32(BigFloat(x))
 function Base.Float32(x::T) where {T <: ForwardDiff.Dual}
     Float32(ForwardDiff.value(x))
 end
