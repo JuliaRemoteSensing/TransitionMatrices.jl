@@ -68,38 +68,76 @@ function _sh_series(kind::Symbol, n::Integer, B::Integer, ::Type{R}) where {R}
     return base, coeffs
 end
 
-# ── Coefficient×moment reconstruction ─────────────────────────────────────────
+# ── Precomputed coefficient tables (size/material-independent) ────────────────
 """
-    _sh_recon(fterm, gterm, k, s, M, shift) -> Complex
+    _sh_coeff_tables(nmax, B, R) -> NamedTuple(ψ, ψ′, χ, χ′)
+
+Build the radial power-series coefficient tables once (they depend only on the
+order and `B`, not on `k`/`mᵣ`), so a parameter sweep never re-runs the BigInt
+`_β`/`_γ` arithmetic. Each entry is an `OffsetVector` over `n = 1:nmax` of
+`(base, coeffs)` from [`_sh_series`](@ref).
+"""
+function _sh_coeff_tables(nmax::Integer, B::Integer, ::Type{R}) where {R}
+    mk(kind) = OffsetArray([_sh_series(kind, n, B, R) for n in 1:nmax], 1:nmax)
+    return (ψ = mk(:ψ), ψ′ = mk(:ψ′), χ = mk(:χ), χ′ = mk(:χ′))
+end
+
+# ── Per-evaluation power weighting ────────────────────────────────────────────
+"""
+    _sh_weighted(tbl, nmin, nmax, z) -> OffsetVector of (base, w)
+
+Fold the argument power `z^{base+2b}` into the series coefficients, giving
+`w[b+1] = coeffs[b+1]·z^{base+2b}`, with `z = k` for the regular factor `f(kr)`
+or `z = s·k` for the internal factor `g(s·kr)`. Built once per `(k, mᵣ)` point
+per order and reused across all integrands. Powers advance incrementally — no
+`^` in the hot loop. The `base` is kept so [`_sh_conv`](@ref) can index the
+shape moment by the correct `r`-power.
+"""
+function _sh_weighted(tbl, nmin::Integer, nmax::Integer, z::Number)
+    z2 = z * z
+    Tz = typeof(z * one(eltype(tbl[nmin][2])))
+    out = OffsetArray(Vector{Tuple{Int, Vector{Tz}}}(undef, nmax - nmin + 1), nmin:nmax)
+    for n in nmin:nmax
+        base, cf = tbl[n]
+        B = length(cf)
+        w = Vector{Tz}(undef, B)
+        zb = z^base
+        @inbounds for b in 1:B
+            w[b] = cf[b] * zb
+            zb *= z2
+        end
+        out[n] = (base, w)
+    end
+    return out
+end
+
+# ── Folded coefficient×moment reconstruction ──────────────────────────────────
+"""
+    _sh_conv(f, g, M, shift) -> Complex
 
 Reconstruct `∫ (geometry) · f_n(kr) · g_{n′}(s·kr) · r^{shift} dϑ` from the
-radial series terms `fterm = (basef, cf)`, `gterm = (baseg, cg)` and the
-shape-moment lookup `M(q)` (returns the moment of `r^q`). The size/material
-dependence is entirely in `k` (real) and `s` (complex); `M` carries the
-geometry. Powers are advanced incrementally to avoid `^` in the inner loop.
+weighted radial terms `f = (basef, u)`, `g = (baseg, v)` (see [`_sh_weighted`](@ref))
+and the shape-moment lookup `M(q)`. The double sum is folded along the
+anti-diagonals `j = b+c`: the `r`-power is `q₀ + 2j` (`q₀ = basef+baseg+shift`)
+and depends only on `j`, so the moment `M` is fetched `O(B)` times instead of
+`O(B²)`, and the inner convolution `Σ_{b+c=j} u[b]·v[c]` reuses the precomputed
+weighted terms with no `^` and no per-term coefficient work.
 """
-function _sh_recon(fterm, gterm, k::Real, s::Number, M, shift::Integer)
-    basef, cf = fterm
-    baseg, cg = gterm
-    Bf = length(cf)
-    Bg = length(cg)
-    k2 = k * k
-    sk = s * k
-    s2k2 = sk * sk
-    pref = k^basef * sk^baseg
-    acc = zero(typeof(pref))
-    k2b = one(k)
-    @inbounds for b in 0:(Bf - 1)
-        s2c = one(s2k2)
-        cfb = cf[b + 1]
-        for c in 0:(Bg - 1)
-            q = basef + baseg + shift + 2 * (b + c)
-            acc += (cfb * cg[c + 1]) * (k2b * s2c) * M(q)
-            s2c *= s2k2
+@inline function _sh_conv(f, g, M, shift::Integer)
+    basef, u = f
+    baseg, v = g
+    Bf = length(u)
+    Bg = length(v)
+    q0 = basef + baseg + shift
+    acc = zero(eltype(v))
+    @inbounds for j in 0:(Bf + Bg - 2)
+        si = zero(eltype(v))
+        for b in max(0, j - (Bg - 1)):min(j, Bf - 1)
+            si += u[b + 1] * v[j - b + 1]
         end
-        k2b *= k2
+        acc += si * M(q0 + 2j)
     end
-    return pref * acc
+    return acc
 end
 
 # ── High-precision shape widening (for the vanishing negative-power moments) ──
@@ -212,13 +250,14 @@ end
 
 # ── m=0 assembly from moments (mirrors `ebcm_matrices_m₀`) ────────────────────
 """
-    _sh_matrices_m₀(mom, k, s, nmax, B, CT) -> (𝐏, 𝐔)
+    _sh_matrices_m₀(mom, coeffs, k, s, nmax, CT) -> (𝐏, 𝐔)
 
 Reconstruct the `m=0` `𝐏` and `𝐔` blocks from the precomputed `m=0` moment
-tables `mom` at size parameter `k` and refractive index `s`, using `B` radial
-series terms. The algebra reproduces `ebcm_matrices_m₀` term by term.
+tables `mom` and the size/material-independent coefficient tables `coeffs` at
+size parameter `k` and refractive index `s`. The algebra reproduces
+`ebcm_matrices_m₀` term by term.
 """
-function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
+function _sh_matrices_m₀(mom, coeffs, k::Real, s::Number, nmax::Integer,
         ::Type{CT}) where {CT}
     R = real(CT)
     sym = mom.sym
@@ -228,10 +267,15 @@ function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
     a = [n * (n + 1) for n in 1:nmax]
     A = [√(R(2n + 1) / (2n * (n + 1))) for n in 1:nmax]
 
-    ψ = [_sh_series(:ψ, n, B, R) for n in 1:nmax]
-    ψ′ = [_sh_series(:ψ′, n, B, R) for n in 1:nmax]
-    χ = [_sh_series(:χ, n, B, R) for n in 1:nmax]
-    χ′ = [_sh_series(:χ′, n, B, R) for n in 1:nmax]
+    sc = Complex{R}(s)
+    kk = R(k)
+    sk = sc * kk
+    Uψ = _sh_weighted(coeffs.ψ, 1, nmax, kk)
+    Uψ′ = _sh_weighted(coeffs.ψ′, 1, nmax, kk)
+    Uχ = _sh_weighted(coeffs.χ, 1, nmax, kk)
+    Uχ′ = _sh_weighted(coeffs.χ′, 1, nmax, kk)
+    Vψ = _sh_weighted(coeffs.ψ, 1, nmax, sk)
+    Vψ′ = _sh_weighted(coeffs.ψ′, 1, nmax, sk)
 
     𝐏 = zeros(CT, 2nmax, 2nmax)
     𝐏₁₁ = view(𝐏, 1:nmax, 1:nmax)
@@ -240,7 +284,6 @@ function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
     𝐔₁₁ = view(𝐔, 1:nmax, 1:nmax)
     𝐔₂₂ = view(𝐔, (nmax + 1):(2nmax), (nmax + 1):(2nmax))
 
-    sc = Complex{R}(s)
     Mτd_q(n, n′) = q -> _sh_lookup(Mτd, n, n′, q, qlo, qhi)
     Mdτ_q(n, n′) = q -> _sh_lookup(Mdτ, n, n′, q, qlo, qhi)
     Mππττ_q(n) = q -> _sh_lookup(Mππττ, n, q, qlo, qhi)
@@ -251,19 +294,19 @@ function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
         if n != n′
             fτd = Mτd_q(n, n′)
             fdτ = Mdτ_q(n, n′)
-            PL₁ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, 0)
-            PL₂ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, 0)
-            PL₇ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fτd, 0) +
-                  (a[n] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, -2)
-            PL₈ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fdτ, 0) +
-                  (a[n′] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, -2)
+            PL₁ = kk * _sh_conv(Uψ[n], Vψ[n′], fτd, 0)
+            PL₂ = kk * _sh_conv(Uψ[n], Vψ[n′], fdτ, 0)
+            PL₇ = kk * _sh_conv(Uψ′[n], Vψ′[n′], fτd, 0) +
+                  (a[n] / sc / kk) * _sh_conv(Uψ[n], Vψ[n′], fτd, -2)
+            PL₈ = kk * _sh_conv(Uψ′[n], Vψ′[n′], fdτ, 0) +
+                  (a[n′] / sc / kk) * _sh_conv(Uψ[n], Vψ[n′], fdτ, -2)
 
-            UL₁ = k * _sh_recon(χ[n], ψ[n′], k, sc, fτd, 0)
-            UL₂ = k * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, 0)
-            UL₇ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fτd, 0) +
-                  (a[n] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fτd, -2)
-            UL₈ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fdτ, 0) +
-                  (a[n′] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, -2)
+            UL₁ = kk * _sh_conv(Uχ[n], Vψ[n′], fτd, 0)
+            UL₂ = kk * _sh_conv(Uχ[n], Vψ[n′], fdτ, 0)
+            UL₇ = kk * _sh_conv(Uχ′[n], Vψ′[n′], fτd, 0) +
+                  (a[n] / sc / kk) * _sh_conv(Uχ[n], Vψ[n′], fτd, -2)
+            UL₈ = kk * _sh_conv(Uχ′[n], Vψ′[n′], fdτ, 0) +
+                  (a[n′] / sc / kk) * _sh_conv(Uχ[n], Vψ[n′], fdτ, -2)
 
             pref = 1im * A[n] * A[n′] * (sc^2 - 1) / (sc * (a[n] - a[n′]))
             𝐏₁₁[n, n′] = pref * (a[n] * PL₂ - a[n′] * PL₁)
@@ -273,17 +316,17 @@ function _sh_matrices_m₀(mom, k::Real, s::Number, nmax::Integer, B::Integer,
         else
             fππττ = Mππττ_q(n)
             fτd = Mτd_q(n, n)
-            PL̃₁ = _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
-                   sc * _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
-            PL̃₂ = sc * _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
-                   _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
-            PL̃₃ = (1 / sc / k) * _sh_recon(ψ[n], ψ[n], k, sc, fτd, -2)
+            PL̃₁ = _sh_conv(Uψ′[n], Vψ[n], fππττ, 0) -
+                   sc * _sh_conv(Uψ[n], Vψ′[n], fππττ, 0)
+            PL̃₂ = sc * _sh_conv(Uψ′[n], Vψ[n], fππττ, 0) -
+                   _sh_conv(Uψ[n], Vψ′[n], fππττ, 0)
+            PL̃₃ = (1 / sc / kk) * _sh_conv(Uψ[n], Vψ[n], fτd, -2)
 
-            UL̃₁ = _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
-                   sc * _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
-            UL̃₂ = sc * _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
-                   _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
-            UL̃₃ = (1 / sc / k) * _sh_recon(χ[n], ψ[n], k, sc, fτd, -2)
+            UL̃₁ = _sh_conv(Uχ′[n], Vψ[n], fππττ, 0) -
+                   sc * _sh_conv(Uχ[n], Vψ′[n], fππττ, 0)
+            UL̃₂ = sc * _sh_conv(Uχ′[n], Vψ[n], fππττ, 0) -
+                   _sh_conv(Uχ[n], Vψ′[n], fππττ, 0)
+            UL̃₃ = (1 / sc / kk) * _sh_conv(Uχ[n], Vψ[n], fτd, -2)
 
             𝐏₁₁[n, n] = -1im / sc * A[n]^2 * PL̃₁
             𝐏₂₂[n, n] = -1im / sc * A[n]^2 * (PL̃₂ + (sc^2 - 1) * a[n] * PL̃₃)
@@ -297,16 +340,17 @@ end
 
 # ── m>0 assembly from moments (mirrors `_transition_matrix_m_core`) ───────────
 """
-    _sh_matrices_m(mom, m, k, s, nmax, B, CT) -> (𝐏, 𝐔)
+    _sh_matrices_m(mom, coeffs, m, k, s, nmax, CT) -> (𝐏, 𝐔)
 
 Reconstruct the `m`-th `𝐏` and `𝐔` blocks (`2nn × 2nn`, `nn = nmax-m+1` for
-`m≥1`) from the precomputed moment tables `mom` for that `m`. The `K`-blocks use
-the `M^{πd}` family; the `L`-blocks reuse the same reconstruction as the `m=0`
-case (with the `m`-dependent Wigner functions baked into `mom`). The algebra
+`m≥1`) from the precomputed moment tables `mom` for that `m` and the
+size/material-independent coefficient tables `coeffs`. The `K`-blocks use the
+`M^{πd}` family; the `L`-blocks reuse the same reconstruction as the `m=0` case
+(with the `m`-dependent Wigner functions baked into `mom`). The algebra
 reproduces `_transition_matrix_m_core` term by term.
 """
-function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
-        B::Integer, ::Type{CT}) where {CT}
+function _sh_matrices_m(mom, coeffs, m::Integer, k::Real, s::Number, nmax::Integer,
+        ::Type{CT}) where {CT}
     R = real(CT)
     sym = mom.sym
     qlo, qhi = mom.qlo, mom.qhi
@@ -317,10 +361,15 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
     a = OffsetArray([n * (n + 1) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
     A = OffsetArray([√(R(2n + 1) / (2n * (n + 1))) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
 
-    ψ = OffsetArray([_sh_series(:ψ, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
-    ψ′ = OffsetArray([_sh_series(:ψ′, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
-    χ = OffsetArray([_sh_series(:χ, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
-    χ′ = OffsetArray([_sh_series(:χ′, n, B, R) for n in nₘᵢₙ:nmax], nₘᵢₙ:nmax)
+    sc = Complex{R}(s)
+    kk = R(k)
+    sk = sc * kk
+    Uψ = _sh_weighted(coeffs.ψ, nₘᵢₙ, nmax, kk)
+    Uψ′ = _sh_weighted(coeffs.ψ′, nₘᵢₙ, nmax, kk)
+    Uχ = _sh_weighted(coeffs.χ, nₘᵢₙ, nmax, kk)
+    Uχ′ = _sh_weighted(coeffs.χ′, nₘᵢₙ, nmax, kk)
+    Vψ = _sh_weighted(coeffs.ψ, nₘᵢₙ, nmax, sk)
+    Vψ′ = _sh_weighted(coeffs.ψ′, nₘᵢₙ, nmax, sk)
 
     𝐏 = zeros(CT, 2nn, 2nn)
     𝐏₁₁ = OffsetArray(view(𝐏, 1:nn, 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
@@ -334,7 +383,6 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
     𝐔₂₁ = OffsetArray(view(𝐔, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
     𝐔₂₂ = OffsetArray(view(𝐔, (nn + 1):(2nn), (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
 
-    sc = Complex{R}(s)
     Mτd_q(n, n′) = q -> _sh_lookup(Mτd, n, n′, q, qlo, qhi)
     Mdτ_q(n, n′) = q -> _sh_lookup(Mdτ, n, n′, q, qlo, qhi)
     Mπd_q(n, n′) = q -> _sh_lookup(Mπd, n, n′, q, qlo, qhi)
@@ -344,10 +392,10 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
 
         if !(sym && iseven(n + n′))
             fπd = Mπd_q(n, n′)
-            PK₁ = k * _sh_recon(ψ[n], ψ′[n′], k, sc, fπd, 0)
-            PK₂ = k * _sh_recon(ψ′[n], ψ[n′], k, sc, fπd, 0)
-            UK₁ = k * _sh_recon(χ[n], ψ′[n′], k, sc, fπd, 0)
-            UK₂ = k * _sh_recon(χ′[n], ψ[n′], k, sc, fπd, 0)
+            PK₁ = kk * _sh_conv(Uψ[n], Vψ′[n′], fπd, 0)
+            PK₂ = kk * _sh_conv(Uψ′[n], Vψ[n′], fπd, 0)
+            UK₁ = kk * _sh_conv(Uχ[n], Vψ′[n′], fπd, 0)
+            UK₂ = kk * _sh_conv(Uχ′[n], Vψ[n′], fπd, 0)
 
             𝐏₁₂[n, n′] = A[n] * A[n′] * (sc^2 - 1) / sc * PK₁
             𝐏₂₁[n, n′] = A[n] * A[n′] * (1 - sc^2) / sc * PK₂
@@ -359,19 +407,19 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
             if n != n′
                 fτd = Mτd_q(n, n′)
                 fdτ = Mdτ_q(n, n′)
-                PL₁ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, 0)
-                PL₂ = k * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, 0)
-                PL₇ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fτd, 0) +
-                      (a[n] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fτd, -2)
-                PL₈ = k * _sh_recon(ψ′[n], ψ′[n′], k, sc, fdτ, 0) +
-                      (a[n′] / sc / k) * _sh_recon(ψ[n], ψ[n′], k, sc, fdτ, -2)
+                PL₁ = kk * _sh_conv(Uψ[n], Vψ[n′], fτd, 0)
+                PL₂ = kk * _sh_conv(Uψ[n], Vψ[n′], fdτ, 0)
+                PL₇ = kk * _sh_conv(Uψ′[n], Vψ′[n′], fτd, 0) +
+                      (a[n] / sc / kk) * _sh_conv(Uψ[n], Vψ[n′], fτd, -2)
+                PL₈ = kk * _sh_conv(Uψ′[n], Vψ′[n′], fdτ, 0) +
+                      (a[n′] / sc / kk) * _sh_conv(Uψ[n], Vψ[n′], fdτ, -2)
 
-                UL₁ = k * _sh_recon(χ[n], ψ[n′], k, sc, fτd, 0)
-                UL₂ = k * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, 0)
-                UL₇ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fτd, 0) +
-                      (a[n] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fτd, -2)
-                UL₈ = k * _sh_recon(χ′[n], ψ′[n′], k, sc, fdτ, 0) +
-                      (a[n′] / sc / k) * _sh_recon(χ[n], ψ[n′], k, sc, fdτ, -2)
+                UL₁ = kk * _sh_conv(Uχ[n], Vψ[n′], fτd, 0)
+                UL₂ = kk * _sh_conv(Uχ[n], Vψ[n′], fdτ, 0)
+                UL₇ = kk * _sh_conv(Uχ′[n], Vψ′[n′], fτd, 0) +
+                      (a[n] / sc / kk) * _sh_conv(Uχ[n], Vψ[n′], fτd, -2)
+                UL₈ = kk * _sh_conv(Uχ′[n], Vψ′[n′], fdτ, 0) +
+                      (a[n′] / sc / kk) * _sh_conv(Uχ[n], Vψ[n′], fdτ, -2)
 
                 pref = 1im * A[n] * A[n′] * (sc^2 - 1) / (sc * (a[n] - a[n′]))
                 𝐏₁₁[n, n′] = pref * (a[n] * PL₂ - a[n′] * PL₁)
@@ -381,17 +429,17 @@ function _sh_matrices_m(mom, m::Integer, k::Real, s::Number, nmax::Integer,
             else
                 fππττ = Mππττ_q(n)
                 fτd = Mτd_q(n, n)
-                PL̃₁ = _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
-                       sc * _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
-                PL̃₂ = sc * _sh_recon(ψ′[n], ψ[n], k, sc, fππττ, 0) -
-                       _sh_recon(ψ[n], ψ′[n], k, sc, fππττ, 0)
-                PL̃₃ = (1 / sc / k) * _sh_recon(ψ[n], ψ[n], k, sc, fτd, -2)
+                PL̃₁ = _sh_conv(Uψ′[n], Vψ[n], fππττ, 0) -
+                       sc * _sh_conv(Uψ[n], Vψ′[n], fππττ, 0)
+                PL̃₂ = sc * _sh_conv(Uψ′[n], Vψ[n], fππττ, 0) -
+                       _sh_conv(Uψ[n], Vψ′[n], fππττ, 0)
+                PL̃₃ = (1 / sc / kk) * _sh_conv(Uψ[n], Vψ[n], fτd, -2)
 
-                UL̃₁ = _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
-                       sc * _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
-                UL̃₂ = sc * _sh_recon(χ′[n], ψ[n], k, sc, fππττ, 0) -
-                       _sh_recon(χ[n], ψ′[n], k, sc, fππττ, 0)
-                UL̃₃ = (1 / sc / k) * _sh_recon(χ[n], ψ[n], k, sc, fτd, -2)
+                UL̃₁ = _sh_conv(Uχ′[n], Vψ[n], fππττ, 0) -
+                       sc * _sh_conv(Uχ[n], Vψ′[n], fππττ, 0)
+                UL̃₂ = sc * _sh_conv(Uχ′[n], Vψ[n], fππττ, 0) -
+                       _sh_conv(Uχ[n], Vψ′[n], fππττ, 0)
+                UL̃₃ = (1 / sc / kk) * _sh_conv(Uχ[n], Vψ[n], fτd, -2)
 
                 𝐏₁₁[n, n] = -1im / sc * A[n]^2 * PL̃₁
                 𝐏₂₂[n, n] = -1im / sc * A[n]^2 * (PL̃₂ + (sc^2 - 1) * a[n] * PL̃₃)
@@ -420,12 +468,13 @@ at high precision they contribute ≈0, removing the irregular-product
 cancellation). For other axisymmetric shapes the moment machinery and `𝐏` are
 still correct, but the `𝐔` reconstruction is not stabilized.
 """
-struct ShPreparation{ST, MT}
+struct ShPreparation{ST, MT, CF}
     shape::ST
     nmax::Int
     Ng::Int
     B::Int
     moments::MT
+    coeffs::CF
     stable::Bool
 end
 
@@ -460,7 +509,9 @@ function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Inte
     qlo, qhi = _sh_qband(nmax, B)
     moments = [_sh_moments_m(shape, m, nmax, Ng, qlo, qhi; momtype, store)
                for m in 0:nmax]
-    return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, shape isa Spheroid)
+    coeffs = _sh_coeff_tables(nmax, B, store)
+    return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, coeffs,
+        shape isa Spheroid)
 end
 
 """
@@ -473,18 +524,19 @@ precomputed moments. This is the cheap inner call of a parameter sweep; the
 expensive geometry quadrature was done once in `prepare_sh`.
 """
 function transition_matrix(prep::ShPreparation, λ::Real, mᵣ::Number)
-    nmax, B = prep.nmax, prep.B
+    nmax = prep.nmax
     R = promote_type(eltype(prep.moments[1].Mτd), typeof(float(λ)),
         typeof(float(real(mᵣ))))
     CT = Complex{R}
     k = 2R(π) / R(λ)
     s = CT(mᵣ)
+    coeffs = prep.coeffs
 
     𝐓 = Vector{Matrix{CT}}(undef, nmax + 1)
-    𝐏, 𝐔 = _sh_matrices_m₀(prep.moments[1], k, s, nmax, B, CT)
+    𝐏, 𝐔 = _sh_matrices_m₀(prep.moments[1], coeffs, k, s, nmax, CT)
     𝐓[1] = 𝐓_from_𝐏_and_𝐔(𝐏, 𝐔)
     for m in 1:nmax
-        𝐏ₘ, 𝐔ₘ = _sh_matrices_m(prep.moments[m + 1], m, k, s, nmax, B, CT)
+        𝐏ₘ, 𝐔ₘ = _sh_matrices_m(prep.moments[m + 1], coeffs, m, k, s, nmax, CT)
         𝐓[m + 1] = 𝐓_from_𝐏_and_𝐔(𝐏ₘ, 𝐔ₘ)
     end
 
@@ -508,7 +560,8 @@ end
 
 @testitem "Sh-matrix reproduces the ebcm P and U blocks (m=0 and m>0)" begin
     using TransitionMatrices: Spheroid, ebcm_matrices_m₀, ebcm_matrices_m,
-                              _sh_moments_m, _sh_matrices_m₀, _sh_matrices_m, _sh_qband
+                              _sh_moments_m, _sh_matrices_m₀, _sh_matrices_m, _sh_qband,
+                              _sh_coeff_tables
 
     relmax(A,
         B;
@@ -521,16 +574,17 @@ end
     shape = Spheroid{Float64, ComplexF64}(a, c, sm)
     k = 2π / λ
     qlo, qhi = _sh_qband(nmax, B)
+    coeffs = _sh_coeff_tables(nmax, B, Float64)
 
     mom0 = _sh_moments_m(shape, 0, nmax, Ng, qlo, qhi)
-    Psh, Ush = _sh_matrices_m₀(mom0, k, sm, nmax, B, ComplexF64)
+    Psh, Ush = _sh_matrices_m₀(mom0, coeffs, k, sm, nmax, ComplexF64)
     Pref, Uref = ebcm_matrices_m₀(shape, λ, nmax, Ng)
     @test relmax(Psh, Pref) < 1e-9
     @test relmax(Ush, Uref) < 1e-7
 
     for m in 1:4
         mom = _sh_moments_m(shape, m, nmax, Ng, qlo, qhi)
-        Pm, Um = _sh_matrices_m(mom, m, k, sm, nmax, B, ComplexF64)
+        Pm, Um = _sh_matrices_m(mom, coeffs, m, k, sm, nmax, ComplexF64)
         Pr, Ur = ebcm_matrices_m(m, shape, λ, nmax, Ng)
         @test relmax(Pm, Pr) < 1e-9
         @test relmax(Um, Ur) < 1e-7
