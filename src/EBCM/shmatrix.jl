@@ -234,7 +234,7 @@ so the split is the dominant speedup; it leaves results unchanged because the
 `q≥0` moments never needed the extra precision.
 """
 function _sh_moments_m(geom, m::Integer, nmax::Integer;
-        store::Type{Ts} = Float64) where {Ts}
+        store::Type{Ts} = Float64, vanish_negative::Bool = false) where {Ts}
     WR, Wq, WRf, Wqf = geom.WR, geom.Wq, geom.WRf, geom.Wqf
     R = eltype(WR)
     Tf = eltype(WRf)
@@ -245,6 +245,13 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
     mm = Int(m)
     nmin = max(1, mm)
     nq = qhi - qlo + 1
+
+    # When the negative-power moments vanish analytically (spheroid), skip them
+    # entirely (they stay 0) and integrate the well-conditioned q ≥ -1 moments in
+    # the fast type; otherwise integrate q < 0 in the high-precision type and the
+    # q ≥ 0 bulk fast.
+    qbulk_lo = vanish_negative ? -1 : 0
+    qneg = vanish_negative ? (1:0) : (qlo:-1)
 
     d = OffsetArray(zeros(R, Ng, nmax - mm + 1), 1:Ng, mm:nmax)
     τ = similar(d)
@@ -275,7 +282,7 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
             gτd[i] = τ[i, n] * dᵢ
             gπd[i] = 𝜋[i, n] * dᵢ
         end
-        @inbounds for q in qlo:-1
+        @inbounds for q in qneg
             sτd = zero(R)
             sπd = zero(R)
             for i in 1:ng
@@ -286,13 +293,13 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
             Mτd[n, n′, q] = Ts(sτd)
             Mπd[n, n′, q] = Ts(sπd)
         end
-        # q ≥ 0: well conditioned, fast accumulation.
+        # q ≥ qbulk_lo: well conditioned, fast accumulation.
         @inbounds for i in 1:ng
             dᵢ = df[i, n′]
             gτdf[i] = τf[i, n] * dᵢ
             gπdf[i] = 𝜋f[i, n] * dᵢ
         end
-        @inbounds for q in 0:qhi
+        @inbounds for q in qbulk_lo:qhi
             sτd = zero(Tf)
             sπd = zero(Tf)
             @simd for i in 1:ng
@@ -311,7 +318,7 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
         @inbounds for i in 1:ng
             gππττ[i] = 𝜋[i, n]^2 + τ[i, n]^2
         end
-        @inbounds for q in qlo:-1
+        @inbounds for q in qneg
             sm = zero(R)
             for i in 1:ng
                 sm += Wq[i, q] * gππττ[i]
@@ -321,7 +328,7 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
         @inbounds for i in 1:ng
             gππττf[i] = 𝜋f[i, n]^2 + τf[i, n]^2
         end
-        @inbounds for q in 0:qhi
+        @inbounds for q in qbulk_lo:qhi
             sm = zero(Tf)
             @simd for i in 1:ng
                 sm += Wqf[i, q] * gππττf[i]
@@ -595,9 +602,16 @@ Keyword arguments:
   `F⁺` evaluation, needs more terms as `k·rₘₐₓ·|mᵣ|` grows); it is fixed at
   preparation time because it determines the moment band. Default `max(30,
   nmax+15)`.
-- `momtype`: precision used to accumulate the moments (default `BigFloat`, so a
-  spheroid's vanishing negative-power moments are accurate enough to cancel the
-  irregular-product blow-up).
+- `momtype`: precision used to accumulate the moments. The default (`nothing`)
+  selects automatically: for a `Spheroid` the negative-power moments vanish
+  analytically (the `F⁺` result), so they are set to zero and the whole
+  precompute runs in the shape's hardware precision — orders of magnitude faster
+  and with no `BigFloat` dependency, at the same accuracy as `stable=true`. For
+  other shapes (whose negative-power moments do not vanish) it falls back to
+  `BigFloat` so the cancellation is resolved numerically. Pass `momtype=BigFloat`
+  explicitly to force the high-precision path for a spheroid too (slower, and
+  bit-for-bit closer to the full-precision moments in the highest-order, smallest
+  `𝐓` entries).
 - `store`: element type the moments are stored as (default the shape's real
   type); reconstruction runs in this precision.
 
@@ -605,15 +619,24 @@ The analytic `𝐔` stabilization is enabled only for `Spheroid` (see
 [`ShPreparation`](@ref)).
 """
 function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Integer;
-        B::Integer = max(30, nmax + 15), momtype::Type = BigFloat,
+        B::Integer = max(30, nmax + 15), momtype::Union{Nothing, Type} = nothing,
         store::Type = T) where {T}
     @assert iseven(Ng) "Ng must be even!"
     qlo, qhi = _sh_qband(nmax, B)
-    geom = _sh_geometry(shape, Ng, qlo, qhi; momtype, store)
-    moments = [_sh_moments_m(geom, m, nmax; store) for m in 0:nmax]
+
+    # For a spheroid the negative-r-power moments vanish analytically (the F⁺
+    # result), so they can be set to zero and the whole precompute run in fast
+    # hardware precision; only the well-conditioned q ≥ -1 moments are integrated.
+    # Other shapes (and an explicit high-precision `momtype`) keep the robust
+    # high-precision path that resolves the cancellation numerically.
+    vanish = shape isa Spheroid
+    mt = momtype === nothing ? (vanish ? T : BigFloat) : momtype
+    vanish_negative = vanish && (mt <: Base.IEEEFloat)
+
+    geom = _sh_geometry(shape, Ng, qlo, qhi; momtype = mt, store)
+    moments = [_sh_moments_m(geom, m, nmax; store, vanish_negative) for m in 0:nmax]
     coeffs = _sh_coeff_tables(nmax, B, store)
-    return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, coeffs,
-        shape isa Spheroid)
+    return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, coeffs, vanish)
 end
 
 """
