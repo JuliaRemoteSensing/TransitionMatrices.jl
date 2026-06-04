@@ -57,7 +57,6 @@ jobs:
       needs.detect-changes.outputs.workflows == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    continue-on-error: ${{ matrix.version == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
@@ -66,8 +65,6 @@ jobs:
             version: "1.10"
           - os: ubuntu-latest
             version: "1"
-          - os: ubuntu-latest
-            version: "nightly"
           - os: macos-latest
             version: "1"
           - os: windows-latest
