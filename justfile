@@ -17,6 +17,12 @@ alias t := test
 test-coverage:
     julia --project=. -e 'using Pkg; Pkg.test(; coverage=true)'
 
+[group("benchmark")]
+bench *args:
+    julia --project=benchmark -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+    julia --project=benchmark benchmark/runbenchmarks.jl {{args}}
+alias b := bench
+
 [group("docs")]
 docs:
     julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); ENV["DOCUMENTER_SKIP_DEPLOY"]="true"; include("docs/make.jl")'

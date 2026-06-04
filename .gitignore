@@ -8,6 +8,11 @@
 Manifest.toml
 .CondaPkg/
 
+# Benchmark result artifacts (benchmark/params.json is committed; raw run
+# outputs are machine-specific and stay local)
+/results*.json
+/benchmark/results*.json
+
 # Documentation artifacts
 /docs/build/
 
