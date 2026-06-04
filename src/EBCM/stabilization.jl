@@ -151,6 +151,61 @@ function F⁺(n::Integer, k::Integer, s::Number, x::T;
     return _eval_F⁺(qmin, coeffs, n, k, x)
 end
 
+# ── Cancellation-free "modified" Bessel products via F⁺ (Somerville 2013) ─────
+# Each returns the P⁺ (non-negative-power) part of a product appearing in the
+# spheroid EBCM U-matrix integrand, assembled from F⁺ at shifted indices through
+# the Riccati–Bessel recurrences (their Eqs. 57–62). All carry the leading `x`
+# factor, like `F⁺` itself. For small enough n−k these equal the full products
+# (no negative powers), which the tests exploit for validation.
+
+"""
+    _xχψ′⁺(n, k, s, x) -> Complex
+
+`[x·χ_n(x)·ψ′_k(sx)]⁺` (Somerville 2013, Eq. 59), from
+`(2k+1)ψ′_k(sx) = (k+1)ψ_{k-1}(sx) − k ψ_{k+1}(sx)`.
+"""
+_xχψ′⁺(n, k, s, x; kw...) =
+    ((k + 1) * F⁺(n, k - 1, s, x; kw...) - k * F⁺(n, k + 1, s, x; kw...)) / (2k + 1)
+
+"""
+    _xχ′ψ⁺(n, k, s, x) -> Complex
+
+`[x·χ′_n(x)·ψ_k(sx)]⁺` (Somerville 2013, Eq. 60), from
+`(2n+1)χ′_n(x) = (n+1)χ_{n-1}(x) − n χ_{n+1}(x)`.
+"""
+_xχ′ψ⁺(n, k, s, x; kw...) =
+    ((n + 1) * F⁺(n - 1, k, s, x; kw...) - n * F⁺(n + 1, k, s, x; kw...)) / (2n + 1)
+
+"""
+    _L⁷⁺(n, k, s, x) -> Complex
+
+`[x·(χ′_n ψ′_k + n(n+1) χ_n ψ_k /(s x²))]⁺` (Somerville 2013, Eq. 62) — the
+cancellation-free radial factor of the `L⁷` integrand.
+"""
+function _L⁷⁺(n, k, s, x; kw...)
+    Fmm = F⁺(n - 1, k - 1, s, x; kw...)
+    Fpp = F⁺(n + 1, k + 1, s, x; kw...)
+    Fmp = F⁺(n - 1, k + 1, s, x; kw...)
+    Fpm = F⁺(n + 1, k - 1, s, x; kw...)
+    return ((n + k + 1) * ((n + 1) * Fmm + n * Fpp) +
+            (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
+end
+
+"""
+    _L⁸⁺(n, k, s, x) -> Complex
+
+`[x·(χ′_n ψ′_k + k(k+1) χ_n ψ_k /(s x²))]⁺` (Somerville 2013, Eq. 61) — the
+cancellation-free radial factor of the `L⁸` integrand.
+"""
+function _L⁸⁺(n, k, s, x; kw...)
+    Fmm = F⁺(n - 1, k - 1, s, x; kw...)
+    Fpp = F⁺(n + 1, k + 1, s, x; kw...)
+    Fmp = F⁺(n - 1, k + 1, s, x; kw...)
+    Fpm = F⁺(n + 1, k - 1, s, x; kw...)
+    return ((n + k + 1) * ((k + 1) * Fmm + k * Fpp) +
+            (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
+end
+
 @testitem "F⁺ matches the Bessel product where no negative powers exist (n ≤ k+2)" begin
     using TransitionMatrices: F⁺, ricattibesselj, ricattibessely,
                               estimate_ricattibesselj_extra_terms
@@ -194,5 +249,30 @@ end
         v64 = _eval_F⁺(qmin, coeffs, n, k, x64)
         vbig = _eval_F⁺(qmin, coeffs, n, k, BigFloat(x64))
         @test isapprox(ComplexF64(vbig), v64; rtol = 1e-12, atol = 1e-300)
+    end
+end
+
+@testitem "Modified Bessel products (Eq. 59-62) match direct products for n ≤ k" begin
+    using TransitionMatrices: _xχψ′⁺, _xχ′ψ⁺, _L⁷⁺, _L⁸⁺, ricattibesselj,
+                              ricattibessely, estimate_ricattibesselj_extra_terms
+    setprecision(BigFloat, 320) do
+        s = Complex{BigFloat}(1.5, 0.02)
+        for x in BigFloat.((0.5, 1.5)), (n, k) in ((1, 1), (2, 2), (3, 3), (1, 3),
+                                                   (2, 4), (3, 5), (2, 5), (4, 6))
+            # n ≤ k ⇒ all four products have only non-negative powers ⇒ ⁺ = full.
+            @assert n ≤ k
+            χ, χ′ = ricattibessely(max(n, 2), x)
+            nextra = estimate_ricattibesselj_extra_terms(max(k, 2), abs(s) * x)
+            ψ, ψ′ = ricattibesselj(max(k, 2), nextra, s * x)
+            nt = 80
+            @test isapprox(_xχψ′⁺(n, k, s, x; nterms = nt), x * χ[n] * ψ′[k];
+                           rtol = 1e-22, atol = 1e-22)
+            @test isapprox(_xχ′ψ⁺(n, k, s, x; nterms = nt), x * χ′[n] * ψ[k];
+                           rtol = 1e-22, atol = 1e-22)
+            l7 = x * (χ′[n] * ψ′[k] + n * (n + 1) * χ[n] * ψ[k] / (s * x^2))
+            l8 = x * (χ′[n] * ψ′[k] + k * (k + 1) * χ[n] * ψ[k] / (s * x^2))
+            @test isapprox(_L⁷⁺(n, k, s, x; nterms = nt), l7; rtol = 1e-22, atol = 1e-22)
+            @test isapprox(_L⁸⁺(n, k, s, x; nterms = nt), l8; rtol = 1e-22, atol = 1e-22)
+        end
     end
 end
