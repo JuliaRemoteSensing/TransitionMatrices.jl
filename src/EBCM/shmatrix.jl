@@ -152,7 +152,7 @@ _sh_widen(s, ::Type{R}) where {R} = s
 
 # ── Shape moments for one azimuthal index `m` ────────────────────────────────
 """
-    _sh_geometry(shape, Ng, qlo, qhi; momtype) -> NamedTuple
+    _sh_geometry(shape, Ng, qlo, qhi; momtype, store) -> NamedTuple
 
 Compute the `m`-independent geometry once: the (high-precision) Gauss–Legendre
 nodes/weights, the polar angles `ϑ`, and the two `r`-power weight tables shared
@@ -163,9 +163,15 @@ by every azimuthal block,
 
 `gaussquad` and the `rᵢ^q` table do not depend on `m`, so hoisting them out of
 the per-`m` loop avoids recomputing them `nmax+1` times.
+
+The weights are also returned cast to the fast accumulation type
+`Tf = store<:IEEEFloat ? store : momtype` as `WRf`/`Wqf`: the catastrophic
+cancellation lives entirely in the negative-`r`-power (`q<0`) moments, so the
+well-conditioned `q≥0` bulk can be contracted in hardware precision while only
+the `q<0` part keeps the slow `momtype` accumulation (see [`_sh_moments_m`](@ref)).
 """
 function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
-        momtype::Type{R} = BigFloat) where {R}
+        momtype::Type{R} = BigFloat, store::Type = Float64) where {R}
     sym = has_symmetric_plane(shape)
     ng = sym ? Ng ÷ 2 : Ng
 
@@ -196,16 +202,19 @@ function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
         end
     end
 
-    return (; sym, ng, ϑ, WR, Wq, qlo, qhi)
+    Tf = store <: Base.IEEEFloat ? store : R
+    WRf = Tf === R ? WR : Tf.(WR)
+    Wqf = Tf === R ? Wq : Tf.(Wq)
+
+    return (; sym, ng, ϑ, WR, Wq, WRf, Wqf, qlo, qhi)
 end
 
 """
     _sh_moments_m(geom, m, nmax; store) -> NamedTuple
 
 Compute the shape-only moment tables for azimuthal index `m` from the shared
-[`_sh_geometry`](@ref) `geom`, accumulated at the geometry's precision and stored
-as `store` (default `Float64`). Families (sum over `i in 1:ng`, mirroring
-`ebcm_matrices_m₀`):
+[`_sh_geometry`](@ref) `geom`, stored as `store` (default `Float64`). Families
+(sum over `i in 1:ng`, mirroring `ebcm_matrices_m₀`):
 
   Mτd[n,n′,q]  = Σ WR[i,q] τ[i,n] d[i,n′]
   Mπd[n,n′,q]  = Σ WR[i,q] π[i,n] d[i,n′]   (only `m>0`)
@@ -214,11 +223,21 @@ as `store` (default `Float64`). Families (sum over `i in 1:ng`, mirroring
 `Mdτ[n,n′,q] = Mτd[n′,n,q]` exactly (swap the two orders), so it is not stored —
 the assembly reads `Mτd` with the indices transposed. The angular products are
 formed once per `(n,n′)` instead of once per `q`.
+
+**Precision split.** The catastrophic cancellation that motivates the
+high-precision accumulation lives entirely in the negative-`r`-power (`q<0`)
+moments — for a spheroid those vanish analytically and must reach ≈0 rather than
+round-off. The `q≥0` bulk is well conditioned, so it is contracted in the fast
+type `Tf` (hardware float when `store` is one), while only the `q<0` slice keeps
+the slow `momtype` accumulation. This is where most of the precompute time goes,
+so the split is the dominant speedup; it leaves results unchanged because the
+`q≥0` moments never needed the extra precision.
 """
 function _sh_moments_m(geom, m::Integer, nmax::Integer;
         store::Type{Ts} = Float64) where {Ts}
-    WR, Wq = geom.WR, geom.Wq
+    WR, Wq, WRf, Wqf = geom.WR, geom.Wq, geom.WRf, geom.Wqf
     R = eltype(WR)
+    Tf = eltype(WRf)
     ϑ = geom.ϑ
     ng = geom.ng
     qlo, qhi = geom.qlo, geom.qhi
@@ -236,6 +255,10 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
             𝜋[i, n] = pi_func(R, mm, n, ϑ[i]; d = d[i, n])
         end
     end
+    # Fast-type copies of the angular functions for the well-conditioned q≥0 bulk.
+    df = Tf === R ? d : Tf.(d)
+    τf = Tf === R ? τ : Tf.(τ)
+    𝜋f = Tf === R ? 𝜋 : Tf.(𝜋)
 
     Mτd = OffsetArray(zeros(Ts, nmax, nmax, nq), 1:nmax, 1:nmax, qlo:qhi)
     Mπd = OffsetArray(zeros(Ts, nmax, nmax, nq), 1:nmax, 1:nmax, qlo:qhi)
@@ -243,14 +266,16 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
 
     gτd = Vector{R}(undef, ng)
     gπd = Vector{R}(undef, ng)
+    gτdf = Vector{Tf}(undef, ng)
+    gπdf = Vector{Tf}(undef, ng)
     for n in nmin:nmax, n′ in nmin:nmax
-
+        # q < 0: ill-conditioned, accumulate in momtype precision.
         @inbounds for i in 1:ng
             dᵢ = d[i, n′]
             gτd[i] = τ[i, n] * dᵢ
             gπd[i] = 𝜋[i, n] * dᵢ
         end
-        @inbounds for q in qlo:qhi
+        @inbounds for q in qlo:-1
             sτd = zero(R)
             sπd = zero(R)
             for i in 1:ng
@@ -261,17 +286,45 @@ function _sh_moments_m(geom, m::Integer, nmax::Integer;
             Mτd[n, n′, q] = Ts(sτd)
             Mπd[n, n′, q] = Ts(sπd)
         end
+        # q ≥ 0: well conditioned, fast accumulation.
+        @inbounds for i in 1:ng
+            dᵢ = df[i, n′]
+            gτdf[i] = τf[i, n] * dᵢ
+            gπdf[i] = 𝜋f[i, n] * dᵢ
+        end
+        @inbounds for q in 0:qhi
+            sτd = zero(Tf)
+            sπd = zero(Tf)
+            @simd for i in 1:ng
+                wr = WRf[i, q]
+                sτd += wr * gτdf[i]
+                sπd += wr * gπdf[i]
+            end
+            Mτd[n, n′, q] = Ts(sτd)
+            Mπd[n, n′, q] = Ts(sπd)
+        end
     end
 
     gππττ = Vector{R}(undef, ng)
+    gππττf = Vector{Tf}(undef, ng)
     for n in nmin:nmax
         @inbounds for i in 1:ng
             gππττ[i] = 𝜋[i, n]^2 + τ[i, n]^2
         end
-        @inbounds for q in qlo:qhi
+        @inbounds for q in qlo:-1
             sm = zero(R)
             for i in 1:ng
                 sm += Wq[i, q] * gππττ[i]
+            end
+            Mππττ[n, q] = Ts(sm)
+        end
+        @inbounds for i in 1:ng
+            gππττf[i] = 𝜋f[i, n]^2 + τf[i, n]^2
+        end
+        @inbounds for q in 0:qhi
+            sm = zero(Tf)
+            @simd for i in 1:ng
+                sm += Wqf[i, q] * gππττf[i]
             end
             Mππττ[n, q] = Ts(sm)
         end
@@ -556,7 +609,7 @@ function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Inte
         store::Type = T) where {T}
     @assert iseven(Ng) "Ng must be even!"
     qlo, qhi = _sh_qband(nmax, B)
-    geom = _sh_geometry(shape, Ng, qlo, qhi; momtype)
+    geom = _sh_geometry(shape, Ng, qlo, qhi; momtype, store)
     moments = [_sh_moments_m(geom, m, nmax; store) for m in 0:nmax]
     coeffs = _sh_coeff_tables(nmax, B, store)
     return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, coeffs,
