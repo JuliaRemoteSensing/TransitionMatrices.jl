@@ -4,8 +4,10 @@ using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
+import FFTW
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
+using LinearAlgebra: lu, mul!
 using OffsetArrays: OffsetArray
 using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Angle2d, Rotation, RotMatrix2, RotZYZ
@@ -21,6 +23,7 @@ include("compat/index.jl")
 include("special_functions/index.jl")
 include("common/index.jl")
 include("shapes/index.jl")
+include("linearization.jl")
 
 include("Mie/index.jl")
 include("EBCM/index.jl")
@@ -29,6 +32,12 @@ include("IITM/index.jl")
 # Various types of transition matrices
 export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMatrix,
        AxisymmetricTransitionMatrix, MieTransitionMatrix
+
+# Linearization framework
+export AbstractLinearizationBackend, MieLinearization, EBCMLinearization, IITMLinearization,
+       LinearizationProblem, LinearizationResult, LinearizationSupport,
+       UnsupportedLinearization, variables, rebuild, derivative, supports_linearization,
+       linearize_transition_matrix, linearize_observable
 
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,

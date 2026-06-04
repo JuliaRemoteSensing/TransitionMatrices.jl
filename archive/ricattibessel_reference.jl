@@ -1,4 +1,4 @@
-# === Some functions that are not used in the package, but are kept for reference ===
+# Reference implementations not included in the package runtime.
 
 function ricattibesselj!(ψ::AbstractVector{<:ArbLike}, ψ′, z, nₘₐₓ, nₑₓₜᵣₐ, x)
     ψ₀ = Arb(0)

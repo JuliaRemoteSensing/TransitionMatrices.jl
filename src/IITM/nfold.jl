@@ -37,9 +37,17 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
     ϑ = acos.(x)
     Nϑ = has_symmetric_plane(s) ? Nϑ ÷ 2 : Nϑ
 
-    xφ, wφ = gausslegendre(T, Nφ)
-    @. xφ = (xφ + 1) * π / N
-    @. wφ = π / N * wφ
+    if CT <: ComplexF64
+        xφ = range(0, 2 * T(π) / N, length = Nφ + 1)[1:(end - 1)]
+        wφ = 2 * T(π) / (N * Nφ)
+    else
+        xφ, wφ = gausslegendre(T, Nφ)
+        @. xφ = (xφ + 1) * π / N
+        @. wφ = π / N * wφ
+    end
+
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) : nothing
+    fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ, N) : nothing
 
     it = collect(OrderDegreeIterator(nₘₐₓ))
     its = [collect(enumerate([x for x in it if (x[2] % N + N) % N == i]))
@@ -123,6 +131,10 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
         ε = [refractive_index(s,
                               (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
                                r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
+        fourier_coeffs = CT <: ComplexF64 ?
+                         _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
+                                                         fourier_workspace,
+                                                         fourier_modes) : nothing
 
         # Calculate for each rem
         for (𝐓, 𝐉, 𝐇, 𝐆, 𝐔, it) in zip(𝐓s, 𝐉s, 𝐇s, 𝐆s, 𝐔s, its)
@@ -145,11 +157,21 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
                         pttp = 𝜋[i, n, m] * τ[i, n′, m′] + τ[i, n, m] * 𝜋[i, n′, m′]
                         dd = d[i, n, m] * d[i, n′, m′]
 
-                        for (j, φ) in enumerate(xφ)
-                            ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
-                                           c̃*im*pttp c*pptt 0
-                                           0 0 c * a½[n] * a½[n′] * dd/ε[j, i]]
-                            U += w[i] * wφ[j] * cis((m′ - m) * φ) * (ε[j, i] - 1) * ΔU
+                        if isnothing(fourier_coeffs)
+                            for (j, φ) in enumerate(xφ)
+                                ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
+                                               c̃*im*pttp c*pptt 0
+                                               0 0 c * a½[n] * a½[n′] * dd/ε[j, i]]
+                                U += w[i] * wφ[j] * cis((m′ - m) * φ) * (ε[j, i] - 1) * ΔU
+                            end
+                        else
+                            coeff_ε, coeff_εinv = fourier_coeffs
+                            freq = m′ - m
+                            cε = coeff_ε[freq, i]
+                            cεinv = coeff_εinv[freq, i]
+                            U += w[i] * @SMatrix [c*pptt*cε -c̃*im*pttp*cε 0
+                                                  c̃*im*pttp*cε c*pptt*cε 0
+                                                  0 0 c * a½[n] * a½[n′] * dd*cεinv]
                         end
                     end
 

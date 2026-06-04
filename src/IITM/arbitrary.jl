@@ -39,6 +39,8 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
 
     xφ = range(0, 2 * T(π), length = Nφ + 1)[1:(end - 1)]
     wφ = 2 * T(π) / Nφ
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) : nothing
+    fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ) : nothing
 
     it = OrderDegreeIterator(nₘₐₓ)
     L = length(it)
@@ -116,6 +118,10 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
         ε = [refractive_index(s,
                               (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
                                r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
+        fourier_coeffs = CT <: ComplexF64 ?
+                         _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
+                                                         fourier_workspace,
+                                                         fourier_modes) : nothing
 
         Threads.@threads for (q, (n′, m′)) in enumerate(it)
             for (p, (n, m)) in enumerate(it)
@@ -136,11 +142,21 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
                     pttp = 𝜋[i, n, m] * τ[i, n′, m′] + τ[i, n, m] * 𝜋[i, n′, m′]
                     dd = d[i, n, m] * d[i, n′, m′]
 
-                    for (j, φ) in enumerate(xφ)
-                        ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
-                                       c̃*im*pttp c*pptt 0
-                                       0 0 c * a½[n] * a½[n′] * dd/ε[j, i]]
-                        U += w[i] * wφ * cis((m′ - m) * φ) * (ε[j, i] - 1) * ΔU
+                    if isnothing(fourier_coeffs)
+                        for (j, φ) in enumerate(xφ)
+                            ΔU = @SMatrix [c*pptt -c̃*im*pttp 0
+                                           c̃*im*pttp c*pptt 0
+                                           0 0 c * a½[n] * a½[n′] * dd/ε[j, i]]
+                            U += w[i] * wφ * cis((m′ - m) * φ) * (ε[j, i] - 1) * ΔU
+                        end
+                    else
+                        coeff_ε, coeff_εinv = fourier_coeffs
+                        freq = m′ - m
+                        cε = coeff_ε[freq, i]
+                        cεinv = coeff_εinv[freq, i]
+                        U += w[i] * @SMatrix [c*pptt*cε -c̃*im*pttp*cε 0
+                                              c̃*im*pttp*cε c*pptt*cε 0
+                                              0 0 c * a½[n] * a½[n′] * dd*cεinv]
                     end
                 end
 

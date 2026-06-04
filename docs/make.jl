@@ -17,9 +17,12 @@ makedocs(;
          pages = [
              "Home" => "index.md",
              "Usage" => "usage.md",
+             "Linearization" => "linearization.md",
              "API" => "api.md",
          ])
 
-deploydocs(;
-           repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
-           devbranch = "main")
+if get(ENV, "DOCUMENTER_SKIP_DEPLOY", "false") != "true"
+    deploydocs(;
+               repo = "github.com/JuliaRemoteSensing/TransitionMatrices.jl",
+               devbranch = "main")
+end

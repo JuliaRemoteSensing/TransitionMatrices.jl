@@ -1,71 +1,164 @@
 name: CI
+
 on:
   push:
     branches:
       - main
-    tags: ['*']
+    tags:
+      - "*"
   pull_request:
+  workflow_dispatch:
+
 concurrency:
-  # Skip intermediate builds: always.
-  # Cancel intermediate builds: only if it is a pull request build.
+  # Skip intermediate builds: always. Cancel intermediate builds only for PRs.
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
+
 jobs:
+  detect-changes:
+    name: Detect Changed Files
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      src: ${{ steps.filter.outputs.src }}
+      tests: ${{ steps.filter.outputs.tests }}
+      docs: ${{ steps.filter.outputs.docs }}
+      workflows: ${{ steps.filter.outputs.workflows }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v4
+        id: filter
+        with:
+          filters: |
+            src:
+              - 'src/**'
+              - 'Project.toml'
+            tests:
+              - 'test/**'
+              - 'Project.toml'
+              - 'test/Project.toml'
+            docs:
+              - 'docs/**'
+              - 'README.md'
+            workflows:
+              - '.github/workflows/**'
+              - '.github/dependabot.yml'
+              - 'justfile'
+
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Test - Julia ${{ matrix.version }} - ${{ matrix.os }}
+    needs: detect-changes
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.tests == 'true' ||
+      needs.detect-changes.outputs.workflows == 'true'
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    continue-on-error: ${{ matrix.version == 'nightly' }}
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1.10'
-          - '1'
-          - 'nightly'
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-latest
-        arch:
-          - x64
-        exclude:
-          # Reduce redundancy: only test LTS and nightly on non-Linux
+        include:
+          - os: ubuntu-latest
+            version: "1.10"
+          - os: ubuntu-latest
+            version: "1"
+          - os: ubuntu-latest
+            version: "nightly"
           - os: macos-latest
-            version: '1'
+            version: "1"
           - os: windows-latest
-            version: '1'
+            version: "1"
     steps:
       - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
+          show-versioninfo: true
+      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - name: Run tests
+        if: matrix.version != 'nightly'
+        run: julia --project=. --color=yes -e 'using Pkg; Pkg.test(; coverage=true)'
+      - name: Run tests (nightly)
+        if: matrix.version == 'nightly'
+        run: |
+          julia --compiled-modules=no --startup-file=no --project=. --color=yes -e '
+            using Pkg
+            Pkg.test(; coverage=true, julia_args=`--compiled-modules=no --startup-file=no`)'
+        env:
+          JULIA_PKG_PRECOMPILE_AUTO: "0"
       - uses: julia-actions/julia-processcoverage@v1
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
-          token: ${{secrets.CODECOV_TOKEN}}
+          flags: julia-${{ matrix.version }}-${{ matrix.os }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
   docs:
-    name: Documentation
+    name: Build Documentation
+    needs: detect-changes
+    if: |
+      github.event_name == 'push' ||
+      github.event_name == 'workflow_dispatch' ||
+      needs.detect-changes.outputs.src == 'true' ||
+      needs.detect-changes.outputs.docs == 'true' ||
+      needs.detect-changes.outputs.workflows == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
-      contents: write
-      statuses: write
+      contents: read
     steps:
       - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
+      - uses: julia-actions/setup-julia@v3
         with:
-          version: '1'
-      - uses: julia-actions/cache@v2
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-docdeploy@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - run: |
+          version: "1"
+          show-versioninfo: true
+      - uses: julia-actions/cache@v3
+      - name: Install documentation dependencies
+        run: |
+          julia --project=docs -e '
+            using Pkg
+            Pkg.develop(PackageSpec(path=pwd()))
+            Pkg.instantiate()'
+      - name: Run doctests
+        run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
             using TransitionMatrices
             DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrices); recursive=true)
             doctest(TransitionMatrices)'
+      - name: Build documentation
+        run: julia --project=docs docs/make.jl
+        env:
+          DOCUMENTER_SKIP_DEPLOY: "true"
+      - name: Upload documentation artifacts
+        uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: documentation-html
+          path: docs/build/
+          retention-days: 7
+
+  docs-deploy:
+    name: Deploy Documentation
+    needs: docs
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      statuses: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v3
+      - uses: julia-actions/julia-docdeploy@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
