@@ -86,6 +86,52 @@ combine the two: `stable=true` with a `Double64` element type reaches `~1e-25` a
 high aspect ratio, and also lowers the residual `Float64` round-off floor that
 appears as the refractive index approaches `s → 1`.
 
+### Parameter sweeps with the Sh-matrix method (`prepare_sh`)
+
+When you need the T-matrix of one fixed shape at *many* wavelengths or
+refractive indices — a spectrum, a dispersion curve, a refractive-index scan —
+the bulk of the work (the Gauss–Legendre surface quadrature and the Wigner
+functions) does not change between points. The Sh-matrix moment-separation
+method (Farafonov family) exploits this: every EBCM surface integral factors as
+
+```math
+\int = \sum_{\text{terms}} \big[\text{coefficient in } (k, m_r)\big]\times\big[\text{shape-only moment } M(q)\big],
+```
+
+where the *shape moments* depend only on the particle geometry and the azimuthal
+index — not on the wavelength or the refractive index. `prepare_sh` computes the
+moments once; each `transition_matrix(prep, λ, mᵣ)` is then a cheap
+coefficient×moment reconstruction:
+
+```julia
+spheroid = Spheroid{Float64, ComplexF64}(2.0, 1.0, 1.5 + 0.02im)
+prep = prepare_sh(spheroid, 10, 200)
+
+# one wavelength / refractive index
+𝐓 = transition_matrix(prep, 2π, 1.5 + 0.02im)
+
+# a full sweep, reusing the single preparation
+λs = range(2π, 3π; length = 50)
+𝐓s = transition_matrix_spectrum(prep, λs, 1.5 + 0.02im)        # fixed index
+𝐓s = transition_matrix_spectrum(prep, λs, my_dispersion.(λs))  # λ-dependent index
+```
+
+For a spheroid the reconstruction also inherits the high-aspect-ratio
+stabilization for free: the negative-`r`-power moments vanish analytically, so —
+accumulated at high precision inside `prepare_sh` — they contribute ≈0 and the
+irregular-product cancellation that defeats the standard `Float64` assembly
+never forms (`prep.stable` reports this). The cross sections of the
+reconstructed T-matrix match the standard assembly to roughly `1e-9`–`1e-15` for
+moderate sizes, and the high-aspect path tracks the `stable=true` result.
+
+`prepare_sh` accepts a keyword `B` (the number of radial power-series terms,
+default `max(30, nₘₐₓ+15)`). Like the `F⁺` evaluation, the series needs more
+terms as the size parameter `k·rₘₐₓ·|mᵣ|` grows, so the method is best suited to
+small-to-moderate size parameters; very large particles still want the recursion
+path. The analytic `𝐔` stabilization is enabled only for `Spheroid` — for other
+axisymmetric shapes the moment machinery and `𝐏` are correct and the sweep reuse
+still applies, but the `𝐔` reconstruction is not stabilized.
+
 ## Post-processing
 
 After getting the T-Matrix, you can calculate the far-field scattering properties using the following functions:

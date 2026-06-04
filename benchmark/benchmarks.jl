@@ -88,6 +88,19 @@ let g = SUITE["ebcm"] = BenchmarkGroup(["core", "linalg"])
 end
 
 # --------------------------------------------------------------------------
+# Sh-matrix — moment-separation parameter sweeps. `prepare_sh` does the geometry
+# quadrature once; each subsequent (λ, mᵣ) point is then a cheap coefficient×
+# moment reconstruction. Contrasting the per-point cost with the from-scratch
+# assembly is the whole point of the method.
+# --------------------------------------------------------------------------
+let g = SUITE["sh_matrix"] = BenchmarkGroup(["sweep", "moment"])
+    prep = prepare_sh(SPHEROID, 8, 32; B = 30)
+    g["prepare_n8"] = @benchmarkable prepare_sh($SPHEROID, 8, 32; B = 30) seconds=30
+    g["sweep_point_n8"] = @benchmarkable transition_matrix($prep, $λ, $(SPHEROID.m))
+    g["fresh_assembly_n8"] = @benchmarkable transition_matrix($SPHEROID, $λ, 8, 32)
+end
+
+# --------------------------------------------------------------------------
 # IITM — the numerically stable solver; the GPU/N-fold work targets this path.
 # --------------------------------------------------------------------------
 let g = SUITE["iitm"] = BenchmarkGroup(["core", "linalg"])

@@ -505,3 +505,80 @@ function transition_matrix_spectrum(prep::ShPreparation, λs, mᵣs)
     ms = mᵣs isa Number ? Iterators.repeated(mᵣs, length(λs)) : mᵣs
     return [transition_matrix(prep, λ, m) for (λ, m) in zip(λs, ms)]
 end
+
+@testitem "Sh-matrix reproduces the ebcm P and U blocks (m=0 and m>0)" begin
+    using TransitionMatrices: Spheroid, ebcm_matrices_m₀, ebcm_matrices_m,
+                              _sh_moments_m, _sh_matrices_m₀, _sh_matrices_m, _sh_qband
+
+    relmax(A,
+        B;
+        tol = 1e-10) = maximum(
+        (abs(B[i, j]) < tol ? 0.0 : abs(A[i, j] - B[i, j]) / abs(B[i, j])
+        for i in axes(A, 1), j in axes(A, 2)); init = 0.0)
+
+    a, c, λ, sm = 2.0, 1.0, 2π, 1.5 + 0.02im
+    nmax, Ng, B = 6, 120, 26
+    shape = Spheroid{Float64, ComplexF64}(a, c, sm)
+    k = 2π / λ
+    qlo, qhi = _sh_qband(nmax, B)
+
+    mom0 = _sh_moments_m(shape, 0, nmax, Ng, qlo, qhi)
+    Psh, Ush = _sh_matrices_m₀(mom0, k, sm, nmax, B, ComplexF64)
+    Pref, Uref = ebcm_matrices_m₀(shape, λ, nmax, Ng)
+    @test relmax(Psh, Pref) < 1e-9
+    @test relmax(Ush, Uref) < 1e-7
+
+    for m in 1:4
+        mom = _sh_moments_m(shape, m, nmax, Ng, qlo, qhi)
+        Pm, Um = _sh_matrices_m(mom, m, k, sm, nmax, B, ComplexF64)
+        Pr, Ur = ebcm_matrices_m(m, shape, λ, nmax, Ng)
+        @test relmax(Pm, Pr) < 1e-9
+        @test relmax(Um, Ur) < 1e-7
+    end
+end
+
+@testitem "Sh-matrix transition_matrix reproduces the package T and cross sections" begin
+    using TransitionMatrices: Spheroid, prepare_sh, transition_matrix, calc_Csca, calc_Cext
+
+    # Moderate aspect-2 spheroid: full T must match the standard assembly.
+    sh = Spheroid{Float64, ComplexF64}(2.0, 1.0, 1.5 + 0.02im)
+    nmax, Ng, λ = 8, 160, 2π
+    Tpkg = transition_matrix(sh, λ, nmax, Ng)
+    prep = prepare_sh(sh, nmax, Ng; B = 28)
+    Tsh = transition_matrix(prep, λ)
+    @test prep.stable
+    @test calc_Csca(Tsh) ≈ calc_Csca(Tpkg) rtol = 1e-9
+    @test calc_Cext(Tsh) ≈ calc_Cext(Tpkg) rtol = 1e-9
+
+    # High-aspect prolate: matches the stabilized (F⁺) path where the standard
+    # Float64 assembly loses precision.
+    shp = Spheroid{Float64, ComplexF64}(2.5198421, 10.079368, 1.55 + 0.01im)
+    nmax2, Ng2 = 22, 360
+    Tstab = transition_matrix(shp, λ, nmax2, Ng2; stable = true)
+    prep2 = prepare_sh(shp, nmax2, Ng2; B = 42)
+    Tsh2 = transition_matrix(prep2, λ)
+    @test calc_Csca(Tsh2) ≈ calc_Csca(Tstab) rtol = 1e-6
+end
+
+@testitem "Sh-matrix spectrum sweep matches per-point assembly" begin
+    using TransitionMatrices: Spheroid, prepare_sh, transition_matrix,
+                              transition_matrix_spectrum, calc_Csca
+
+    sh = Spheroid{Float64, ComplexF64}(2.0, 1.0, 1.5 + 0.02im)
+    nmax, Ng = 8, 160
+    prep = prepare_sh(sh, nmax, Ng; B = 28)
+
+    λs = [2π, 2.3π, 2.6π]
+    ms = [1.5 + 0.02im, 1.52 + 0.02im, 1.55 + 0.03im]
+    Ts = transition_matrix_spectrum(prep, λs, ms)
+    @test length(Ts) == length(λs)
+    for (Ti, λi, mi) in zip(Ts, λs, ms)
+        Tp = transition_matrix(Spheroid{Float64, ComplexF64}(2.0, 1.0, mi), λi, nmax, Ng)
+        @test calc_Csca(Ti) ≈ calc_Csca(Tp) rtol = 1e-9
+    end
+
+    # A scalar refractive index is held fixed across the whole sweep.
+    Tsf = transition_matrix_spectrum(prep, λs, sh.m)
+    @test length(Tsf) == length(λs)
+    @test calc_Csca(Tsf[1]) ≈ calc_Csca(transition_matrix(prep, λs[1], sh.m)) rtol = 1e-12
+end
