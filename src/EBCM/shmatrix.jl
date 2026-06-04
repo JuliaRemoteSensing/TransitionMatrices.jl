@@ -152,30 +152,81 @@ _sh_widen(s, ::Type{R}) where {R} = s
 
 # ── Shape moments for one azimuthal index `m` ────────────────────────────────
 """
-    _sh_moments_m(shape, m, nmax, Ng, qlo, qhi; momtype, store) -> NamedTuple
+    _sh_geometry(shape, Ng, qlo, qhi; momtype) -> NamedTuple
 
-Compute the shape-only moment tables for azimuthal index `m`, accumulated at
-precision `momtype` (default `BigFloat`, so the spheroid's vanishing
-negative-power moments are accurate) and stored as `store` (default `Float64`).
-Families (sum over `i in 1:ng`, mirroring `ebcm_matrices_m₀`):
+Compute the `m`-independent geometry once: the (high-precision) Gauss–Legendre
+nodes/weights, the polar angles `ϑ`, and the two `r`-power weight tables shared
+by every azimuthal block,
 
-  Mτd[n,n′,q]  = Σ wᵢ r′ᵢ τ[i,n] d[i,n′] rᵢ^q
-  Mdτ[n,n′,q]  = Σ wᵢ r′ᵢ d[i,n] τ[i,n′] rᵢ^q
-  Mπd[n,n′,q]  = Σ wᵢ r′ᵢ π[i,n] d[i,n′] rᵢ^q   (only `m>0`)
-  Mππττ[n,q]   = Σ wᵢ (π[i,n]²+τ[i,n]²) rᵢ^q     (no r′)
+  WR[i,q] = wᵢ r′ᵢ rᵢ^q     (for the `τd`/`πd` families)
+  Wq[i,q] = wᵢ rᵢ^q         (for the `ππττ` family, which carries no `r′`)
+
+`gaussquad` and the `rᵢ^q` table do not depend on `m`, so hoisting them out of
+the per-`m` loop avoids recomputing them `nmax+1` times.
 """
-function _sh_moments_m(shape, m::Integer, nmax::Integer, Ng::Integer, qlo::Integer,
-        qhi::Integer; momtype::Type{R} = BigFloat,
-        store::Type{Ts} = Float64) where {R, Ts}
+function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
+        momtype::Type{R} = BigFloat) where {R}
     sym = has_symmetric_plane(shape)
     ng = sym ? Ng ÷ 2 : Ng
-    nmin = max(1, Int(m))
 
     sh = _sh_widen(shape, R)
     x, w, r, r′ = gaussquad(sh, Ng)
     ϑ = acos.(x)
 
+    nq = qhi - qlo + 1
+    WR = OffsetArray(zeros(R, ng, nq), 1:ng, qlo:qhi)
+    Wq = OffsetArray(zeros(R, ng, nq), 1:ng, qlo:qhi)
+    for i in 1:ng
+        ri = r[i]
+        wi = w[i]
+        wri = wi * r′[i]
+        rqᵢ = one(R)
+        Wq[i, 0] = wi
+        WR[i, 0] = wri
+        for q in 1:qhi
+            rqᵢ *= ri
+            Wq[i, q] = wi * rqᵢ
+            WR[i, q] = wri * rqᵢ
+        end
+        rqᵢ = one(R)
+        for q in -1:-1:qlo
+            rqᵢ /= ri
+            Wq[i, q] = wi * rqᵢ
+            WR[i, q] = wri * rqᵢ
+        end
+    end
+
+    return (; sym, ng, ϑ, WR, Wq, qlo, qhi)
+end
+
+"""
+    _sh_moments_m(geom, m, nmax; store) -> NamedTuple
+
+Compute the shape-only moment tables for azimuthal index `m` from the shared
+[`_sh_geometry`](@ref) `geom`, accumulated at the geometry's precision and stored
+as `store` (default `Float64`). Families (sum over `i in 1:ng`, mirroring
+`ebcm_matrices_m₀`):
+
+  Mτd[n,n′,q]  = Σ WR[i,q] τ[i,n] d[i,n′]
+  Mπd[n,n′,q]  = Σ WR[i,q] π[i,n] d[i,n′]   (only `m>0`)
+  Mππττ[n,q]   = Σ Wq[i,q] (π[i,n]²+τ[i,n]²)
+
+`Mdτ[n,n′,q] = Mτd[n′,n,q]` exactly (swap the two orders), so it is not stored —
+the assembly reads `Mτd` with the indices transposed. The angular products are
+formed once per `(n,n′)` instead of once per `q`.
+"""
+function _sh_moments_m(geom, m::Integer, nmax::Integer;
+        store::Type{Ts} = Float64) where {Ts}
+    WR, Wq = geom.WR, geom.Wq
+    R = eltype(WR)
+    ϑ = geom.ϑ
+    ng = geom.ng
+    qlo, qhi = geom.qlo, geom.qhi
+    Ng = length(ϑ)
     mm = Int(m)
+    nmin = max(1, mm)
+    nq = qhi - qlo + 1
+
     d = OffsetArray(zeros(R, Ng, nmax - mm + 1), 1:Ng, mm:nmax)
     τ = similar(d)
     𝜋 = similar(d)
@@ -186,51 +237,47 @@ function _sh_moments_m(shape, m::Integer, nmax::Integer, Ng::Integer, qlo::Integ
         end
     end
 
-    nq = qhi - qlo + 1
-    rq = OffsetArray(zeros(R, ng, nq), 1:ng, qlo:qhi)
-    for i in 1:ng
-        ri = r[i]
-        rq[i, 0] = one(R)
-        for q in 1:qhi
-            rq[i, q] = rq[i, q - 1] * ri
-        end
-        for q in -1:-1:qlo
-            rq[i, q] = rq[i, q + 1] / ri
-        end
-    end
-
     Mτd = OffsetArray(zeros(Ts, nmax, nmax, nq), 1:nmax, 1:nmax, qlo:qhi)
-    Mdτ = OffsetArray(zeros(Ts, nmax, nmax, nq), 1:nmax, 1:nmax, qlo:qhi)
     Mπd = OffsetArray(zeros(Ts, nmax, nmax, nq), 1:nmax, 1:nmax, qlo:qhi)
     Mππττ = OffsetArray(zeros(Ts, nmax, nq), 1:nmax, qlo:qhi)
 
+    gτd = Vector{R}(undef, ng)
+    gπd = Vector{R}(undef, ng)
     for n in nmin:nmax, n′ in nmin:nmax
 
-        for q in qlo:qhi
+        @inbounds for i in 1:ng
+            dᵢ = d[i, n′]
+            gτd[i] = τ[i, n] * dᵢ
+            gπd[i] = 𝜋[i, n] * dᵢ
+        end
+        @inbounds for q in qlo:qhi
             sτd = zero(R)
-            sdτ = zero(R)
             sπd = zero(R)
             for i in 1:ng
-                wr = w[i] * r′[i] * rq[i, q]
-                sτd += wr * τ[i, n] * d[i, n′]
-                sdτ += wr * d[i, n] * τ[i, n′]
-                sπd += wr * 𝜋[i, n] * d[i, n′]
+                wr = WR[i, q]
+                sτd += wr * gτd[i]
+                sπd += wr * gπd[i]
             end
             Mτd[n, n′, q] = Ts(sτd)
-            Mdτ[n, n′, q] = Ts(sdτ)
             Mπd[n, n′, q] = Ts(sπd)
         end
     end
-    for n in nmin:nmax, q in qlo:qhi
 
-        sm = zero(R)
-        for i in 1:ng
-            sm += w[i] * (𝜋[i, n]^2 + τ[i, n]^2) * rq[i, q]
+    gππττ = Vector{R}(undef, ng)
+    for n in nmin:nmax
+        @inbounds for i in 1:ng
+            gππττ[i] = 𝜋[i, n]^2 + τ[i, n]^2
         end
-        Mππττ[n, q] = Ts(sm)
+        @inbounds for q in qlo:qhi
+            sm = zero(R)
+            for i in 1:ng
+                sm += Wq[i, q] * gππττ[i]
+            end
+            Mππττ[n, q] = Ts(sm)
+        end
     end
 
-    return (; Mτd, Mdτ, Mπd, Mππττ, nmin, qlo, qhi, sym, ng)
+    return (; Mτd, Mπd, Mππττ, nmin, qlo, qhi, sym = geom.sym, ng)
 end
 
 # Default `q` band wide enough for every `m=0..nmax` integrand:
@@ -262,7 +309,7 @@ function _sh_matrices_m₀(mom, coeffs, k::Real, s::Number, nmax::Integer,
     R = real(CT)
     sym = mom.sym
     qlo, qhi = mom.qlo, mom.qhi
-    Mτd, Mdτ, Mππττ = mom.Mτd, mom.Mdτ, mom.Mππττ
+    Mτd, Mππττ = mom.Mτd, mom.Mππττ
 
     a = [n * (n + 1) for n in 1:nmax]
     A = [√(R(2n + 1) / (2n * (n + 1))) for n in 1:nmax]
@@ -284,8 +331,9 @@ function _sh_matrices_m₀(mom, coeffs, k::Real, s::Number, nmax::Integer,
     𝐔₁₁ = view(𝐔, 1:nmax, 1:nmax)
     𝐔₂₂ = view(𝐔, (nmax + 1):(2nmax), (nmax + 1):(2nmax))
 
+    # Mdτ[n,n′,q] = Mτd[n′,n,q] exactly, so read Mτd with the orders swapped.
     Mτd_q(n, n′) = q -> _sh_lookup(Mτd, n, n′, q, qlo, qhi)
-    Mdτ_q(n, n′) = q -> _sh_lookup(Mdτ, n, n′, q, qlo, qhi)
+    Mdτ_q(n, n′) = q -> _sh_lookup(Mτd, n′, n, q, qlo, qhi)
     Mππττ_q(n) = q -> _sh_lookup(Mππττ, n, q, qlo, qhi)
 
     for n in 1:nmax, n′ in 1:nmax
@@ -354,7 +402,7 @@ function _sh_matrices_m(mom, coeffs, m::Integer, k::Real, s::Number, nmax::Integ
     R = real(CT)
     sym = mom.sym
     qlo, qhi = mom.qlo, mom.qhi
-    Mτd, Mdτ, Mπd, Mππττ = mom.Mτd, mom.Mdτ, mom.Mπd, mom.Mππττ
+    Mτd, Mπd, Mππττ = mom.Mτd, mom.Mπd, mom.Mππττ
     nₘᵢₙ = max(1, Int(m))
     nn = nmax - nₘᵢₙ + 1
 
@@ -383,8 +431,9 @@ function _sh_matrices_m(mom, coeffs, m::Integer, k::Real, s::Number, nmax::Integ
     𝐔₂₁ = OffsetArray(view(𝐔, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
     𝐔₂₂ = OffsetArray(view(𝐔, (nn + 1):(2nn), (nn + 1):(2nn)), nₘᵢₙ:nmax, nₘᵢₙ:nmax)
 
+    # Mdτ[n,n′,q] = Mτd[n′,n,q] exactly, so read Mτd with the orders swapped.
     Mτd_q(n, n′) = q -> _sh_lookup(Mτd, n, n′, q, qlo, qhi)
-    Mdτ_q(n, n′) = q -> _sh_lookup(Mdτ, n, n′, q, qlo, qhi)
+    Mdτ_q(n, n′) = q -> _sh_lookup(Mτd, n′, n, q, qlo, qhi)
     Mπd_q(n, n′) = q -> _sh_lookup(Mπd, n, n′, q, qlo, qhi)
     Mππττ_q(n) = q -> _sh_lookup(Mππττ, n, q, qlo, qhi)
 
@@ -507,8 +556,8 @@ function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Inte
         store::Type = T) where {T}
     @assert iseven(Ng) "Ng must be even!"
     qlo, qhi = _sh_qband(nmax, B)
-    moments = [_sh_moments_m(shape, m, nmax, Ng, qlo, qhi; momtype, store)
-               for m in 0:nmax]
+    geom = _sh_geometry(shape, Ng, qlo, qhi; momtype)
+    moments = [_sh_moments_m(geom, m, nmax; store) for m in 0:nmax]
     coeffs = _sh_coeff_tables(nmax, B, store)
     return ShPreparation(shape, Int(nmax), Int(Ng), Int(B), moments, coeffs,
         shape isa Spheroid)
@@ -560,8 +609,8 @@ end
 
 @testitem "Sh-matrix reproduces the ebcm P and U blocks (m=0 and m>0)" begin
     using TransitionMatrices: Spheroid, ebcm_matrices_m₀, ebcm_matrices_m,
-                              _sh_moments_m, _sh_matrices_m₀, _sh_matrices_m, _sh_qband,
-                              _sh_coeff_tables
+                              _sh_geometry, _sh_moments_m, _sh_matrices_m₀,
+                              _sh_matrices_m, _sh_qband, _sh_coeff_tables
 
     relmax(A,
         B;
@@ -575,15 +624,16 @@ end
     k = 2π / λ
     qlo, qhi = _sh_qband(nmax, B)
     coeffs = _sh_coeff_tables(nmax, B, Float64)
+    geom = _sh_geometry(shape, Ng, qlo, qhi)
 
-    mom0 = _sh_moments_m(shape, 0, nmax, Ng, qlo, qhi)
+    mom0 = _sh_moments_m(geom, 0, nmax)
     Psh, Ush = _sh_matrices_m₀(mom0, coeffs, k, sm, nmax, ComplexF64)
     Pref, Uref = ebcm_matrices_m₀(shape, λ, nmax, Ng)
     @test relmax(Psh, Pref) < 1e-9
     @test relmax(Ush, Uref) < 1e-7
 
     for m in 1:4
-        mom = _sh_moments_m(shape, m, nmax, Ng, qlo, qhi)
+        mom = _sh_moments_m(geom, m, nmax)
         Pm, Um = _sh_matrices_m(mom, coeffs, m, k, sm, nmax, ComplexF64)
         Pr, Ur = ebcm_matrices_m(m, shape, λ, nmax, Ng)
         @test relmax(Pm, Pr) < 1e-9
