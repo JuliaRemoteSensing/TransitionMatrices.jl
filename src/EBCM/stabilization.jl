@@ -123,6 +123,14 @@ end
 
 Evaluate `F⁺_{nk}(s,x) = Σ_q c_q x^{2q+k-n+2}` at `x` in floating type `T`,
 converting the high-precision `coeffs` to `Complex{T}` first.
+
+The terms `c_q x^{2q+…}` first grow then decay; the sum is truncated once it has
+started to decay and a term is negligible relative to the running total
+(Somerville et al. 2013, §4.1). This both avoids summing past convergence and,
+crucially, prevents the monomial `xp = x^{2q+…}` from overflowing to `Inf`/`NaN`
+for large `x` (it would reach `x^{2·length(coeffs)}`). The series is only well
+conditioned in `Float64` when the order `n` exceeds the argument `x`; in that
+regime convergence is reached long before `xp` overflows.
 """
 function _eval_F⁺(qmin::Integer, coeffs::AbstractVector{<:Complex}, n::Integer,
                      k::Integer, x::T) where {T <: Real}
@@ -130,8 +138,19 @@ function _eval_F⁺(qmin::Integer, coeffs::AbstractVector{<:Complex}, n::Integer
     x2 = x * x
     xp = x^p0
     val = zero(Complex{T})
+    tol = eps(T)
+    prevmag = T(Inf)
+    decaying = false
     @inbounds for idx in eachindex(coeffs)
-        val += Complex{T}(coeffs[idx]) * xp
+        isfinite(xp) || break
+        term = Complex{T}(coeffs[idx]) * xp
+        val += term
+        tmag = abs(term)
+        decaying |= tmag < prevmag
+        if decaying && tmag ≤ tol * abs(val)
+            break
+        end
+        prevmag = tmag
         xp *= x2
     end
     return val
@@ -204,6 +223,109 @@ function _L⁸⁺(n, k, s, x; kw...)
     Fpm = F⁺(n + 1, k - 1, s, x; kw...)
     return ((n + k + 1) * ((k + 1) * Fmm + k * Fpp) +
             (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
+end
+
+@doc raw"""
+    _F⁺_matrix(s, x, N; prec, nterms) -> Matrix{Complex{T}}
+
+Stably evaluate the whole matrix of `F⁺_{nk}(s,x)` for `0 ≤ n,k ≤ N+1`, returned
+with a 1-based offset (`F[n+1, k+1]` holds `F⁺_{nk}`). Only `n+k`-even entries are
+filled; the rest stay zero (they are only needed for `m>0`).
+
+The bare power series is well conditioned in `Float64` *only* where the order
+exceeds the argument, so it cannot be used alone for the small-`n`/large-`x`
+corner. This routine combines the three regimes of Somerville, Auguié & Le Ru,
+JQSRT 123 (2013) §4.2, so the result is accurate for all `x`:
+
+  * `n ≤ k+2` — `F⁺ = F = x·χ_n(x)·ψ_k(sx)`, the direct Riccati–Bessel product
+    (no negative powers ⇒ no cancellation, stable for all `x`);
+  * last row `n = N+1`, deep entries `n-k ≥ 4` — the power series (Eq. 46), which
+    is accurate because `N` is taken large enough that `N+1 ≫ x`;
+  * `n ≥ k+4` — the stable recursion (Eq. 51, scheme (c) of their Fig. 3), filled
+    along diagonals `j = n-k = 4, 6, …` from high `n` down, seeded by the last row
+    and the `n = k+2` sub-diagonal:
+
+    ```math
+    F^+_{n,k} = \frac{2k+3}{s(2n+1)}\,(F^+_{n+1,k+1} + F^+_{n-1,k+1}) - F^+_{n,k+2}.
+    ```
+
+`N` must satisfy roughly `N+1 ≳ x + 15` for the last-row seed (and hence the whole
+bottom-left block) to be accurate; this is comparable to the multipole order
+needed for convergence anyway.
+"""
+function _F⁺_matrix(s::Number, x::T, N::Integer;
+                    prec::Integer = max(256, 12 * (N + 1) + 128),
+                    nterms::Integer = max(48, ceil(Int, 2 * abs(s) * x + 40))) where {T <: Real}
+    CT = Complex{T}
+    M = N + 1
+    F = zeros(CT, M + 1, M + 1)          # F[n+1, k+1] = F⁺_{nk},  n,k ∈ 0:M
+    at(n, k) = @inbounds F[n + 1, k + 1]
+
+    # Riccati–Bessel functions at this point, indexed 0:M.
+    sx = s * x
+    χ1, _ = ricattibessely(M, x)
+    nex = estimate_ricattibesselj_extra_terms(M, abs(s) * x)
+    ψ1, _ = ricattibesselj(M, nex, sx)
+    χv = Vector{T}(undef, M + 1)
+    ψv = Vector{CT}(undef, M + 1)
+    χv[1] = -cos(x)                      # χ_0(x) = x·y_0(x) = -cos x
+    ψv[1] = sin(sx)                      # ψ_0(z) = z·j_0(z) = sin z
+    @inbounds for n in 1:M
+        χv[n + 1] = χ1[n]
+        ψv[n + 1] = ψ1[n]
+    end
+
+    # (1) direct products for n ≤ k+2 (covers all entries with no cancellation).
+    @inbounds for k in 0:M, n in 0:min(k + 2, M)
+        iseven(n + k) || continue
+        F[n + 1, k + 1] = x * χv[n + 1] * ψv[k + 1]
+    end
+
+    # (2) last row n = M (= N+1), only the deep entries n-k ≥ 4 (the shallow part
+    #     of the last row is already filled by the direct products above).
+    @inbounds for k in 0:(M - 4)
+        iseven(M + k) || continue
+        qmin, coeffs = _F⁺_coeffs(M, k, s; nterms, prec)
+        F[M + 1, k + 1] = _eval_F⁺(qmin, coeffs, M, k, x)
+    end
+
+    # (3) stable recursion (Eq. 51, scheme c): diagonals j = 4, 6, … filled from
+    #     high n down; each entry uses the same-diagonal entry at n+1 and the j-2
+    #     diagonal at (n-1,k+1) and (n,k+2), all already known.
+    @inbounds for j in 4:2:M
+        for n in (M - 1):-1:j
+            k = n - j
+            F[n + 1, k + 1] = (2k + 3) / (s * (2n + 1)) *
+                              (at(n + 1, k + 1) + at(n - 1, k + 1)) - at(n, k + 2)
+        end
+    end
+
+    return F
+end
+
+@testitem "_F⁺_matrix is stable across x (series-seeded Eq.51 recursion)" begin
+    using TransitionMatrices: _F⁺_matrix, _F⁺_coeffs, _eval_F⁺
+    s = 1.5 + 0.02im
+    # The bare series fails for small n / large x; the matrix builder must stay
+    # accurate over the whole bottom-left (cancellation) block n ≥ k+4 for every x.
+    for x in (0.5, 8.0, 16.0, 35.0)
+        N = max(20, ceil(Int, x) + 18)          # N+1 ≳ x+15 for the last-row seed
+        F = _F⁺_matrix(s, x, N)
+        nt = max(60, ceil(Int, 2 * abs(s) * x + 50))
+        maxrel = 0.0
+        for n in 4:N, k in 0:(n - 4)
+            iseven(n + k) || continue
+            vbig = setprecision(BigFloat, 600) do
+                qmin, co = _F⁺_coeffs(n, k, s; nterms = nt, prec = 600)
+                _eval_F⁺(qmin, co, n, k, BigFloat(x))
+            end
+            ab = abs(ComplexF64(vbig))
+            ab < 1e-285 && continue
+            maxrel = max(maxrel,
+                         abs(ComplexF64(F[n + 1, k + 1]) - ComplexF64(vbig)) / ab)
+        end
+        @test maxrel < 1e-9
+    end
 end
 
 @testitem "F⁺ matches the Bessel product where no negative powers exist (n ≤ k+2)" begin
