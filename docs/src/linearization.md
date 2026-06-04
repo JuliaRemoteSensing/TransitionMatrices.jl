@@ -129,8 +129,8 @@ dependence.
   need gradients of scalar observables, and it should be validated against both
   the current forward analytical linearization and `ForwardDiff.jl`.
 - TODO: Extend IITM analytical linearization beyond the current fixed-geometry
-  material/wavelength slices following the recurrence and geometry plan in
-  [IITM Analytical Linearization Design](@ref).
+  material/wavelength slices once the boundary-aware shape derivative design is
+  validated.
 
 ## References
 

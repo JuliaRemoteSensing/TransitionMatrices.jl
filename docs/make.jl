@@ -18,7 +18,6 @@ makedocs(;
              "Home" => "index.md",
              "Usage" => "usage.md",
              "Linearization" => "linearization.md",
-             "IITM Linearization Design" => "iitm_linearization_design.md",
              "API" => "api.md",
          ])
 

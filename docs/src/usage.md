@@ -72,12 +72,34 @@ And the orientation-averaged scattering matrix:
 
 - [`scattering_matrix`](@ref), a.k.a. `calc_F`
 
-## Automatic differentiation
+## Differentiation
 
-`TransitionMatrices.jl` supports automatic differentiation using [`ForwardDiff.jl`](https://github.com/JuliaDiff/ForwardDiff.jl).
+`TransitionMatrices.jl` supports numerical automatic differentiation using
+[`ForwardDiff.jl`](https://github.com/JuliaDiff/ForwardDiff.jl), and also
+provides analytical linearization backends for supported solver and parameter
+combinations.
 
-For analytical Jacobian infrastructure and backend support boundaries, see
+The analytical path is exposed through `LinearizationProblem`,
+`linearize_transition_matrix`, and `linearize_observable`. It currently covers
+Mie size/material/wavelength variables, fixed-order EBCM slices for spheroids,
+cylinders, and Chebyshev particles, and fixed-geometry IITM material/wavelength
+slices. Unsupported combinations throw `UnsupportedLinearization` instead of
+silently falling back to finite differences. For backend support boundaries, see
 [Linearization Framework](@ref).
+
+For example, Mie transition-matrix derivatives can be requested directly:
+
+```julia
+problem = LinearizationProblem(
+    [1.7, 1.311, 0.02, 2π];
+    variables = (:x, :mᵣ, :mᵢ, :λ),
+) do x
+    (; x = x[1], m = complex(x[2], x[3]), λ = x[4], nₘₐₓ = 5)
+end
+
+result = linearize_transition_matrix(problem, MieLinearization())
+∂T_∂λ = derivative(result, :λ)
+```
 
 Here is an example of calculating the gradient of the scattering cross section with respect to `a`, `c`, `mᵣ`, `mᵢ` and `λ`:
 

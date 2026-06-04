@@ -20,17 +20,24 @@ The transition matrix method, or T-Matrix method, is one of the most powerful an
   - Amplitude scattering matrix
   - Phase matrix
   - Scattering matrix
+- Compute Jacobians through the linearization framework
+  - Numerical automatic differentiation for user-defined scalar workflows via `ForwardDiff.jl`
+  - Analytical Mie linearization for size, refractive-index, and wavelength variables
+  - Analytical EBCM slices for spheroids, cylinders, and Chebyshev particles
+  - Analytical fixed-geometry IITM material/wavelength slices for axisymmetric,
+    n-fold, and arbitrary-shape solvers
 
 Compared to existing packages, `TransitionMatrices.jl` is special in that it is generic and supports various floating-point types, e.g.:
 
 - `Float64` and `BigFloat` from [`Base`](https://docs.julialang.org/en/v1/base/)
 - `Double64` from [`DoubleFloats.jl`](https://github.com/JuliaMath/DoubleFloats.jl)
 - `Float128` from [`Quadmath.jl`](https://github.com/JuliaMath/Quadmath.jl)
-- `Arb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
-- `ArbFloat` from [`ArbNumerics.jl`](https://github.com/JeffreySarnoff/ArbNumerics.jl)
+- `Arb` and `Acb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
 
 By using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.
 
-Note that the types from `DoubleFloats.jl`, `Quadmath.jl` and `Arblib.jl` are re-exported by `TransitionMatrices.jl` and can be directly used.
+The precision types `Double64`, `Float128`, `ComplexF128`, `Arb`, and `Acb`
+are re-exported by `TransitionMatrices.jl` and can be directly used after
+`using TransitionMatrices`.
 
-Types from `ArbNumerics.jl`, however, needs to be imported manually due to compatibility issues.
+The `0.4` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.
