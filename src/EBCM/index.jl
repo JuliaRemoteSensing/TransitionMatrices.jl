@@ -1,4 +1,5 @@
 include("axisymmetric.jl")
 include("stabilization.jl")
+include("shmatrix.jl")
 include("routines.jl")
 include("linearization.jl")
