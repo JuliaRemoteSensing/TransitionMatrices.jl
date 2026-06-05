@@ -42,7 +42,7 @@
 """
     _odd_dfact(m) -> BigInt
 
-Odd double factorial `m!!` for odd `m ≥ -1`, with the convention `(-1)!! = 1`.
+Odd double factorial ``m!!`` for odd `m ≥ -1`, with the convention ``(-1)!! = 1``.
 """
 function _odd_dfact(m::Integer)
     isodd(m) || throw(ArgumentError("_odd_dfact expects an odd integer, got $m"))
@@ -56,10 +56,10 @@ function _odd_dfact(m::Integer)
     return r
 end
 
-"""
+@doc raw"""
     _γ(n, a) -> Rational{BigInt}
 
-`γ_{n,a}`: coefficient of `z^{2a-n}` in the series of `χ_n(z) = -z y_n(z)`
+``\gamma_{n,a}``: coefficient of ``z^{2a-n}`` in the series of ``\chi_n(z) = -z y_n(z)``
 (DLMF 10.53.2).
 """
 function _γ(n::Integer, a::Integer)
@@ -77,10 +77,10 @@ function _γ(n::Integer, a::Integer)
     end
 end
 
-"""
+@doc raw"""
     _β(k, b) -> Rational{BigInt}
 
-`β_{k,b}`: coefficient of `z^{k+1+2b}` in the series of `ψ_k(z) = z j_k(z)`
+``\beta_{k,b}``: coefficient of ``z^{k+1+2b}`` in the series of ``\psi_k(z) = z j_k(z)``
 (DLMF 10.53.1).
 """
 function _β(k::Integer, b::Integer)
@@ -89,15 +89,15 @@ function _β(k::Integer, b::Integer)
     return sgn // den
 end
 
-"""
+@doc raw"""
     _F⁺_coeffs(n, k, s; nterms, prec) -> (qmin, coeffs)
 
-High-precision coefficients of `F⁺_{nk}(s,x) = Σ c_q x^{2q+k-n+2}` for
+High-precision coefficients of ``F^+_{nk}(s,x) = \sum_q c_q x^{2q+k-n+2}`` for
 `q = qmin, …, qmin+nterms-1`, returned as a `Vector{Complex{BigFloat}}`.
 `s` is the (generally complex) relative refractive index. The sum defining each
 `c_q` is accumulated in `BigFloat` at precision `prec` bits to defeat the
-`(2n-1)!!`-scale cancellation. This `BigFloat` accumulation also subsumes the
-additional `s≈1` cancellation that Somerville et al. (2013) handle analytically in
+``(2n-1)!!``-scale cancellation. This `BigFloat` accumulation also subsumes the
+additional ``s \approx 1`` cancellation that Somerville et al. (2013) handle analytically in
 their Appendix B (the leading coefficients vanish at `s=1`): the base precision
 has many digits of margin for it, so no special treatment is needed — the s≈1
 accuracy floor of the stabilized assembly is instead the `Float64` round-off in
@@ -124,17 +124,17 @@ function _F⁺_coeffs(n::Integer, k::Integer, s::Number; nterms::Integer = 48,
     return qmin, coeffs
 end
 
-"""
+@doc raw"""
     _eval_F⁺(qmin, coeffs, n, k, x::T) -> Complex{T}
 
-Evaluate `F⁺_{nk}(s,x) = Σ_q c_q x^{2q+k-n+2}` at `x` in floating type `T`,
+Evaluate ``F^+_{nk}(s,x) = \sum_q c_q x^{2q+k-n+2}`` at `x` in floating type `T`,
 converting the high-precision `coeffs` to `Complex{T}` first.
 
-The terms `c_q x^{2q+…}` first grow then decay; the sum is truncated once it has
+The terms ``c_q x^{2q+\ldots}`` first grow then decay; the sum is truncated once it has
 started to decay and a term is negligible relative to the running total
 (Somerville et al. (2013), §4.1). This both avoids summing past convergence and,
 crucially, prevents the monomial `xp = x^{2q+…}` from overflowing to `Inf`/`NaN`
-for large `x` (it would reach `x^{2·length(coeffs)}`). The series is only well
+for large `x` (it would reach ``x^{2\cdot\text{length(coeffs)}}``). The series is only well
 conditioned in `Float64` when the order `n` exceeds the argument `x`; in that
 regime convergence is reached long before `xp` overflows.
 """
@@ -162,12 +162,12 @@ function _eval_F⁺(qmin::Integer, coeffs::AbstractVector{<:Complex}, n::Integer
     return val
 end
 
-"""
+@doc raw"""
     F⁺(n, k, s, x; nterms, prec) -> Complex
 
-Numerically stable `F⁺_{nk}(s,x)` (Somerville et al. (2013), Eqs. (45)–(46)),
-evaluated in the precision of `x`. `F⁺/x` is the cancellation-free replacement
-for `χ_n(x)·ψ_k(sx)` in the spheroid EBCM `U`-matrix integrand.
+Numerically stable ``F^+_{nk}(s,x)`` (Somerville et al. (2013), Eqs. (45)–(46)),
+evaluated in the precision of `x`. ``F^+/x`` is the cancellation-free replacement
+for ``\chi_n(x)\psi_k(sx)`` in the spheroid EBCM ``\mathbf{U}``-matrix integrand.
 """
 function F⁺(n::Integer, k::Integer, s::Number, x::T;
         nterms::Integer = max(24, ceil(Int, 2 * abs(s) * x + 16)),
@@ -183,31 +183,31 @@ end
 # factor, like `F⁺` itself. For small enough n−k these equal the full products
 # (no negative powers), which the tests exploit for validation.
 
-"""
+@doc raw"""
     _xχψ′⁺(n, k, s, x) -> Complex
 
-`[x·χ_n(x)·ψ′_k(sx)]⁺` (Somerville et al. (2013), Eq. (59)), from
-`(2k+1)ψ′_k(sx) = (k+1)ψ_{k-1}(sx) − k ψ_{k+1}(sx)`.
+``[x\chi_n(x)\psi'_k(sx)]^+`` (Somerville et al. (2013), Eq. (59)), from
+``(2k+1)\psi'_k(sx) = (k+1)\psi_{k-1}(sx) - k\psi_{k+1}(sx)``.
 """
 function _xχψ′⁺(n, k, s, x; kw...)
     ((k + 1) * F⁺(n, k - 1, s, x; kw...) - k * F⁺(n, k + 1, s, x; kw...)) / (2k + 1)
 end
 
-"""
+@doc raw"""
     _xχ′ψ⁺(n, k, s, x) -> Complex
 
-`[x·χ′_n(x)·ψ_k(sx)]⁺` (Somerville et al. (2013), Eq. (60)), from
-`(2n+1)χ′_n(x) = (n+1)χ_{n-1}(x) − n χ_{n+1}(x)`.
+``[x\chi'_n(x)\psi_k(sx)]^+`` (Somerville et al. (2013), Eq. (60)), from
+``(2n+1)\chi'_n(x) = (n+1)\chi_{n-1}(x) - n\chi_{n+1}(x)``.
 """
 function _xχ′ψ⁺(n, k, s, x; kw...)
     ((n + 1) * F⁺(n - 1, k, s, x; kw...) - n * F⁺(n + 1, k, s, x; kw...)) / (2n + 1)
 end
 
-"""
+@doc raw"""
     _L⁷⁺(n, k, s, x) -> Complex
 
-`[x·(χ′_n ψ′_k + n(n+1) χ_n ψ_k /(s x²))]⁺` (Somerville et al. (2013), Eq. (62)) — the
-cancellation-free radial factor of the `L⁷` integrand.
+``[x(\chi'_n \psi'_k + n(n+1)\chi_n\psi_k/(sx^2))]^+`` (Somerville et al. (2013), Eq. (62)) — the
+cancellation-free radial factor of the ``L^7`` integrand.
 """
 function _L⁷⁺(n, k, s, x; kw...)
     Fmm = F⁺(n - 1, k - 1, s, x; kw...)
@@ -218,11 +218,11 @@ function _L⁷⁺(n, k, s, x; kw...)
             (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
 end
 
-"""
+@doc raw"""
     _L⁸⁺(n, k, s, x) -> Complex
 
-`[x·(χ′_n ψ′_k + k(k+1) χ_n ψ_k /(s x²))]⁺` (Somerville et al. (2013), Eq. (61)) — the
-cancellation-free radial factor of the `L⁸` integrand.
+``[x(\chi'_n \psi'_k + k(k+1)\chi_n\psi_k/(sx^2))]^+`` (Somerville et al. (2013), Eq. (61)) — the
+cancellation-free radial factor of the ``L^8`` integrand.
 """
 function _L⁸⁺(n, k, s, x; kw...)
     Fmm = F⁺(n - 1, k - 1, s, x; kw...)
@@ -233,11 +233,11 @@ function _L⁸⁺(n, k, s, x; kw...)
             (k - n) * ((k + 1) * Fpm + k * Fmp)) / ((2n + 1) * (2k + 1))
 end
 
-"""
+@doc raw"""
     _F⁺_lastrow(s, N, xmax; prec, nterms) -> Vector
 
 Precompute the *x-independent* power-series coefficients of the F⁺-matrix last row
-`n = N+1` (the entries with `n-k ≥ 4`, `n+k` even, that seed the recursion). These
+``n = N+1`` (the entries with ``n-k \ge 4``, ``n+k`` even, that seed the recursion). These
 are the only expensive (`BigFloat`) part of `_F⁺_matrix`, so computing them once
 and passing them to every per-quadrature-point `_F⁺_matrix` call removes the
 dominant cost of the stabilized assembly. `nterms` is sized for the *largest*
@@ -260,8 +260,8 @@ end
 @doc raw"""
     _F⁺_matrix(s, x, N; prec, nterms, lastrow) -> Matrix{Complex{T}}
 
-Stably evaluate the whole matrix of `F⁺_{nk}(s,x)` for `0 ≤ n,k ≤ N+1`, returned
-with a 1-based offset (`F[n+1, k+1]` holds `F⁺_{nk}`). Only `n+k`-even entries are
+Stably evaluate the whole matrix of ``F^+_{nk}(s,x)`` for ``0 \le n,k \le N+1``, returned
+with a 1-based offset (`F[n+1, k+1]` holds ``F^+_{nk}``). Only `n+k`-even entries are
 filled; the rest stay zero (they are only needed for `m>0`).
 
 The bare power series is well conditioned in `Float64` *only* where the order
@@ -269,19 +269,19 @@ exceeds the argument, so it cannot be used alone for the small-`n`/large-`x`
 corner. This routine combines the three regimes of Somerville et al. (2013),
 §4.2, so the result is accurate for all `x`:
 
-  * `n ≤ k+2` — `F⁺ = F = x·χ_n(x)·ψ_k(sx)`, the direct Riccati–Bessel product
+  * ``n \le k+2`` — ``F^+ = F = x\chi_n(x)\psi_k(sx)``, the direct Riccati–Bessel product
     (no negative powers ⇒ no cancellation, stable for all `x`);
-  * last row `n = N+1`, deep entries `n-k ≥ 4` — the power series (their Eq. (46)), which
-    is accurate because `N` is taken large enough that `N+1 ≫ x`;
-  * `n ≥ k+4` — the stable recursion (their Eq. (51), scheme (c) of their Fig. 3), filled
-    along diagonals `j = n-k = 4, 6, …` from high `n` down, seeded by the last row
-    and the `n = k+2` sub-diagonal:
+  * last row ``n = N+1``, deep entries ``n-k \ge 4`` — the power series (their Eq. (46)), which
+    is accurate because `N` is taken large enough that ``N+1 \gg x``;
+  * ``n \ge k+4`` — the stable recursion (their Eq. (51), scheme (c) of their Fig. 3), filled
+    along diagonals ``j = n-k = 4, 6, \ldots`` from high `n` down, seeded by the last row
+    and the ``n = k+2`` sub-diagonal:
 
     ```math
     F^+_{n,k} = \frac{2k+3}{s(2n+1)}\,(F^+_{n+1,k+1} + F^+_{n-1,k+1}) - F^+_{n,k+2}.
     ```
 
-`N` must satisfy roughly `N+1 ≳ x + 15` for the last-row seed (and hence the whole
+`N` must satisfy roughly ``N+1 \gtrsim x + 15`` for the last-row seed (and hence the whole
 bottom-left block) to be accurate; this is comparable to the multipole order
 needed for convergence anyway.
 """
@@ -346,13 +346,13 @@ end
 # matrix returned by `_F⁺_matrix` (`F[n+1,k+1] = F⁺_{nk}`).
 @inline _Fp(F, n, k) = @inbounds F[n + 1, k + 1]
 
-"`[x·χ_n·ψ′_k]⁺` (Somerville et al. (2013), Eq. (59)) from a precomputed F⁺ matrix."
+raw"``[x\chi_n\psi'_k]^+`` (Somerville et al. (2013), Eq. (59)) from a precomputed F⁺ matrix."
 _xχψ′⁺_mat(F, n, k) = ((k + 1) * _Fp(F, n, k - 1) - k * _Fp(F, n, k + 1)) / (2k + 1)
 
-"`[x·χ′_n·ψ_k]⁺` (Somerville et al. (2013), Eq. (60)) from a precomputed F⁺ matrix."
+raw"``[x\chi'_n\psi_k]^+`` (Somerville et al. (2013), Eq. (60)) from a precomputed F⁺ matrix."
 _xχ′ψ⁺_mat(F, n, k) = ((n + 1) * _Fp(F, n - 1, k) - n * _Fp(F, n + 1, k)) / (2n + 1)
 
-"L⁷ radial factor (Somerville et al. (2013), Eq. (62)) from a precomputed F⁺ matrix."
+raw"``L^7`` radial factor (Somerville et al. (2013), Eq. (62)) from a precomputed F⁺ matrix."
 function _L⁷⁺_mat(F, n, k)
     Fmm = _Fp(F, n - 1, k - 1);
     Fpp = _Fp(F, n + 1, k + 1)
@@ -362,7 +362,7 @@ function _L⁷⁺_mat(F, n, k)
             (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
 end
 
-"L⁸ radial factor (Somerville et al. (2013), Eq. (61)) from a precomputed F⁺ matrix."
+raw"``L^8`` radial factor (Somerville et al. (2013), Eq. (61)) from a precomputed F⁺ matrix."
 function _L⁸⁺_mat(F, n, k)
     Fmm = _Fp(F, n - 1, k - 1);
     Fpp = _Fp(F, n + 1, k + 1)

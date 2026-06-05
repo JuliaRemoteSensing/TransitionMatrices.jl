@@ -182,15 +182,15 @@ Parameters:
 - `stable`: when `true`, assemble the `𝐔`-matrix integrals with the
   cancellation-free `F⁺` formulation of Somerville et al. (2013). The standard
   integrands lose all precision for spheroids of high aspect
-  ratio (the irregular `χ_n·ψ_k` products develop huge Laurent terms that should
+  ratio (the irregular ``\chi_n\psi_k`` products develop huge Laurent terms that should
   cancel on integration but do not numerically); `stable=true` removes that
   cancellation, recovering a relative accuracy of about `1e-9` in `Float64`
   regardless of aspect ratio. It is **only valid for `Spheroid`** (the
   cancellation relies on the spheroid surface) and costs roughly 2–3× the default
   assembly, so it is opt-in. For it to help, `nₘₐₓ` must be large enough that
-  `nₘₐₓ+1 ≳ k·c + 15`, where `c` is the largest semi-axis — comparable to the
+  ``n_{\max}+1 \gtrsim k\cdot c + 15``, where `c` is the largest semi-axis — comparable to the
   order needed for convergence at that size anyway. The remaining `Float64`
-  round-off (in particular a `~1e-9` floor as the refractive index `s → 1`) is
+  round-off (in particular a `~1e-9` floor as the refractive index ``s \to 1``) is
   orthogonal to the cancellation and is lowered by using an extended-precision
   element type: `stable=true` with `Double64` reaches `~1e-25` at high aspect
   ratio.
