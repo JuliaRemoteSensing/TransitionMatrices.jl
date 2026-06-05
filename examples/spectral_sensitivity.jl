@@ -118,9 +118,9 @@ begin
     f_classic(λ) = ForwardDiff.derivative(l -> Csca_classic(l, mᵣ), λ)
     f_sh(λs[1]); f_classic(λs[1])   # warm up
 
-    t_prepare = @belapsed prepare_sh($spheroid, $nmax, $Ng) samples=3 evals=1
-    t_sh = @belapsed [f_sh(λ) for λ in $λs] samples=3 evals=1
-    t_classic = @belapsed [f_classic(λ) for λ in $λs] samples=3 evals=1
+    t_prepare = @belapsed prepare_sh($spheroid, $nmax, $Ng) samples=1 evals=1
+    t_sh = @belapsed [f_sh(λ) for λ in $λs] samples=1 evals=1
+    t_classic = @belapsed [f_classic(λ) for λ in $λs] samples=1 evals=1
 
     (; n_points = length(λs),
         sh_ms = round((t_prepare + t_sh) * 1e3; digits = 1),
