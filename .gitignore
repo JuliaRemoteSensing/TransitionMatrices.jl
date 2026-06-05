@@ -16,10 +16,10 @@ Manifest.toml
 # Documentation artifacts
 /docs/build/
 
-# Generated Pluto → Documenter example pages (rendered at doc-build time)
+# Intermediate Pluto render output (the committed copies live in
+# docs/src/examples/, which is tracked).
 /examples/*.md
 !/examples/README.md
-/docs/src/examples/
 
 # Editor and OS metadata
 .DS_Store

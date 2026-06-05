@@ -28,6 +28,11 @@ docs:
     julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); ENV["DOCUMENTER_SKIP_DEPLOY"]="true"; include("docs/make.jl")'
 alias d := docs
 
+# Re-render example notebooks + rebuild docs (commit docs/src/examples/*.md after)
+[group("docs")]
+docs-examples:
+    julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); ENV["BUILD_EXAMPLES"]="true"; ENV["DOCUMENTER_SKIP_DEPLOY"]="true"; include("docs/make.jl")'
+
 [group("docs")]
 doctest:
     julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); using Documenter: DocMeta, doctest; using TransitionMatrices; DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrices); recursive=true); doctest(TransitionMatrices)'

@@ -1,16 +1,14 @@
-# Headless GR: use a null GKS workstation so Plots renders without a display
-# (set before the notebook workers spawn, which inherit this environment).
-ENV["GKSwstype"] = "100"
-
 using TransitionMatrices
 using Documenter
-using PlutoStaticHTML
 
-# ── Render the example Pluto notebooks to Documenter markdown ─────────────────
-# Each notebook self-activates the examples/ environment in its own Pluto worker,
-# so it runs without disturbing this docs process. Generated `.md` (with the
-# plots embedded as base64 images) are copied under docs/src/examples/.
-# Set ENV["SKIP_EXAMPLES"]="true" to skip this step during fast local doc builds.
+# ── Example Pluto notebooks ───────────────────────────────────────────────────
+# The rendered pages (docs/src/examples/*.md, with plots embedded as base64 SVG)
+# are committed and used as-is by default, so CI does not have to run the
+# notebooks (which load Plots/GR and its native graphics stack — fragile on
+# headless Linux runners). To refresh them, render locally with
+#   BUILD_EXAMPLES=true julia --project=docs docs/make.jl
+# and commit the regenerated docs/src/examples/*.md. Each notebook self-activates
+# the examples/ environment in its own Pluto worker.
 const NB_DIR = normpath(joinpath(@__DIR__, "..", "examples"))
 const NB_OUT = joinpath(@__DIR__, "src", "examples")
 const NOTEBOOKS = ["shapes_gallery.jl", "angular_scattering.jl",
@@ -28,7 +26,13 @@ function build_examples()
     end
 end
 
-get(ENV, "SKIP_EXAMPLES", "false") == "true" || build_examples()
+if get(ENV, "BUILD_EXAMPLES", "false") == "true"
+    # Only the render path needs PlutoStaticHTML/Pluto and a headless GR; the
+    # default docs build (CI) uses the committed pages and loads none of this.
+    ENV["GKSwstype"] = "100"
+    using PlutoStaticHTML
+    build_examples()
+end
 
 DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrices);
     recursive = true)
