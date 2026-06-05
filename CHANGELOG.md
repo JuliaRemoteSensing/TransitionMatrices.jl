@@ -6,8 +6,9 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-Work on top of `v0.4.0`. Includes a breaking change to solver selection, so the
-next release is expected to be `v0.5.0`.
+No unreleased changes yet.
+
+## [0.5.0] - 2026-06-05
 
 ### Added
 
@@ -25,9 +26,16 @@ next release is expected to be `v0.5.0`.
   `Iterative(EBCM; stable = true)`.
 - **Performance benchmark suite** and a PR benchmark CI workflow
   (AirspeedVelocity).
-- **`examples/` folder** with five runnable Pluto notebooks — shapes gallery,
-  angular scattering & polarization, orientation averaging, solver landscape, and
-  spectral sensitivity — rendered into the documentation site.
+- **`examples/` folder** with six runnable Pluto notebooks — shapes gallery,
+  solver landscape, angular scattering & polarization, orientation averaging,
+  and spectral sensitivity, plus a rain-radar observables example adapted from
+  [`@xiongyuup`](https://github.com/xiongyuup)'s
+  [PR #3](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/pull/3)
+  with water/ice refractive-index fits and a multi-frequency
+  brightness-temperature lookup — rendered into the documentation site.
+- **Optional radiative-transfer workflow example** with synthetic WRF-like
+  NetCDF generation and a WRF-style dual-pol radar pipeline under
+  `examples/radiative_transfer/`.
 
 ### Changed
 
@@ -76,7 +84,8 @@ next release is expected to be `v0.5.0`.
 
 - Initial release.
 
-[Unreleased]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.2.0...v0.3.0

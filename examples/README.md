@@ -20,6 +20,10 @@ so it works from a fresh checkout (the first run installs dependencies).
 - [`shapes_gallery.jl`](shapes_gallery.jl) — **quick-start gallery**: define a
   spheroid, cylinder, Chebyshev particle, and N-fold prism; compute each
   T-matrix and its `Qsca`/`Qext`/`g`/`ω`; notes on which solver to use.
+- [`solver_landscape.jl`](solver_landscape.jl) — **solver landscape &
+  convergence**: the two-layer API (`EBCM`, `IITM`, `Iterative`, `stable`) on a
+  high-aspect spheroid, showing classic EBCM diverging with `nₘₐₓ` while the
+  stabilized path holds.
 - [`angular_scattering.jl`](angular_scattering.jl) — **angular scattering &
   polarization**: the orientation-averaged scattering (Mueller) matrix vs angle
   (phase function `F₁₁`, linear polarization `-F₁₂/F₁₁`, `F₂₂/F₁₁`, `F₄₄/F₁₁`),
@@ -27,10 +31,6 @@ so it works from a fresh checkout (the first run installs dependencies).
 - [`orientation_averaging.jl`](orientation_averaging.jl) — **orientation
   averaging**: Mishchenko's analytic `RandomOrientationTransitionMatrix` vs the
   numerical `orientation_average`, and the numerical average converging to it.
-- [`solver_landscape.jl`](solver_landscape.jl) — **solver landscape &
-  convergence**: the two-layer API (`EBCM`, `IITM`, `Iterative`, `stable`) on a
-  high-aspect spheroid, showing classic EBCM diverging with `nₘₐₓ` while the
-  stabilized path holds.
 - [`spectral_sensitivity.jl`](spectral_sensitivity.jl) — **fast wavelength /
   refractive-index sensitivities** via the Sh-matrix moment-separation backend.
   `prepare_sh` runs the geometry quadrature once; differentiating the cheap
@@ -38,3 +38,19 @@ so it works from a fresh checkout (the first run installs dependencies).
   across a whole spectrum at a large speedup over differentiating the
   from-scratch assembly. Includes plots of the spectra and their sensitivities,
   and a timing comparison.
+- [`rain_radar.jl`](rain_radar.jl) — **rain radar observables**: adapt a
+  radiative-transfer prototype contributed by
+  [`@xiongyuup`](https://github.com/xiongyuup) in
+  [PR #3](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/pull/3)
+  into a self-contained example. It uses spheroidal IITM T-matrices, a
+  rain-drop axis-ratio model, water/ice refractive-index fits, and a drop-size
+  distribution to compute dual-pol radar moments and single- / multi-frequency
+  brightness-temperature integrals without external WRF/NetCDF/MAT data.
+
+## Advanced Workflows
+
+- [`radiative_transfer/`](radiative_transfer/) — **WRF-like dual-pol radar
+  workflow**: an optional standalone environment with synthetic NetCDF data
+  generation and a WRF-style rain radar pipeline. It keeps heavy NetCDF
+  workflow dependencies out of the main package and is intended as a smoke-test
+  and adaptation point for real WRF output.
