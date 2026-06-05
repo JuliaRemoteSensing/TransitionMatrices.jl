@@ -5,16 +5,16 @@
 # and a regular one ψ_k. For a spheroid, the negative-power part of their
 # Laurent expansion integrates *exactly* to zero, but evaluated directly it
 # dominates the integrand by many orders of magnitude and destroys precision in
-# `Float64` (Somerville, Auguié & Le Ru, JQSRT 113:524 (2012)).
+# `Float64` (Somerville et al. (2012)).
 #
-# The fix (Somerville et al., JQSRT 123:153 (2013)) replaces χ_n(x)·ψ_k(sx) by
-# F⁺_{nk}(s,x)/x, where (their Eq. 45)
+# The fix (Somerville et al. (2013)) replaces χ_n(x)·ψ_k(sx) by
+# F⁺_{nk}(s,x)/x, where (their Eq. (45))
 #
 #     F_{nk}(s,x)  = x · χ_n(x) · ψ_k(sx),
 #     F⁺_{nk}(s,x) = P⁺[F_{nk}]   (the part with non-negative powers of x),
 #
 # computed directly from the power series so the cancelling negative powers are
-# never formed (their Eq. 46 and §4.1).
+# never formed (their Eq. (46) and §4.1).
 #
 # Power series (DLMF 10.53.1/10.53.2). This package uses ψ_k = z·j_k and the
 # convention χ_n = z·y_n (NO minus sign; see `ricattibessely`):
@@ -97,7 +97,7 @@ High-precision coefficients of `F⁺_{nk}(s,x) = Σ c_q x^{2q+k-n+2}` for
 `s` is the (generally complex) relative refractive index. The sum defining each
 `c_q` is accumulated in `BigFloat` at precision `prec` bits to defeat the
 `(2n-1)!!`-scale cancellation. This `BigFloat` accumulation also subsumes the
-additional `s≈1` cancellation that Somerville et al. 2013 handle analytically in
+additional `s≈1` cancellation that Somerville et al. (2013) handle analytically in
 their Appendix B (the leading coefficients vanish at `s=1`): the base precision
 has many digits of margin for it, so no special treatment is needed — the s≈1
 accuracy floor of the stabilized assembly is instead the `Float64` round-off in
@@ -132,7 +132,7 @@ converting the high-precision `coeffs` to `Complex{T}` first.
 
 The terms `c_q x^{2q+…}` first grow then decay; the sum is truncated once it has
 started to decay and a term is negligible relative to the running total
-(Somerville et al. 2013, §4.1). This both avoids summing past convergence and,
+(Somerville et al. (2013), §4.1). This both avoids summing past convergence and,
 crucially, prevents the monomial `xp = x^{2q+…}` from overflowing to `Inf`/`NaN`
 for large `x` (it would reach `x^{2·length(coeffs)}`). The series is only well
 conditioned in `Float64` when the order `n` exceeds the argument `x`; in that
@@ -165,7 +165,7 @@ end
 """
     F⁺(n, k, s, x; nterms, prec) -> Complex
 
-Numerically stable `F⁺_{nk}(s,x)` (Somerville et al. 2013, Eq. 45–46),
+Numerically stable `F⁺_{nk}(s,x)` (Somerville et al. (2013), Eqs. (45)–(46)),
 evaluated in the precision of `x`. `F⁺/x` is the cancellation-free replacement
 for `χ_n(x)·ψ_k(sx)` in the spheroid EBCM `U`-matrix integrand.
 """
@@ -176,17 +176,17 @@ function F⁺(n::Integer, k::Integer, s::Number, x::T;
     return _eval_F⁺(qmin, coeffs, n, k, x)
 end
 
-# ── Cancellation-free "modified" Bessel products via F⁺ (Somerville 2013) ─────
+# ── Cancellation-free "modified" Bessel products via F⁺ (Somerville et al. (2013)) ─
 # Each returns the P⁺ (non-negative-power) part of a product appearing in the
 # spheroid EBCM U-matrix integrand, assembled from F⁺ at shifted indices through
-# the Riccati–Bessel recurrences (their Eqs. 57–62). All carry the leading `x`
+# the Riccati–Bessel recurrences (their Eqs. (57)–(62)). All carry the leading `x`
 # factor, like `F⁺` itself. For small enough n−k these equal the full products
 # (no negative powers), which the tests exploit for validation.
 
 """
     _xχψ′⁺(n, k, s, x) -> Complex
 
-`[x·χ_n(x)·ψ′_k(sx)]⁺` (Somerville 2013, Eq. 59), from
+`[x·χ_n(x)·ψ′_k(sx)]⁺` (Somerville et al. (2013), Eq. (59)), from
 `(2k+1)ψ′_k(sx) = (k+1)ψ_{k-1}(sx) − k ψ_{k+1}(sx)`.
 """
 function _xχψ′⁺(n, k, s, x; kw...)
@@ -196,7 +196,7 @@ end
 """
     _xχ′ψ⁺(n, k, s, x) -> Complex
 
-`[x·χ′_n(x)·ψ_k(sx)]⁺` (Somerville 2013, Eq. 60), from
+`[x·χ′_n(x)·ψ_k(sx)]⁺` (Somerville et al. (2013), Eq. (60)), from
 `(2n+1)χ′_n(x) = (n+1)χ_{n-1}(x) − n χ_{n+1}(x)`.
 """
 function _xχ′ψ⁺(n, k, s, x; kw...)
@@ -206,7 +206,7 @@ end
 """
     _L⁷⁺(n, k, s, x) -> Complex
 
-`[x·(χ′_n ψ′_k + n(n+1) χ_n ψ_k /(s x²))]⁺` (Somerville 2013, Eq. 62) — the
+`[x·(χ′_n ψ′_k + n(n+1) χ_n ψ_k /(s x²))]⁺` (Somerville et al. (2013), Eq. (62)) — the
 cancellation-free radial factor of the `L⁷` integrand.
 """
 function _L⁷⁺(n, k, s, x; kw...)
@@ -221,7 +221,7 @@ end
 """
     _L⁸⁺(n, k, s, x) -> Complex
 
-`[x·(χ′_n ψ′_k + k(k+1) χ_n ψ_k /(s x²))]⁺` (Somerville 2013, Eq. 61) — the
+`[x·(χ′_n ψ′_k + k(k+1) χ_n ψ_k /(s x²))]⁺` (Somerville et al. (2013), Eq. (61)) — the
 cancellation-free radial factor of the `L⁸` integrand.
 """
 function _L⁸⁺(n, k, s, x; kw...)
@@ -266,14 +266,14 @@ filled; the rest stay zero (they are only needed for `m>0`).
 
 The bare power series is well conditioned in `Float64` *only* where the order
 exceeds the argument, so it cannot be used alone for the small-`n`/large-`x`
-corner. This routine combines the three regimes of Somerville, Auguié & Le Ru,
-JQSRT 123 (2013) §4.2, so the result is accurate for all `x`:
+corner. This routine combines the three regimes of Somerville et al. (2013),
+§4.2, so the result is accurate for all `x`:
 
   * `n ≤ k+2` — `F⁺ = F = x·χ_n(x)·ψ_k(sx)`, the direct Riccati–Bessel product
     (no negative powers ⇒ no cancellation, stable for all `x`);
-  * last row `n = N+1`, deep entries `n-k ≥ 4` — the power series (Eq. 46), which
+  * last row `n = N+1`, deep entries `n-k ≥ 4` — the power series (their Eq. (46)), which
     is accurate because `N` is taken large enough that `N+1 ≫ x`;
-  * `n ≥ k+4` — the stable recursion (Eq. 51, scheme (c) of their Fig. 3), filled
+  * `n ≥ k+4` — the stable recursion (their Eq. (51), scheme (c) of their Fig. 3), filled
     along diagonals `j = n-k = 4, 6, …` from high `n` down, seeded by the last row
     and the `n = k+2` sub-diagonal:
 
@@ -325,7 +325,7 @@ function _F⁺_matrix(s::Number, x::T, N::Integer;
         F[M + 1, k + 1] = _eval_F⁺(qmin, coeffs, M, k, x)
     end
 
-    # (3) stable recursion (Eq. 51, scheme c): diagonals j = 4, 6, … filled from
+    # (3) stable recursion (their Eq. (51), scheme c): diagonals j = 4, 6, … filled from
     #     high n down; each entry uses the same-diagonal entry at n+1 and the j-2
     #     diagonal at (n-1,k+1) and (n,k+2), all already known.
     @inbounds for j in 4:2:M
@@ -346,13 +346,13 @@ end
 # matrix returned by `_F⁺_matrix` (`F[n+1,k+1] = F⁺_{nk}`).
 @inline _Fp(F, n, k) = @inbounds F[n + 1, k + 1]
 
-"`[x·χ_n·ψ′_k]⁺` (Somerville et al., JQSRT 123 (2013), Eq. 59) from a precomputed F⁺ matrix."
+"`[x·χ_n·ψ′_k]⁺` (Somerville et al. (2013), Eq. (59)) from a precomputed F⁺ matrix."
 _xχψ′⁺_mat(F, n, k) = ((k + 1) * _Fp(F, n, k - 1) - k * _Fp(F, n, k + 1)) / (2k + 1)
 
-"`[x·χ′_n·ψ_k]⁺` (Somerville et al., JQSRT 123 (2013), Eq. 60) from a precomputed F⁺ matrix."
+"`[x·χ′_n·ψ_k]⁺` (Somerville et al. (2013), Eq. (60)) from a precomputed F⁺ matrix."
 _xχ′ψ⁺_mat(F, n, k) = ((n + 1) * _Fp(F, n - 1, k) - n * _Fp(F, n + 1, k)) / (2n + 1)
 
-"L⁷ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 62) from a precomputed F⁺ matrix."
+"L⁷ radial factor (Somerville et al. (2013), Eq. (62)) from a precomputed F⁺ matrix."
 function _L⁷⁺_mat(F, n, k)
     Fmm = _Fp(F, n - 1, k - 1);
     Fpp = _Fp(F, n + 1, k + 1)
@@ -362,7 +362,7 @@ function _L⁷⁺_mat(F, n, k)
             (n - k) * ((n + 1) * Fmp + n * Fpm)) / ((2n + 1) * (2k + 1))
 end
 
-"L⁸ radial factor (Somerville et al., JQSRT 123 (2013), Eq. 61) from a precomputed F⁺ matrix."
+"L⁸ radial factor (Somerville et al. (2013), Eq. (61)) from a precomputed F⁺ matrix."
 function _L⁸⁺_mat(F, n, k)
     Fmm = _Fp(F, n - 1, k - 1);
     Fpp = _Fp(F, n + 1, k + 1)
@@ -510,7 +510,7 @@ end
     using TransitionMatrices: Spheroid, transition_matrix, scattering_cross_section,
                               extinction_cross_section
 
-    # Somerville, Auguié & Le Ru, JQSRT 123 (2013), Table 2 (Model 1 of their
+    # Somerville et al. (2013), Table 2 (Model 1 of their
     # Ref. [35]): prolate, s = 1.55+0.01i, aspect h = 4, xmax = k·c = 10.079368.
     # Reference (their New DP / AP): Qsca = 3.21290554203156, Qext = 3.36721292620922.
     c = 10.079368

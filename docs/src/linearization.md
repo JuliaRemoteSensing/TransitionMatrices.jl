@@ -136,8 +136,9 @@ dependence.
 
 - Spurr, Wang, Zeng, and Mishchenko, "Linearized T-matrix and Mie scattering
   computations", 2012.
-- Xu and Davis, "Analytical derivatives of T-matrix light scattering
-  quantities", 2011.
+- Feng Xu and Anthony B. Davis, "Derivatives of light scattering properties of a
+  nonspherical particle computed with the T-matrix method", Optics Letters 36(22),
+  4464--4466, 2011, doi:10.1364/OL.36.004464.
 - Sun, Gao, Bi, and Spurr, "Analytical Jacobians of single scattering optical
   properties using the invariant imbedding T-matrix method", Optics Express
   29(6), 9635--9669, 2021, doi:10.1364/OE.421886.

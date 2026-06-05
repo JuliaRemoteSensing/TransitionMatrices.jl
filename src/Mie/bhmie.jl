@@ -19,7 +19,7 @@ Outputs:
 
 References:
 
-- Bohren, C.F., Huffman, D.R., 1983. Absorption and scattering of light by small particles. John Wiley & Sons.
+- C. F. Bohren & D. R. Huffman, *Absorption and Scattering of Light by Small Particles*, Wiley (1983).
 """
 function bhmie(T, x, m; nₘₐₓ = ceil(Int, Float64(max(x + 4 * ∛x + 2, x * abs(m)))))
     C = complex(T)

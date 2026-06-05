@@ -22,7 +22,7 @@ Outputs:
 
 References:
 
-- Bohren, C.F., Huffman, D.R., 1983. Absorption and scattering of light by small particles. John Wiley & Sons.
+- C. F. Bohren & D. R. Huffman, *Absorption and Scattering of Light by Small Particles*, Wiley (1983).
 """
 function bhcoat(T, xᵢₙ,
         xₒᵤₜ, mᵢₙ, mₒᵤₜ;

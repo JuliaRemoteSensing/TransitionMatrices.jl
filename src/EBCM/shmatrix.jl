@@ -22,9 +22,10 @@
 # analytically, so — computed at high precision — they contribute ≈0 and the
 # catastrophic cancellation in the irregular `χ_n·ψ_{n′}` products never forms.
 #
-# References:
-# - V. G. Farafonov, Sh-matrix family (parameter separation).
-# - Somerville, Auguié & Le Ru, JQSRT 123 (2013) 153 (the `F⁺` projection).
+# References (full entries in the README "Methods & references"):
+# - Farafonov et al. (2003) — the size/material vs geometry parameter separation;
+#   Petrov et al. (2007, 2009) — the "Sh-matrix" name and formalism.
+# - Somerville et al. (2013) — the `F⁺` projection reused for the radial integrals.
 
 # ── Radial power-series term tables (reuse `_β`, `_γ`) ────────────────────────
 #

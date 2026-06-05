@@ -190,7 +190,7 @@ function _solver_initial(it::Iterative{EBCM}, s, λ)
     it.opts.stable && !(s isa Spheroid) &&
         throw(ArgumentError("Iterative(EBCM; stable=true) is only valid for spheroids: the \
               cancellation-free F⁺ integrands rely on the spheroid surface making \
-              the divergent Laurent terms integrate to zero (Somerville et al. 2013)."))
+              the divergent Laurent terms integrate to zero (Somerville et al. (2013))."))
     pol = it.policy
     nₛₜₐᵣₜ = pol.nₛₜₐᵣₜ
     if nₛₜₐᵣₜ == 0

@@ -172,11 +172,11 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
         𝐐ₕⱼ = im * k * transpose(𝐇) * 𝐐 * 𝐉
         𝐐ₕₕ = im * k * transpose(𝐇) * 𝐐 * 𝐇
 
-        # Eq (97) in Johnson (1988) Note: 𝐐ⱼₕ'==𝐐ₕⱼ only holds for spheres
-        # Eq (38) in Bi et al. (2013)
-        # Eq (2.40) in Doicu & Wriedt (2018)
-        # Eq (5.71) in Hu (2018)
-        # Eq (4.2.36) in Sun et al. (2019) Note: incorrect multiplication order
+        # Johnson (1988), Eq. (97). Note: 𝐐ⱼₕ'==𝐐ₕⱼ only holds for spheres
+        # Bi et al. (2013), Eq. (38)
+        # Doicu & Wriedt (2018), Eq. (2.40)
+        # Hu (2018), Eq. (5.71)
+        # Sun et al. (2019), Eq. (4.2.36). Note: incorrect multiplication order
         𝐓 = 𝐐ⱼⱼ + (𝐈 + 𝐐ⱼₕ) * _iitm_ldiv(𝐈 - 𝐓 * 𝐐ₕₕ, 𝐓) * (𝐈 + 𝐐ₕⱼ)
     end
 
