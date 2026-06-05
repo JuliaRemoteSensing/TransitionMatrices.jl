@@ -17,6 +17,20 @@ so it works from a fresh checkout (the first run installs dependencies).
 
 ## Notebooks
 
+- [`shapes_gallery.jl`](shapes_gallery.jl) — **quick-start gallery**: define a
+  spheroid, cylinder, Chebyshev particle, and N-fold prism; compute each
+  T-matrix and its `Qsca`/`Qext`/`g`/`ω`; notes on which solver to use.
+- [`angular_scattering.jl`](angular_scattering.jl) — **angular scattering &
+  polarization**: the orientation-averaged scattering (Mueller) matrix vs angle
+  (phase function `F₁₁`, linear polarization `-F₁₂/F₁₁`, `F₂₂/F₁₁`, `F₄₄/F₁₁`),
+  plus the fixed-geometry amplitude/phase matrices.
+- [`orientation_averaging.jl`](orientation_averaging.jl) — **orientation
+  averaging**: Mishchenko's analytic `RandomOrientationTransitionMatrix` vs the
+  numerical `orientation_average`, and the numerical average converging to it.
+- [`solver_landscape.jl`](solver_landscape.jl) — **solver landscape &
+  convergence**: the two-layer API (`EBCM`, `IITM`, `Iterative`, `stable`) on a
+  high-aspect spheroid, showing classic EBCM diverging with `nₘₐₓ` while the
+  stabilized path holds.
 - [`spectral_sensitivity.jl`](spectral_sensitivity.jl) — **fast wavelength /
   refractive-index sensitivities** via the Sh-matrix moment-separation backend.
   `prepare_sh` runs the geometry quadrature once; differentiating the cheap
