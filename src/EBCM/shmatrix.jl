@@ -762,3 +762,42 @@ end
     @test length(Tsf) == length(λs)
     @test calc_Csca(Tsf[1]) ≈ calc_Csca(transition_matrix(prep, λs[1], sh.m)) rtol = 1e-12
 end
+
+@testitem "Sh-matrix reconstructs non-spheroid shapes (cylinder, Chebyshev)" begin
+    using TransitionMatrices: Cylinder, Chebyshev, ebcm_matrices_m₀, _sh_geometry,
+                              _sh_moments_m, _sh_matrices_m₀, _sh_qband, _sh_coeff_tables,
+                              prepare_sh, transition_matrix, calc_Csca, calc_Cext
+
+    relmax(A,
+        B;
+        tol = 1e-10) = maximum(
+        (abs(B[i, j]) < tol ? 0.0 : abs(A[i, j] - B[i, j]) / abs(B[i, j])
+        for i in axes(A, 1), j in axes(A, 2)); init = 0.0)
+
+    λ, nmax, Ng, B = 2π, 8, 160, 26
+    k = 2π / λ
+    qlo, qhi = _sh_qband(nmax, B)
+    coeffs = _sh_coeff_tables(nmax, B, Float64)
+
+    @testset "$name" for (name, s) in (
+        ("cylinder", Cylinder{Float64, ComplexF64}(1.0, 2.0, 1.5 + 0.02im)),
+        ("chebyshev", Chebyshev{Float64, ComplexF64}(1.0, 0.1, 4, 1.5 + 0.02im)))
+        # The analytic-zeroing fast path is spheroid-only; non-spheroids use the
+        # high-precision moment path. Both P and U still reconstruct correctly at
+        # moderate size (the χ negative-power moments are physical, not vanishing).
+        prep = prepare_sh(s, nmax, Ng; B)
+        @test prep.stable == false
+
+        geom = _sh_geometry(s, Ng, qlo, qhi; momtype = BigFloat, store = Float64)
+        mom = _sh_moments_m(geom, 0, nmax)
+        Psh, Ush = _sh_matrices_m₀(mom, coeffs, k, s.m, nmax, ComplexF64)
+        Pref, Uref = ebcm_matrices_m₀(s, λ, nmax, Ng)
+        @test relmax(Psh, Pref) < 1e-10
+        @test relmax(Ush, Uref) < 1e-10
+
+        Tsh = transition_matrix(prep, λ)
+        Tcl = transition_matrix(s, λ, nmax, Ng)
+        @test calc_Csca(Tsh) ≈ calc_Csca(Tcl) rtol = 1e-9
+        @test calc_Cext(Tsh) ≈ calc_Cext(Tcl) rtol = 1e-9
+    end
+end
