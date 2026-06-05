@@ -28,6 +28,7 @@ include("linearization.jl")
 include("Mie/index.jl")
 include("EBCM/index.jl")
 include("IITM/index.jl")
+include("solvers.jl")
 
 # Various types of transition matrices
 export AbstractTransitionMatrix, TransitionMatrix, RandomOrientationTransitionMatrix,
@@ -47,7 +48,9 @@ export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_m
        albedo, asymmetry_parameter,
        transition_matrix, transition_matrix_m, transition_matrix_m₀,
        transition_matrix_iitm, prepare_sh, transition_matrix_spectrum,
-       ShPreparation
+       ShPreparation,
+       AbstractSolver, AbstractFixedSolver, EBCM, IITM, ShMatrix,
+       Iterative, ConvergencePolicy
 
 # Utility functions (short names)
 const calc_T = transition_matrix
