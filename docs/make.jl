@@ -6,6 +6,7 @@ DocMeta.setdocmeta!(TransitionMatrices, :DocTestSetup, :(using TransitionMatrice
 
 makedocs(;
     modules = [TransitionMatrices],
+    checkdocs = :exported,
     authors = "Gabriel Wu <wuzihua@pku.edu.cn> and contributors",
     repo = "https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/{commit}{path}#{line}",
     sitename = "TransitionMatrices.jl",

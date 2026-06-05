@@ -75,7 +75,7 @@ end
 Build the radial power-series coefficient tables once (they depend only on the
 order and `B`, not on `k`/`mᵣ`), so a parameter sweep never re-runs the BigInt
 `_β`/`_γ` arithmetic. Each entry is an `OffsetVector` over `n = 1:nmax` of
-`(base, coeffs)` from [`_sh_series`](@ref).
+`(base, coeffs)` from `_sh_series`.
 """
 function _sh_coeff_tables(nmax::Integer, B::Integer, ::Type{R}) where {R}
     mk(kind) = OffsetArray([_sh_series(kind, n, B, R) for n in 1:nmax], 1:nmax)
@@ -90,7 +90,7 @@ Fold the argument power `z^{base+2b}` into the series coefficients, giving
 `w[b+1] = coeffs[b+1]·z^{base+2b}`, with `z = k` for the regular factor `f(kr)`
 or `z = s·k` for the internal factor `g(s·kr)`. Built once per `(k, mᵣ)` point
 per order and reused across all integrands. Powers advance incrementally — no
-`^` in the hot loop. The `base` is kept so [`_sh_conv`](@ref) can index the
+`^` in the hot loop. The `base` is kept so `_sh_conv` can index the
 shape moment by the correct `r`-power.
 """
 function _sh_weighted(tbl, nmin::Integer, nmax::Integer, z::Number)
@@ -116,7 +116,7 @@ end
     _sh_conv(f, g, M, shift) -> Complex
 
 Reconstruct `∫ (geometry) · f_n(kr) · g_{n′}(s·kr) · r^{shift} dϑ` from the
-weighted radial terms `f = (basef, u)`, `g = (baseg, v)` (see [`_sh_weighted`](@ref))
+weighted radial terms `f = (basef, u)`, `g = (baseg, v)` (see `_sh_weighted`)
 and the shape-moment lookup `M(q)`. The double sum is folded along the
 anti-diagonals `j = b+c`: the `r`-power is `q₀ + 2j` (`q₀ = basef+baseg+shift`)
 and depends only on `j`, so the moment `M` is fetched `O(B)` times instead of
@@ -168,7 +168,7 @@ The weights are also returned cast to the fast accumulation type
 `Tf = store<:IEEEFloat ? store : momtype` as `WRf`/`Wqf`: the catastrophic
 cancellation lives entirely in the negative-`r`-power (`q<0`) moments, so the
 well-conditioned `q≥0` bulk can be contracted in hardware precision while only
-the `q<0` part keeps the slow `momtype` accumulation (see [`_sh_moments_m`](@ref)).
+the `q<0` part keeps the slow `momtype` accumulation (see `_sh_moments_m`).
 """
 function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
         momtype::Type{R} = BigFloat, store::Type = Float64) where {R}
@@ -213,7 +213,7 @@ end
     _sh_moments_m(geom, m, nmax; store) -> NamedTuple
 
 Compute the shape-only moment tables for azimuthal index `m` from the shared
-[`_sh_geometry`](@ref) `geom`, stored as `store` (default `Float64`). Families
+`_sh_geometry` `geom`, stored as `store` (default `Float64`). Families
 (sum over `i in 1:ng`, mirroring `ebcm_matrices_m₀`):
 
   Mτd[n,n′,q]  = Σ WR[i,q] τ[i,n] d[i,n′]

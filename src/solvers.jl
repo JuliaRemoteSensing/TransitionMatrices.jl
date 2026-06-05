@@ -127,7 +127,7 @@ Convergence settings for an [`Iterative`](@ref) solver. `threshold` is the
 relative `Qsca`/`Qext` tolerance, `ndgs` the quadrature points added per order,
 `nₛₜₐᵣₜ`/`Ngₛₜₐᵣₜ` the starting resolution (`0` ⇒ auto from `k·rₘₐₓ`),
 `nₘₐₓ_only` stops once `nₘₐₓ` converges, and `routine_generator` builds the
-stepping routine (default [`routine_mishchenko`](@ref)).
+stepping routine (default `routine_mishchenko`).
 """
 struct ConvergencePolicy{G}
     threshold::Float64
