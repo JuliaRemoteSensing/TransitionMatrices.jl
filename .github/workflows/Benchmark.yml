@@ -1,0 +1,51 @@
+name: Benchmark
+
+# Runs the benchmark suite (benchmark/benchmarks.jl, the global `SUITE`) on each
+# relevant pull request and writes a comparison table to the job summary.
+#
+# How the comparison works (AirspeedVelocity.jl):
+#   * It benchmarks TWO git revisions — the base branch (`main`) and this PR's
+#     head commit — NOT a stored historical baseline.
+#   * Both revisions are checked out into separate temp environments and run in
+#     separate Julia processes, back-to-back on the SAME runner within this one
+#     job. The reported `ratio` is head/base (<1 faster, >1 slower).
+#   * Running both on the same machine cancels systematic hardware differences,
+#     but shared GitHub runners are still noisy (~±10–30% on microbenchmarks):
+#     trust this for order-of-magnitude / large regressions, not 5% wobble.
+#
+# Security: this uses the `pull_request` event (not `pull_request_target`), so a
+# fork's PR code runs with a read-only token and no secrets. Output goes to the
+# Actions job summary (`job-summary: "true"`) instead of a PR comment, so no
+# write token is ever needed — nothing is posted to fork (or same-repo) PRs.
+# View results under the workflow run's "Summary" tab.
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "src/**"
+      - "benchmark/**"
+      - "Project.toml"
+      - ".github/workflows/Benchmark.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Benchmark PR vs main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
+        with:
+          julia-version: "1"
+          job-summary: "true"
+          # Default compares `main` against this PR's head SHA. Uncomment to
+          # restrict to a fast, low-noise subset of the suite in CI:
+          # filter: "special_functions,ebcm,linearization,postprocessing"

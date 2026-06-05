@@ -23,7 +23,7 @@ Returns:
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
 function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ,
-                                Nφ; rₘᵢₙ = rmin(s)) where {T, CT}
+        Nφ; rₘᵢₙ = rmin(s)) where {T, CT}
     k = 2 * T(π) / λ
     rₘₐₓ = rmax(s)
 
@@ -59,8 +59,9 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
     τ = similar(d)
 
     Threads.@threads for (i, m) in collect(Iterators.product(1:Nϑ, (-nₘₐₓ):nₘₐₓ))
-        TransitionMatrices.wigner_d_recursion!(view(d, i, abs(m):nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
-                                               deriv = view(τ, i, abs(m):nₘₐₓ, m))
+        TransitionMatrices.wigner_d_recursion!(
+            view(d, i, abs(m):nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
+            deriv = view(τ, i, abs(m):nₘₐₓ, m))
 
         for n in max(abs(m), 1):nₘₐₓ
             𝜋[i, n, m] = TransitionMatrices.pi_func(T, m, n, ϑ[i]; d = d[i, n, m])
@@ -116,12 +117,12 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
 
         # Calculate for each point whether it is within the scatterer
         ε = [refractive_index(s,
-                              (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
-                               r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
+                 (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
+                     r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
         fourier_coeffs = CT <: ComplexF64 ?
                          _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
-                                                         fourier_workspace,
-                                                         fourier_modes) : nothing
+            fourier_workspace,
+            fourier_modes) : nothing
 
         Threads.@threads for (q, (n′, m′)) in enumerate(it)
             for (p, (n, m)) in enumerate(it)
@@ -155,8 +156,8 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
                         cε = coeff_ε[freq, i]
                         cεinv = coeff_εinv[freq, i]
                         U += w[i] * @SMatrix [c*pptt*cε -c̃*im*pttp*cε 0
-                                              c̃*im*pttp*cε c*pptt*cε 0
-                                              0 0 c * a½[n] * a½[n′] * dd*cεinv]
+                                       c̃*im*pttp*cε c*pptt*cε 0
+                                       0 0 c * a½[n] * a½[n′] * dd * cεinv]
                     end
                 end
 
@@ -165,7 +166,7 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
             end
         end
 
-        𝐐 = wri * inv(𝐈 - wri * 𝐔 * 𝐆) * 𝐔
+        𝐐 = wri * _iitm_ldiv(𝐈 - wri * 𝐔 * 𝐆, 𝐔)
         𝐐ⱼⱼ = im * k * transpose(𝐉) * 𝐐 * 𝐉
         𝐐ⱼₕ = im * k * transpose(𝐉) * 𝐐 * 𝐇
         𝐐ₕⱼ = im * k * transpose(𝐇) * 𝐐 * 𝐉
@@ -176,11 +177,11 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
         # Eq (2.40) in Doicu & Wriedt (2018)
         # Eq (5.71) in Hu (2018)
         # Eq (4.2.36) in Sun et al. (2019) Note: incorrect multiplication order
-        𝐓 = 𝐐ⱼⱼ + (𝐈 + 𝐐ⱼₕ) * inv(𝐈 - 𝐓 * 𝐐ₕₕ) * 𝐓 * (𝐈 + 𝐐ₕⱼ)
+        𝐓 = 𝐐ⱼⱼ + (𝐈 + 𝐐ⱼₕ) * _iitm_ldiv(𝐈 - 𝐓 * 𝐐ₕₕ, 𝐓) * (𝐈 + 𝐐ₕⱼ)
     end
 
     𝐓′ = OffsetArray(zeros(CT, 2nₘₐₓ + 1, nₘₐₓ, 2nₘₐₓ + 1, nₘₐₓ, 2, 2), (-nₘₐₓ):nₘₐₓ,
-                     1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2, 1:2)
+        1:nₘₐₓ, (-nₘₐₓ):nₘₐₓ, 1:nₘₐₓ, 1:2, 1:2)
 
     Threads.@threads for (j, (n′, m′)) in enumerate(it)
         for (i, (n, m)) in enumerate(it)

@@ -3,10 +3,11 @@ struct AxisymmetricTransitionMatrix{CT, N, V <: AbstractVector{<:AbstractMatrix{
     𝐓::V
 end
 
-Base.@propagate_inbounds function Base.getindex(axi::AxisymmetricTransitionMatrix{CT, N, V},
-                                                m::Integer, n::Integer, m′::Integer,
-                                                n′::Integer, p::Integer,
-                                                p′::Integer) where {CT, N, V}
+Base.@propagate_inbounds function Base.getindex(
+        axi::AxisymmetricTransitionMatrix{CT, N, V},
+        m::Integer, n::Integer, m′::Integer,
+        n′::Integer, p::Integer,
+        p′::Integer) where {CT, N, V}
     if m != m′ || abs(m) > min(n, n′)
         zero(CT)
     else
@@ -36,11 +37,13 @@ Parameters:
 - `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 """
 function scattering_cross_section(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
-                                  λ = 2π) where {CT, N, V, T}
+        λ = 2π) where {CT, N, V, T}
     Cˢᶜᵃ = zero(T)
     for m in 0:N
         for p′ in 1:2, p in 1:2
+
             for n′ in max(m, 1):N, n in max(m, 1):N
+
                 if m == 0
                     Cˢᶜᵃ += abs2(𝐓[m, n, m, n′, p, p′])
                 else
@@ -81,7 +84,7 @@ Parameters:
 - `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 """
 function extinction_cross_section(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
-                                  λ = 2π) where {CT, N, V, T}
+        λ = 2π) where {CT, N, V, T}
     Cᵉˣᵗ = zero(CT)
     for m in 0:N
         coeff = m == 0 ? 1 : 2
@@ -113,8 +116,9 @@ end
 function scattering_efficiency_m₀(T₀)
     nₘₐₓ = size(T₀, 1) ÷ 2
     Qˢᶜᵃ = sum((2n + 1) *
-               real(T₀[n, n] * T₀[n, n]' + T₀[n + nₘₐₓ, n + nₘₐₓ] * T₀[n + nₘₐₓ, n + nₘₐₓ]')
-               for n in 1:nₘₐₓ)
+               real(T₀[n, n] * T₀[n, n]' +
+                    T₀[n + nₘₐₓ, n + nₘₐₓ] * T₀[n + nₘₐₓ, n + nₘₐₓ]')
+    for n in 1:nₘₐₓ)
     return Qˢᶜᵃ
 end
 
@@ -131,7 +135,7 @@ Parameters:
 - `λ`: The wavelength.
 """
 function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
-                                λ) where {CT, N, V, T}
+        λ) where {CT, N, V, T}
     Cˢᶜᵃ = Float64(scattering_cross_section(𝐓, λ))
     λ = Float64(λ)
 
@@ -234,9 +238,9 @@ function expansion_coefficients(𝐓::AxisymmetricTransitionMatrix{CT, N, V, T},
     h_const = λ^2 / (Cˢᶜᵃ * 4 * π)
     h = OffsetArray([s[l] * h_const * ss[n] / ss[n′]
                      for l in 0:(2N), n in 1:N, n′ in 1:N],
-                    0:(2N),
-                    1:N,
-                    1:N)
+        0:(2N),
+        1:N,
+        1:N)
 
     @debug "Calculating g..."
     g₀₀ = OffsetArray(zeros(2N + 1), 0:(2N))

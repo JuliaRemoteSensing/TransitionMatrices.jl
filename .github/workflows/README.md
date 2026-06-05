@@ -21,6 +21,20 @@ It is split into:
 The local `just ci` command mirrors the core local checks: package tests,
 doctests, and documentation build.
 
+## Benchmarks
+
+`Benchmark.yml` runs the benchmark suite (`benchmark/benchmarks.jl`, the global
+`SUITE`) via [AirspeedVelocity.jl](https://github.com/MilesCranmer/AirspeedVelocity.jl)
+on pull requests that touch `src/`, `benchmark/`, or `Project.toml`. It
+benchmarks the PR head commit against `main` — both revisions are run
+back-to-back on the same runner (not against a stored baseline) — and writes a
+`ratio` comparison table to the workflow run's **Summary** tab. It uses the
+`pull_request` event with a read-only token and `job-summary: "true"`, so fork
+PR code never runs with a write token and nothing is posted as a comment.
+Shared CI runners are noisy, so treat the results as a guard for large
+regressions rather than sub-10% changes. Run the same suite locally with
+`just bench`.
+
 ## Maintenance
 
 - `CompatHelper.yml` opens compatibility-bound update pull requests.

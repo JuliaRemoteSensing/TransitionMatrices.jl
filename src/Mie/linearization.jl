@@ -4,21 +4,21 @@ const _MIE_LINEARIZATION_SUPPORTED_OUTPUTS = (
     :extinction_cross_section,
     :absorption_cross_section,
     :albedo,
-    :amplitude_matrix,
+    :amplitude_matrix
 )
 const _MIE_LINEARIZATION_VARIABLES = (:x, :mᵣ, :mᵢ, :λ)
 
 function _mie_linearization_input(problem::LinearizationProblem, config)
     rebuilt = rebuild(problem)
     x = _linearization_property(config, :x;
-                                default = _linearization_property(rebuilt, :x))
+        default = _linearization_property(rebuilt, :x))
     m = _linearization_property(config, :m;
-                                default = _linearization_property(rebuilt, :m))
+        default = _linearization_property(rebuilt, :m))
     nₘₐₓ = _linearization_property(config, :nₘₐₓ;
-                                   default = _linearization_property(rebuilt, :nₘₐₓ))
+        default = _linearization_property(rebuilt, :nₘₐₓ))
     λ = _linearization_property(config, :λ;
-                                default = _linearization_property(rebuilt, :λ;
-                                                                  default = 2π))
+        default = _linearization_property(rebuilt, :λ;
+            default = 2π))
 
     if isnothing(x) || isnothing(m) || isnothing(nₘₐₓ)
         return nothing
@@ -64,8 +64,8 @@ function _mie_amplitude_angles(config)
 end
 
 function supports_linearization(problem::LinearizationProblem, ::MieLinearization;
-                                output::Symbol = :transition_matrix,
-                                config = nothing)
+        output::Symbol = :transition_matrix,
+        config = nothing)
     input = try
         _mie_linearization_input(problem, config)
     catch err
@@ -73,15 +73,15 @@ function supports_linearization(problem::LinearizationProblem, ::MieLinearizatio
     end
     isnothing(input) &&
         return LinearizationSupport(false,
-                                    "Mie linearization requires x, m, and nₘₐₓ")
+            "Mie linearization requires x, m, and nₘₐₓ")
     isnothing(_mie_linearization_variable_derivatives(problem)) &&
         return LinearizationSupport(false,
-                                    "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ")
+            "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ")
     output in _MIE_LINEARIZATION_SUPPORTED_OUTPUTS ||
         return LinearizationSupport(false, "Mie linearization does not support output :$output")
     output == :amplitude_matrix && isnothing(_mie_amplitude_angles(config)) &&
         return LinearizationSupport(false,
-                                    "Mie amplitude matrix linearization requires angle config")
+            "Mie amplitude matrix linearization requires angle config")
 
     return LinearizationSupport(true, "")
 end
@@ -154,13 +154,13 @@ function _bhmie_linearized(::Type{T}, x, m, nₘₐₓ::Integer, ẋ, ṁ) where
             numerator_dot = Ȧ * ψ + A * ψ̇ - ψ̇₁[j]
             denominator_dot = Ȧ * ξ + A * ξ̇ - ξ̇₁[j]
             ȧ[n, j] = (numerator_dot * denominator_a -
-                       numerator_a * denominator_dot) / denominator_a^2
+                        numerator_a * denominator_dot) / denominator_a^2
 
             Ḃ = ḋ[n, j] * m + d[n] * ṁ[j] - n * ẋ[j] / x^2
             numerator_dot = Ḃ * ψ + B * ψ̇ - ψ̇₁[j]
             denominator_dot = Ḃ * ξ + B * ξ̇ - ξ̇₁[j]
             ḃ[n, j] = (numerator_dot * denominator_b -
-                       numerator_b * denominator_dot) / denominator_b^2
+                        numerator_b * denominator_dot) / denominator_b^2
         end
 
         a[n] = numerator_a / denominator_a
@@ -180,38 +180,38 @@ function _bhmie_linearized(::Type{T}, x, m, nₘₐₓ::Integer, ẋ, ṁ) where
 end
 
 function _checked_mie_linearization_input(problem::LinearizationProblem,
-                                          backend::MieLinearization,
-                                          output::Symbol,
-                                          config)
+        backend::MieLinearization,
+        output::Symbol,
+        config)
     output in _MIE_LINEARIZATION_SUPPORTED_OUTPUTS ||
         throw(UnsupportedLinearization(backend, output,
-                                       "Mie linearization does not support output :$output"))
+            "Mie linearization does not support output :$output"))
 
     input = try
         _mie_linearization_input(problem, config)
     catch err
         throw(UnsupportedLinearization(backend, output,
-                                       "failed to rebuild Mie input: $err"))
+            "failed to rebuild Mie input: $err"))
     end
     isnothing(input) &&
         throw(UnsupportedLinearization(backend, output,
-                                       "Mie linearization requires x, m, and nₘₐₓ"))
+            "Mie linearization requires x, m, and nₘₐₓ"))
 
     variable_derivatives = _mie_linearization_variable_derivatives(problem)
     isnothing(variable_derivatives) &&
         throw(UnsupportedLinearization(backend, output,
-                                       "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ"))
+            "Mie linearization supports unique canonical variables drawn from :x, :mᵣ, :mᵢ, and :λ"))
     output == :amplitude_matrix && isnothing(_mie_amplitude_angles(config)) &&
         throw(UnsupportedLinearization(backend, output,
-                                       "Mie amplitude matrix linearization requires angle config"))
+            "Mie amplitude matrix linearization requires angle config"))
 
     return input, variable_derivatives
 end
 
 function _mie_transition_linearization_data(problem::LinearizationProblem,
-                                            backend::MieLinearization,
-                                            config;
-                                            output::Symbol = :transition_matrix)
+        backend::MieLinearization,
+        config;
+        output::Symbol = :transition_matrix)
     input, (ẋ, ṁ, λ̇) = _checked_mie_linearization_input(problem, backend, output, config)
     T = typeof(float(real(input.x)))
     CT = complex(T)
@@ -223,18 +223,18 @@ function _mie_transition_linearization_data(problem::LinearizationProblem,
                 for j in 1:length(variables(problem))]
 
     result = LinearizationResult(value, jacobian, variables(problem);
-                                 metadata = (; backend = :mie, λ = input.λ))
+        metadata = (; backend = :mie, λ = input.λ))
     return result, input, λ̇
 end
 
 function _mie_transition_linearization(problem::LinearizationProblem,
-                                       backend::MieLinearization, config)
+        backend::MieLinearization, config)
     result, _, _ = _mie_transition_linearization_data(problem, backend, config)
     return result
 end
 
 function linearize_transition_matrix(problem::LinearizationProblem,
-                                     backend::MieLinearization; config = nothing)
+        backend::MieLinearization; config = nothing)
     return _mie_transition_linearization(problem, backend, config)
 end
 
@@ -261,7 +261,7 @@ function _mie_cross_section_linearization(result::LinearizationResult, λ, λ̇,
             ∂T = result.jacobian[j]
             if kind == :scattering
                 basė[j] += weight * 2real(conj(mie.a[n]) * ∂T.a[n] +
-                                           conj(mie.b[n]) * ∂T.b[n])
+                                  conj(mie.b[n]) * ∂T.b[n])
             else
                 basė[j] += weight * real(∂T.a[n] + ∂T.b[n])
             end
@@ -293,7 +293,7 @@ function _mie_cross_section_pair_linearization(result::LinearizationResult, λ, 
         for j in 1:p
             ∂T = result.jacobian[j]
             scattering_basė[j] += weight * 2real(conj(mie.a[n]) * ∂T.a[n] +
-                                                  conj(mie.b[n]) * ∂T.b[n])
+                                         conj(mie.b[n]) * ∂T.b[n])
             extinction_basė[j] += weight * real(∂T.a[n] + ∂T.b[n])
         end
     end
@@ -301,58 +301,62 @@ function _mie_cross_section_pair_linearization(result::LinearizationResult, λ, 
     scattering_jacobian = @. scattering_basė * scale + scattering_base * scalė
     extinction_jacobian = @. extinction_basė * scale + extinction_base * scalė
     return (; scattering = scattering_base * scale,
-            scattering_jacobian,
-            extinction = extinction_base * scale,
-            extinction_jacobian)
+        scattering_jacobian,
+        extinction = extinction_base * scale,
+        extinction_jacobian)
 end
 
 function linearize_observable(::typeof(scattering_cross_section),
-                              problem::LinearizationProblem,
-                              backend::MieLinearization; config = nothing)
-    result, input, λ̇ = _mie_transition_linearization_data(problem, backend, config;
-                                                          output = :scattering_cross_section)
+        problem::LinearizationProblem,
+        backend::MieLinearization; config = nothing)
+    result, input,
+    λ̇ = _mie_transition_linearization_data(problem, backend, config;
+        output = :scattering_cross_section)
     value, jacobian = _mie_cross_section_linearization(result, input.λ, λ̇, :scattering)
     return LinearizationResult(value, jacobian, variables(problem);
-                               metadata = (; backend = :mie,
-                                           observable = :scattering_cross_section))
+        metadata = (; backend = :mie,
+            observable = :scattering_cross_section))
 end
 
 function linearize_observable(::typeof(extinction_cross_section),
-                              problem::LinearizationProblem,
-                              backend::MieLinearization; config = nothing)
-    result, input, λ̇ = _mie_transition_linearization_data(problem, backend, config;
-                                                          output = :extinction_cross_section)
+        problem::LinearizationProblem,
+        backend::MieLinearization; config = nothing)
+    result, input,
+    λ̇ = _mie_transition_linearization_data(problem, backend, config;
+        output = :extinction_cross_section)
     value, jacobian = _mie_cross_section_linearization(result, input.λ, λ̇, :extinction)
     return LinearizationResult(value, jacobian, variables(problem);
-                               metadata = (; backend = :mie,
-                                           observable = :extinction_cross_section))
+        metadata = (; backend = :mie,
+            observable = :extinction_cross_section))
 end
 
 function linearize_observable(::typeof(absorption_cross_section),
-                              problem::LinearizationProblem,
-                              backend::MieLinearization; config = nothing)
-    result, input, λ̇ = _mie_transition_linearization_data(problem, backend, config;
-                                                          output = :absorption_cross_section)
+        problem::LinearizationProblem,
+        backend::MieLinearization; config = nothing)
+    result, input,
+    λ̇ = _mie_transition_linearization_data(problem, backend, config;
+        output = :absorption_cross_section)
     cross_sections = _mie_cross_section_pair_linearization(result, input.λ, λ̇)
     return LinearizationResult(cross_sections.extinction - cross_sections.scattering,
-                               cross_sections.extinction_jacobian -
-                               cross_sections.scattering_jacobian,
-                               variables(problem);
-                               metadata = (; backend = :mie,
-                                           observable = :absorption_cross_section))
+        cross_sections.extinction_jacobian -
+        cross_sections.scattering_jacobian,
+        variables(problem);
+        metadata = (; backend = :mie,
+            observable = :absorption_cross_section))
 end
 
 function linearize_observable(::typeof(albedo), problem::LinearizationProblem,
-                              backend::MieLinearization; config = nothing)
-    result, input, λ̇ = _mie_transition_linearization_data(problem, backend, config;
-                                                          output = :albedo)
+        backend::MieLinearization; config = nothing)
+    result, input,
+    λ̇ = _mie_transition_linearization_data(problem, backend, config;
+        output = :albedo)
     cross_sections = _mie_cross_section_pair_linearization(result, input.λ, λ̇)
     value = cross_sections.scattering / cross_sections.extinction
     jacobian = @. (cross_sections.scattering_jacobian * cross_sections.extinction -
-                  cross_sections.scattering * cross_sections.extinction_jacobian) /
-                 cross_sections.extinction^2
+                   cross_sections.scattering * cross_sections.extinction_jacobian) /
+                  cross_sections.extinction^2
     return LinearizationResult(value, jacobian, variables(problem);
-                               metadata = (; backend = :mie, observable = :albedo))
+        metadata = (; backend = :mie, observable = :albedo))
 end
 
 function _mie_amplitude_matrix_linearization(result::LinearizationResult, λ, λ̇, angles)
@@ -375,9 +379,9 @@ function _mie_amplitude_matrix_linearization(result::LinearizationResult, λ, λ
 
     for m in 0:N
         wigner_d_recursion!(view(πᵢ, m, m:N), 0, m, N, ϑᵢ;
-                            deriv = view(τᵢ, m, m:N))
+            deriv = view(τᵢ, m, m:N))
         wigner_d_recursion!(view(πₛ, m, m:N), 0, m, N, ϑₛ;
-                            deriv = view(τₛ, m, m:N))
+            deriv = view(τₛ, m, m:N))
     end
 
     for m in 0:N
@@ -447,14 +451,15 @@ function _mie_amplitude_matrix_linearization(result::LinearizationResult, λ, λ
 end
 
 function linearize_observable(::typeof(amplitude_matrix),
-                              problem::LinearizationProblem,
-                              backend::MieLinearization; config = nothing)
-    result, input, λ̇ = _mie_transition_linearization_data(problem, backend, config;
-                                                          output = :amplitude_matrix)
+        problem::LinearizationProblem,
+        backend::MieLinearization; config = nothing)
+    result, input,
+    λ̇ = _mie_transition_linearization_data(problem, backend, config;
+        output = :amplitude_matrix)
     angles = _mie_amplitude_angles(config)
     value, jacobian = _mie_amplitude_matrix_linearization(result, input.λ, λ̇, angles)
 
     return LinearizationResult(value, jacobian, variables(problem);
-                               metadata = (; backend = :mie,
-                                           observable = :amplitude_matrix))
+        metadata = (; backend = :mie,
+            observable = :amplitude_matrix))
 end

@@ -22,7 +22,7 @@ Returns:
 - `𝐓`: an `AxisymmetricTransitionMatrix` struct representing the T-Matrix.
 """
 function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
-                                ; rₘᵢₙ = rmin(s)) where {T, CT}
+        ; rₘᵢₙ = rmin(s)) where {T, CT}
     k = 2 * T(π) / λ
     rₘₐₓ = rmax(s)
 
@@ -59,7 +59,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
     Threads.@threads for (i, m) in collect(Iterators.product(1:Nϑ, 0:nₘₐₓ))
         wigner_d_recursion!(view(d, i, m:nₘₐₓ, m), 0, m, nₘₐₓ, ϑ[i];
-                            deriv = view(τ, i, m:nₘₐₓ, m))
+            deriv = view(τ, i, m:nₘₐₓ, m))
 
         for n in max(m, 1):nₘₐₓ
             𝜋[i, n, m] = pi_func(T, m, n, ϑ[i]; d = d[i, n, m])
@@ -112,7 +112,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
         end
 
         # Calculate for each point whether it is within the scatterer
-        within = [(r * sin(ϑ[i]), 0, r * x[i]) ∈ s for i in 1:Nϑ]
+        within = [(r * sin(ϑ[i]), 0, r * x[i]) in s for i in 1:Nϑ]
         ε = [within[i] ? s.m^2 : one(CT) for i in eachindex(within)]
 
         # Calculate for each m
@@ -122,6 +122,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             𝐔 = zeros(CT, 3nn, 3nn)
 
             for n in nₘᵢₙ:nₘₐₓ, n′ in nₘᵢₙ:nₘₐₓ
+
                 U = zero(SMatrix{3, 3, CT})
                 if has_symmetric_plane(s)
                     c = iseven(n + n′) ? 2 : 0
@@ -143,13 +144,13 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
 
                 U *= A[n] * A[n′] * (kr)^2
                 view(𝐔, (3(n - nₘᵢₙ + 1) - 2):(3(n - nₘᵢₙ + 1)),
-                (3(n′ - nₘᵢₙ + 1) - 2):(3(n′ - nₘᵢₙ + 1))) .= U
+                    (3(n′ - nₘᵢₙ + 1) - 2):(3(n′ - nₘᵢₙ + 1))) .= U
             end
 
             𝐉ᵥ = view(𝐉, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐇ᵥ = view(𝐇, (3nₘᵢₙ - 2):(3nₘₐₓ), (2nₘᵢₙ - 1):(2nₘₐₓ))
             𝐆ᵥ = view(𝐆, (3nₘᵢₙ - 2):(3nₘₐₓ), (3nₘᵢₙ - 2):(3nₘₐₓ))
-            𝐐 = wri * inv(𝐈 - wri * 𝐔 * 𝐆ᵥ) * 𝐔
+            𝐐 = wri * _iitm_ldiv(𝐈 - wri * 𝐔 * 𝐆ᵥ, 𝐔)
 
             𝐐ⱼⱼ = im * k * transpose(𝐉ᵥ) * 𝐐 * 𝐉ᵥ
             𝐐ⱼₕ = im * k * transpose(𝐉ᵥ) * 𝐐 * 𝐇ᵥ
@@ -162,7 +163,7 @@ function transition_matrix_iitm(s::AbstractAxisymmetricShape{T, CT}, λ, nₘₐ
             # Eq (5.71) in Hu (2018)
             # Eq (4.2.36) in Sun et al. (2019) Note: incorrect multiplication order
             Ts[m + 1] = 𝐐ⱼⱼ +
-                        (𝐈 + 𝐐ⱼₕ) * inv(𝐈 - Ts[m + 1] * 𝐐ₕₕ) * Ts[m + 1] *
+                        (𝐈 + 𝐐ⱼₕ) * _iitm_ldiv(𝐈 - Ts[m + 1] * 𝐐ₕₕ, Ts[m + 1]) *
                         (𝐈 + 𝐐ₕⱼ)
         end
     end

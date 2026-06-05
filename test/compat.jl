@@ -60,3 +60,28 @@
     @test Float64(abs(real(AcbI[2, 1]))) < 1e-30
     @test Float64(abs(real(AcbI[2, 2] - 1))) < 1e-30
 end
+
+@testitem "cbrt on Double64 returns a Double64 (DoubleFloats v1.9 workaround)" begin
+    using TransitionMatrices
+
+    # Upstream DoubleFloats returns a (hi, lo) tuple here; ensure our shim wraps it.
+    @test cbrt(Double64(8.0)) isa Double64
+    @test ∛(Double64(8.0)) isa Double64
+
+    @test cbrt(Double64(8.0)) ≈ Double64(2.0)
+    @test cbrt(Double64(27.0)) ≈ Double64(3.0)
+    @test cbrt(Double64(-8.0)) ≈ Double64(-2.0)
+    @test iszero(cbrt(zero(Double64)))
+
+    # Full-precision check: the Newton refinement must beat Float64 accuracy.
+    x = Double64(2.0)
+    y = cbrt(x)
+    @test abs(y * y * y - x) < Double64(1e-30)
+
+    # The bug surfaced through shape utilities; verify the realistic call path.
+    s = Spheroid(Double64(2.0), Double64(1.0), Complex{Double64}(Double64(1.5),
+        Double64(0.02)))
+    @test volume_equivalent_radius(s) isa Double64
+    @test TransitionMatrices.transition_matrix_m₀(s, 2 * Double64(π), 6, 24) isa
+          Matrix{Complex{Double64}}
+end

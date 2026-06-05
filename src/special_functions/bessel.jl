@@ -86,7 +86,7 @@ end
     using GSL: sf_bessel_jl_array
 
     @testset "x = $x, n ∈ [1, $n]" for x in (0.01, 0.1, 1.0, 10.0, 100.0, 1000.0),
-                                       n in (40,)
+        n in (40,)
 
         ψ, ψ′ = ricattibesselj(n, estimate_ricattibesselj_extra_terms(n, x), x)
 
@@ -117,7 +117,9 @@ In-place version of [`ricattibessely`](@ref).
 function ricattibessely!(χ, χ′, nₘₐₓ, x)
     x⁻¹ = one(x) / x
     χ[1] = -cos(x) * x⁻¹ - sin(x)
-    χ[2] = (-3x⁻¹^2 + 1) * cos(x) - 3x⁻¹ * sin(x)
+    if nₘₐₓ ≥ 2
+        χ[2] = (-3x⁻¹^2 + 1) * cos(x) - 3x⁻¹ * sin(x)
+    end
     for n in 2:(nₘₐₓ - 1)
         χ[n + 1] = (2n + 1) * x⁻¹ * χ[n] - χ[n - 1]
     end
@@ -167,6 +169,7 @@ end
     using GSL: sf_bessel_yl_array
 
     @testset "x = $x, n ∈ [1, $n]" for x in (0.1, 1.0, 10.0, 100.0), n in (40,)
+
         χ, χ′ = ricattibessely(n, x)
 
         y = sf_bessel_yl_array(n, x)
@@ -176,5 +179,17 @@ end
 
         @test all(χ .≈ χ₁)
         @test all(χ′ .≈ χ₁′)
+    end
+end
+
+@testitem "Ricatti-Bessel χ handles nₘₐₓ = 1 without out-of-bounds write" begin
+    using TransitionMatrices: ricattibessely
+
+    for x in (0.1, 1.0, 10.0)
+        χ₁, χ₁′ = ricattibessely(1, x)   # used to throw BoundsError (wrote χ[2])
+        χ₂, χ₂′ = ricattibessely(2, x)
+        @test length(χ₁) == 1 && length(χ₁′) == 1
+        @test χ₁[1] ≈ χ₂[1]
+        @test χ₁′[1] ≈ χ₂′[1]
     end
 end

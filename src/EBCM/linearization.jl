@@ -34,16 +34,16 @@ function _ebcm_linearization_shape(shape::Cylinder, λ)
 end
 
 function _ebcm_linearization_input(problem::LinearizationProblem, config,
-                                   x = problem.x)
+        x = problem.x)
     rebuilt = rebuild(problem, x)
     shape = _linearization_property(config, :shape;
-                                    default = _linearization_property(rebuilt, :shape))
+        default = _linearization_property(rebuilt, :shape))
     λ = _linearization_property(config, :λ;
-                                default = _linearization_property(rebuilt, :λ))
+        default = _linearization_property(rebuilt, :λ))
     nₘₐₓ = _linearization_property(config, :nₘₐₓ;
-                                   default = _linearization_property(rebuilt, :nₘₐₓ))
+        default = _linearization_property(rebuilt, :nₘₐₓ))
     Ng = _linearization_property(config, :Ng;
-                                 default = _linearization_property(rebuilt, :Ng))
+        default = _linearization_property(rebuilt, :Ng))
 
     if isnothing(shape) || isnothing(λ) || isnothing(nₘₐₓ) || isnothing(Ng)
         return nothing
@@ -54,8 +54,9 @@ function _ebcm_linearization_input(problem::LinearizationProblem, config,
 end
 
 function _ebcm_matrices(input)
-    𝐏₀, 𝐔₀, cache = ebcm_matrices_m₀(input.shape, input.λ, input.nₘₐₓ, input.Ng;
-                                      reuse = true)
+    𝐏₀, 𝐔₀,
+    cache = ebcm_matrices_m₀(input.shape, input.λ, input.nₘₐₓ, input.Ng;
+        reuse = true)
     CT = eltype(𝐏₀)
     𝐏s = Vector{Matrix{CT}}(undef, input.nₘₐₓ + 1)
     𝐔s = Vector{Matrix{CT}}(undef, input.nₘₐₓ + 1)
@@ -63,9 +64,10 @@ function _ebcm_matrices(input)
     𝐔s[1] = 𝐔₀
 
     for m in 1:input.nₘₐₓ
-        𝐏s[m + 1], 𝐔s[m + 1] = ebcm_matrices_m(m, input.shape, input.λ,
-                                                 input.nₘₐₓ, input.Ng;
-                                                 cache)
+        𝐏s[m + 1],
+        𝐔s[m + 1] = ebcm_matrices_m(m, input.shape, input.λ,
+            input.nₘₐₓ, input.Ng;
+            cache)
     end
 
     return 𝐏s, 𝐔s
@@ -78,40 +80,38 @@ end
 
 _ebcm_linearized(value, derivative) = _EBCMLinearizedScalar(value, derivative)
 _ebcm_linearized_zero(::Type{T}) where {T} = _ebcm_linearized(zero(T), zero(T))
-_ebcm_linearized_entry(value, derivative, i, n) =
+function _ebcm_linearized_entry(value, derivative, i, n)
     _ebcm_linearized(value[i, n], derivative[i, n])
+end
 
-Base.:+(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar) =
+function Base.:+(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar)
     _ebcm_linearized(x.value + y.value, x.derivative + y.derivative)
-Base.:+(x::_EBCMLinearizedScalar, y) =
-    _ebcm_linearized(x.value + y, x.derivative)
-Base.:+(x, y::_EBCMLinearizedScalar) =
-    _ebcm_linearized(x + y.value, y.derivative)
+end
+Base.:+(x::_EBCMLinearizedScalar, y) = _ebcm_linearized(x.value + y, x.derivative)
+Base.:+(x, y::_EBCMLinearizedScalar) = _ebcm_linearized(x + y.value, y.derivative)
 
-Base.:-(x::_EBCMLinearizedScalar) =
-    _ebcm_linearized(-x.value, -x.derivative)
-Base.:-(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar) =
+Base.:-(x::_EBCMLinearizedScalar) = _ebcm_linearized(-x.value, -x.derivative)
+function Base.:-(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar)
     _ebcm_linearized(x.value - y.value, x.derivative - y.derivative)
-Base.:-(x::_EBCMLinearizedScalar, y) =
-    _ebcm_linearized(x.value - y, x.derivative)
-Base.:-(x, y::_EBCMLinearizedScalar) =
-    _ebcm_linearized(x - y.value, -y.derivative)
+end
+Base.:-(x::_EBCMLinearizedScalar, y) = _ebcm_linearized(x.value - y, x.derivative)
+Base.:-(x, y::_EBCMLinearizedScalar) = _ebcm_linearized(x - y.value, -y.derivative)
 
-Base.:*(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar) =
+function Base.:*(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar)
     _ebcm_linearized(x.value * y.value,
-                     x.derivative * y.value + x.value * y.derivative)
-Base.:*(x::_EBCMLinearizedScalar, y) =
-    _ebcm_linearized(x.value * y, x.derivative * y)
-Base.:*(x, y::_EBCMLinearizedScalar) =
-    _ebcm_linearized(x * y.value, x * y.derivative)
+        x.derivative * y.value + x.value * y.derivative)
+end
+Base.:*(x::_EBCMLinearizedScalar, y) = _ebcm_linearized(x.value * y, x.derivative * y)
+Base.:*(x, y::_EBCMLinearizedScalar) = _ebcm_linearized(x * y.value, x * y.derivative)
 
-Base.:/(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar) =
+function Base.:/(x::_EBCMLinearizedScalar, y::_EBCMLinearizedScalar)
     _ebcm_linearized(x.value / y.value,
-                     (x.derivative * y.value - x.value * y.derivative) / y.value^2)
-Base.:/(x::_EBCMLinearizedScalar, y) =
-    _ebcm_linearized(x.value / y, x.derivative / y)
-Base.:/(x, y::_EBCMLinearizedScalar) =
+        (x.derivative * y.value - x.value * y.derivative) / y.value^2)
+end
+Base.:/(x::_EBCMLinearizedScalar, y) = _ebcm_linearized(x.value / y, x.derivative / y)
+function Base.:/(x, y::_EBCMLinearizedScalar)
     _ebcm_linearized(x / y.value, -x * y.derivative / y.value^2)
+end
 
 function Base.:^(x::_EBCMLinearizedScalar, n::Integer)
     n == 0 && return _ebcm_linearized(one(x.value), zero(x.derivative))
@@ -233,11 +233,11 @@ function _ebcm_geometric_derivatives(c::Cylinder, x, w, r, r′, variable::Symbo
         if H / cosϑ < R / sinϑ
             ∂rᵢ = ∂H / cosϑ - H * ∂cosϑ / cosϑ^2
             ∂r′ᵣₐw = ∂H * sinϑ / cosϑ^2 +
-                      H * (∂sinϑ / cosϑ^2 - 2sinϑ * ∂cosϑ / cosϑ^3)
+                     H * (∂sinϑ / cosϑ^2 - 2sinϑ * ∂cosϑ / cosϑ^3)
         else
             ∂rᵢ = ∂R / sinϑ - R * ∂sinϑ / sinϑ^2
             ∂r′ᵣₐw = -∂R * cosϑ / sinϑ^2 - R * ∂cosϑ / sinϑ^2 +
-                      2R * cosϑ * ∂sinϑ / sinϑ^3
+                     2R * cosϑ * ∂sinϑ / sinϑ^3
         end
 
         ∂r[i] = ∂rᵢ
@@ -290,7 +290,7 @@ function _ebcm_ricatti_argument_derivatives!(∂f, ∂f′, f, f′, z, ∂z)
 end
 
 function _ebcm_wigner_tables(::Type{T}, m::Integer, nₘₐₓ::Integer, Ng::Integer,
-                             ϑ, nₘᵢₙ::Integer, ∂ϑ = nothing) where {T}
+        ϑ, nₘᵢₙ::Integer, ∂ϑ = nothing) where {T}
     d = OffsetArray(zeros(T, Ng, nₘₐₓ - m + 1), 1:Ng, m:nₘₐₓ)
     𝜋 = similar(d)
     τ = similar(d)
@@ -303,7 +303,7 @@ function _ebcm_wigner_tables(::Type{T}, m::Integer, nₘₐₓ::Integer, Ng::Int
 
     for i in eachindex(ϑ)
         wigner_d_recursion!(view(d, i, :), 0, m, nₘₐₓ, ϑ[i];
-                            deriv = view(τ, i, :))
+            deriv = view(τ, i, :))
 
         sinϑ = sin(ϑ[i])
         cosϑ = cos(ϑ[i])
@@ -315,7 +315,7 @@ function _ebcm_wigner_tables(::Type{T}, m::Integer, nₘₐₓ::Integer, Ng::Int
                  (n * (n + 1) - m^2 / sinϑ^2) * d[i, n]
             ∂τ[i, n] = d² * ∂ϑᵢ
             ∂𝜋[i, n] = m * (∂d[i, n] / sinϑ -
-                           d[i, n] * cosϑ * ∂ϑᵢ / sinϑ^2)
+                            d[i, n] * cosϑ * ∂ϑᵢ / sinϑ^2)
         end
     end
 
@@ -345,22 +345,22 @@ function _ebcm_directional_data(input, cache, variable::Symbol)
         ∂ksr = ∂m * k * r[i] + s.m * ∂k * r[i] + s.m * k * ∂r[i]
 
         _ebcm_ricatti_argument_derivatives!(view(∂ψ, i, :),
-                                            view(∂ψ′, i, :),
-                                            view(ψ, i, :),
-                                            view(ψ′, i, :), kr, ∂kr)
+            view(∂ψ′, i, :),
+            view(ψ, i, :),
+            view(ψ′, i, :), kr, ∂kr)
         _ebcm_ricatti_argument_derivatives!(view(∂χ, i, :),
-                                            view(∂χ′, i, :),
-                                            view(χ, i, :),
-                                            view(χ′, i, :), kr, ∂kr)
+            view(∂χ′, i, :),
+            view(χ, i, :),
+            view(χ′, i, :), kr, ∂kr)
         _ebcm_ricatti_argument_derivatives!(view(∂ψₛ, i, :),
-                                            view(∂ψₛ′, i, :),
-                                            view(ψₛ, i, :),
-                                            view(ψₛ′, i, :), ksr, ∂ksr)
+            view(∂ψₛ′, i, :),
+            view(ψₛ, i, :),
+            view(ψₛ′, i, :), ksr, ∂ksr)
     end
 
     return (; x, w, r, r′, ϑ, a, A, ψ, ψ′, χ, χ′, ψₛ, ψₛ′,
-            k, ∂k, ∂m, ∂r, ∂r′, ∂ψ, ∂ψ′,
-            ∂χ, ∂χ′, ∂ψₛ, ∂ψₛ′, ∂x, ∂w, ∂ϑ)
+        k, ∂k, ∂m, ∂r, ∂r′, ∂ψ, ∂ψ′,
+        ∂χ, ∂χ′, ∂ψₛ, ∂ψₛ′, ∂x, ∂w, ∂ϑ)
 end
 
 function _ebcm_matrices_m₀_derivative(input, data)
@@ -371,7 +371,7 @@ function _ebcm_matrices_m₀_derivative(input, data)
     T = eltype(data.r)
     CT = eltype(data.ψₛ)
     d, 𝜋, τ, ∂d, ∂𝜋, ∂τ = _ebcm_wigner_tables(T, 0, nₘₐₓ, Ng, data.ϑ, 0,
-                                                 data.∂ϑ)
+        data.∂ϑ)
 
     ∂𝐏 = zeros(CT, 2nₘₐₓ, 2nₘₐₓ)
     ∂𝐏₁₁ = view(∂𝐏, 1:nₘₐₓ, 1:nₘₐₓ)
@@ -384,6 +384,7 @@ function _ebcm_matrices_m₀_derivative(input, data)
     k = _ebcm_linearized(data.k, data.∂k)
 
     for n in 1:nₘₐₓ, n′ in 1:nₘₐₓ
+
         if isodd(n + n′)
             continue
         end
@@ -484,10 +485,10 @@ function _ebcm_matrices_m₀_derivative(input, data)
 
             ∂𝐏₁₁[n, n] = (-1im / m * data.A[n]^2 * PL̃₁).derivative
             ∂𝐏₂₂[n, n] = (-1im / m * data.A[n]^2 *
-                           (PL̃₂ + (m^2 - 1) * data.a[n] * PL̃₃)).derivative
+                          (PL̃₂ + (m^2 - 1) * data.a[n] * PL̃₃)).derivative
             ∂𝐔₁₁[n, n] = (-1im / m * data.A[n]^2 * UL̃₁).derivative
             ∂𝐔₂₂[n, n] = (-1im / m * data.A[n]^2 *
-                           (UL̃₂ + (m^2 - 1) * data.a[n] * UL̃₃)).derivative
+                          (UL̃₂ + (m^2 - 1) * data.a[n] * UL̃₃)).derivative
         end
     end
 
@@ -504,29 +505,30 @@ function _ebcm_matrices_m_derivative(input, data, m_order::Integer)
     T = eltype(data.r)
     CT = eltype(data.ψₛ)
     d, 𝜋, τ, ∂d, ∂𝜋, ∂τ = _ebcm_wigner_tables(T, m_order, nₘₐₓ, Ng,
-                                                 data.ϑ, nₘᵢₙ, data.∂ϑ)
+        data.ϑ, nₘᵢₙ, data.∂ϑ)
 
     ∂𝐏 = zeros(CT, 2nn, 2nn)
     ∂𝐏₁₁ = OffsetArray(view(∂𝐏, 1:nn, 1:nn), nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
     ∂𝐏₁₂ = OffsetArray(view(∂𝐏, 1:nn, (nn + 1):(2nn)), nₘᵢₙ:nₘₐₓ,
-                        nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ)
     ∂𝐏₂₁ = OffsetArray(view(∂𝐏, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nₘₐₓ,
-                        nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ)
     ∂𝐏₂₂ = OffsetArray(view(∂𝐏, (nn + 1):(2nn), (nn + 1):(2nn)),
-                        nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
     ∂𝐔 = zeros(CT, 2nn, 2nn)
     ∂𝐔₁₁ = OffsetArray(view(∂𝐔, 1:nn, 1:nn), nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
     ∂𝐔₁₂ = OffsetArray(view(∂𝐔, 1:nn, (nn + 1):(2nn)), nₘᵢₙ:nₘₐₓ,
-                        nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ)
     ∂𝐔₂₁ = OffsetArray(view(∂𝐔, (nn + 1):(2nn), 1:nn), nₘᵢₙ:nₘₐₓ,
-                        nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ)
     ∂𝐔₂₂ = OffsetArray(view(∂𝐔, (nn + 1):(2nn), (nn + 1):(2nn)),
-                        nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
+        nₘᵢₙ:nₘₐₓ, nₘᵢₙ:nₘₐₓ)
 
     m = _ebcm_linearized(s.m, data.∂m)
     k = _ebcm_linearized(data.k, data.∂k)
 
     for n in nₘᵢₙ:nₘₐₓ, n′ in nₘᵢₙ:nₘₐₓ
+
         if !iseven(n + n′)
             PK₁ = _ebcm_linearized_zero(CT)
             PK₂ = _ebcm_linearized_zero(CT)
@@ -655,10 +657,10 @@ function _ebcm_matrices_m_derivative(input, data, m_order::Integer)
 
                 ∂𝐏₁₁[n, n] = (-1im / m * data.A[n]^2 * PL̃₁).derivative
                 ∂𝐏₂₂[n, n] = (-1im / m * data.A[n]^2 *
-                               (PL̃₂ + (m^2 - 1) * data.a[n] * PL̃₃)).derivative
+                              (PL̃₂ + (m^2 - 1) * data.a[n] * PL̃₃)).derivative
                 ∂𝐔₁₁[n, n] = (-1im / m * data.A[n]^2 * UL̃₁).derivative
                 ∂𝐔₂₂[n, n] = (-1im / m * data.A[n]^2 *
-                               (UL̃₂ + (m^2 - 1) * data.a[n] * UL̃₃)).derivative
+                              (UL̃₂ + (m^2 - 1) * data.a[n] * UL̃₃)).derivative
             end
         end
     end
@@ -668,7 +670,7 @@ end
 
 function _ebcm_matrix_derivatives(input, variables)
     _, _, cache = ebcm_matrices_m₀(input.shape, input.λ, input.nₘₐₓ, input.Ng;
-                                   reuse = true)
+        reuse = true)
     map(variables) do variable
         data = _ebcm_directional_data(input, cache, variable)
         ∂𝐏s = Vector{Matrix{eltype(data.ψₛ)}}(undef, input.nₘₐₓ + 1)
@@ -702,11 +704,11 @@ function _ebcm_variable_list_message(canonical)
 end
 
 function supports_linearization(problem::LinearizationProblem, ::EBCMLinearization;
-                                output::Symbol = :transition_matrix,
-                                config = nothing)
+        output::Symbol = :transition_matrix,
+        config = nothing)
     output == :transition_matrix ||
         return LinearizationSupport(false,
-                                    "EBCM analytical linearization only supports transition matrices")
+            "EBCM analytical linearization only supports transition matrices")
 
     input = try
         _ebcm_linearization_input(problem, config)
@@ -715,21 +717,21 @@ function supports_linearization(problem::LinearizationProblem, ::EBCMLinearizati
     end
     isnothing(input) &&
         return LinearizationSupport(false,
-                                    "EBCM analytical linearization requires shape, λ, nₘₐₓ, and Ng")
+            "EBCM analytical linearization requires shape, λ, nₘₐₓ, and Ng")
     canonical_variables = _ebcm_linearization_variables(input.shape)
     isnothing(canonical_variables) &&
         return LinearizationSupport(false,
-                                    "EBCM analytical linearization currently supports Spheroid, Chebyshev, and Cylinder slices only")
+            "EBCM analytical linearization currently supports Spheroid, Chebyshev, and Cylinder slices only")
     _linearization_variables_supported(variables(problem), canonical_variables) ||
         return LinearizationSupport(false,
-                                    "EBCM analytical linearization supports unique canonical variables drawn from $(_ebcm_variable_list_message(canonical_variables))")
+            "EBCM analytical linearization supports unique canonical variables drawn from $(_ebcm_variable_list_message(canonical_variables))")
 
     return LinearizationSupport(true, "")
 end
 
 function _checked_ebcm_linearization_input(problem::LinearizationProblem,
-                                          backend::EBCMLinearization,
-                                          config)
+        backend::EBCMLinearization,
+        config)
     support = supports_linearization(problem, backend; output = :transition_matrix, config)
     Bool(support) ||
         throw(UnsupportedLinearization(backend, :transition_matrix, support.reason))
@@ -737,18 +739,30 @@ function _checked_ebcm_linearization_input(problem::LinearizationProblem,
 end
 
 function linearize_transition_matrix(problem::LinearizationProblem,
-                                     backend::EBCMLinearization; config = nothing)
+        backend::EBCMLinearization; config = nothing)
     input = _checked_ebcm_linearization_input(problem, backend, config)
     𝐏s, 𝐔s = _ebcm_matrices(input)
-    value = ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s)
+
+    # 𝐐 = 𝐏 + i𝐔 per m-block depends only on 𝐏 and 𝐔, not on the differentiated
+    # parameter. Factor each block once here and reuse it for the value block and
+    # every Jacobian slice, instead of recomputing inv(𝐐) per parameter per block.
+    factors = [_ebcm_factor(@. 𝐏 + 1im * 𝐔) for (𝐏, 𝐔) in zip(𝐏s, 𝐔s)]
+    𝐓blocks = [-_ebcm_rdiv(𝐏, F) for (𝐏, F) in zip(𝐏s, factors)]
+    value = _axisymmetric_transition_matrix_from_blocks(𝐓blocks)
+
     matrix_derivatives = _ebcm_matrix_derivatives(input, variables(problem))
     jacobian = map(matrix_derivatives) do (∂𝐏s, ∂𝐔s)
-        ∂ebcm_transition_matrix_from_matrices(𝐏s, 𝐔s, ∂𝐏s, ∂𝐔s)
+        ∂blocks = map(∂𝐏s, ∂𝐔s, 𝐓blocks, factors) do ∂𝐏, ∂𝐔, 𝐓, F
+            ∂𝐐 = @. ∂𝐏 + 1im * ∂𝐔
+            # ∂𝐓 = -(∂𝐏 + 𝐓 ∂𝐐) 𝐐⁻¹, reusing the block factor and value block.
+            -_ebcm_rdiv(∂𝐏 + 𝐓 * ∂𝐐, F)
+        end
+        _axisymmetric_transition_matrix_from_blocks(∂blocks)
     end
 
     return LinearizationResult(value, jacobian, variables(problem);
-                               metadata = (; backend = :ebcm_analytic,
-                                           λ = input.λ,
-                                           nₘₐₓ = input.nₘₐₓ,
-                                           Ng = input.Ng))
+        metadata = (; backend = :ebcm_analytic,
+            λ = input.λ,
+            nₘₐₓ = input.nₘₐₓ,
+            Ng = input.Ng))
 end

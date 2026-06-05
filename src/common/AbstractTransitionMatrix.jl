@@ -54,7 +54,7 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
 
     # Calculate the coefficients used for wigner-D functions
     coeff = OffsetArray([cis(-(m * α + m′ * γ)) for m in (-N):N, m′ in (-N):N], (-N):N,
-                        (-N):N)
+        (-N):N)
 
     # Calculate the rotated T-Matrix
     𝐓′ = similar(𝐓)
@@ -63,8 +63,10 @@ function rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3}) where {
     # Enable multi-threading
     Threads.@threads for (n′, m′) in OrderDegreeIterator(N)
         for p in 1:2, p′ in 1:2
+
             for (n, m) in OrderDegreeIterator(N)
                 for m₂ in (-n′):n′, m₁ in (-n):n
+
                     sig = iseven(m′ + m₂) ? 1 : -1
                     𝐓′[m, n, m′, n′, p, p′] += coeff[m, m₁] * d[m, m₁, n] *
                                                conj(coeff[m′, m₂]) * d[m₂, m′, n′] * sig *
@@ -123,7 +125,7 @@ Where
 ```
 """
 function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, ϑₛ, φₛ;
-                          λ = 2π) where {CT, N}
+        λ = 2π) where {CT, N}
     T = real(CT)
     k₁ = 2π / λ
     𝐒₁₁, 𝐒₁₂, 𝐒₂₁, 𝐒₂₂ = zero(CT), zero(CT), zero(CT), zero(CT)
@@ -134,12 +136,12 @@ function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, �
     τₛ = OffsetArray(zeros(T, 2N + 1, N + 1), (-N):N, 0:N)
     for m in 0:N
         wigner_d_recursion!(view(πᵢ, m, m:N),
-                            0, m, N, ϑᵢ;
-                            deriv = view(τᵢ, m, m:N))
+            0, m, N, ϑᵢ;
+            deriv = view(τᵢ, m, m:N))
 
         wigner_d_recursion!(view(πₛ, m, m:N),
-                            0, m, N, ϑₛ;
-                            deriv = view(τₛ, m, m:N))
+            0, m, N, ϑₛ;
+            deriv = view(τₛ, m, m:N))
     end
 
     for n in 1:N
@@ -156,6 +158,7 @@ function amplitude_matrix(𝐓::AbstractTransitionMatrix{CT, N}, ϑᵢ, φᵢ, �
     end
 
     for n′ in 1:N, n in 1:N
+
         αₙ = 1.0im^((n′ - n - 1) & 3) *
              √(T(2n + 1) * (2n′ + 1) / (n * (n + 1) * n′ * (n′ + 1)))
         for m′ in (-n′):n′
@@ -218,7 +221,7 @@ Parameters:
     You may also need to test the convergence of `Nα`, `Nβ` and `Nγ` manually. If any one is too small, there will be large errors in the results.
 """
 function orientation_average(𝐓::AbstractTransitionMatrix{CT, N}, pₒ; Nα = 10, Nβ = 10,
-                             Nγ = 10) where {CT, N}
+        Nγ = 10) where {CT, N}
     T̄ = similar(𝐓)
     fill!(T̄, zero(CT))
 
@@ -266,7 +269,7 @@ Parameters:
 - `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 """
 function scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
-                                  λ = 2π) where {CT, N}
+        λ = 2π) where {CT, N}
     return sum(abs2, 𝐓) * λ^2 / 2π
 end
 
@@ -287,7 +290,7 @@ Parameters:
 - `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 """
 function extinction_cross_section(𝐓::AbstractTransitionMatrix{CT, N},
-                                  λ = 2π) where {CT, N}
+        λ = 2π) where {CT, N}
     Cᵉˣᵗ = zero(CT)
 
     for n in 1:N
@@ -415,7 +418,7 @@ Keyword arguments:
 - `full`: Whether to return the full expansion coefficients (`β₃` to `β₆`). Default to `false`.
 """
 function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
-                                full = false) where {CT, N}
+        full = false) where {CT, N}
     Cˢᶜᵃ = Float64(scattering_cross_section(𝐓, λ))
     λ = Float64(λ)
     ci = OffsetArray([(1im)^(i & 3) for i in (-N):N], (-N):N)
@@ -457,18 +460,19 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
     A₄ = OffsetArray(zeros(ComplexF64, N, 2N + 1), 1:N, 0:(2N))
 
     B₁ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
-                     0:(2N))
+        0:(2N))
     B₂ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
-                     0:(2N))
+        0:(2N))
     B₃ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
-                     0:(2N))
+        0:(2N))
     B₄ = OffsetArray(zeros(ComplexF64, 2N + 1, 2N + 1, N, 2N + 1), (-N):N, (-N):N, 1:N,
-                     0:(2N))
+        0:(2N))
 
     Threads.@threads for n₁ in 0:(2N)
         @debug "n₁ = $n₁..."
 
         for n in 1:N, k in (-N):N
+
             for n′ in max(1, abs(n - n₁)):min(n + n₁, N)
                 a₁ = 0.0
                 a₂ = 0.0
@@ -529,11 +533,11 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
                 d₋₀₋₀ = 0.0
                 for n₁ in abs(m - 1):(min(n, n′) + N)
                     d₀₀ += (2n₁ + 1) * sum(B₃[k, m, n, n₁] * B₃[k, m, n′, n₁]'
-                               for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₀₋₀ += (2n₁ + 1) * sum(B₂[k, m, n, n₁] * B₂[k, m, n′, n₁]'
-                                for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₋₀₋₀ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₁[k, m, n′, n₁]'
-                                 for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                 end
                 D₀₀[m, n, n′] = d₀₀
                 D₀₋₀[m, n, n′] = d₀₋₀
@@ -549,15 +553,15 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
 
                 for n₁ in abs(m - 1):(min(n, n′) + N)
                     d₂₂ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
-                               for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₂₋₂ += (2n₁ + 1) * sum(B₄[k, m, n, n₁] * B₂[-k, 2 - m, n′, n₁]'
-                                for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₋₂₋₂ += (2n₁ + 1) * sum(B₃[k, m, n, n₁] * B₁[-k, 2 - m, n′, n₁]'
-                                 for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₀₂ += (2n₁ + 1) * sum(B₂[k, m, n, n₁] * B₃[-k, 2 - m, n′, n₁]'
-                               for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                     d₋₀₂ += (2n₁ + 1) * sum(B₁[k, m, n, n₁] * B₄[-k, 2 - m, n′, n₁]'
-                                for k in max(-N, -n₁):min(N, n₁))
+                    for k in max(-N, -n₁):min(N, n₁))
                 end
 
                 D₂₂[m, n, n′] = d₂₂
@@ -572,9 +576,9 @@ function expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ;
     h_const = λ^2 / (Cˢᶜᵃ * 4 * π)
     h = OffsetArray([s[l] * h_const * ss[n] / ss[n′]
                      for l in 0:(2N), n in 1:N, n′ in 1:N],
-                    0:(2N),
-                    1:N,
-                    1:N)
+        0:(2N),
+        1:N,
+        1:N)
 
     @debug "Calculating g..."
     g₀₀ = OffsetArray(zeros(ComplexF64, 2N + 1), 0:(2N))

@@ -8,8 +8,18 @@
 Manifest.toml
 .CondaPkg/
 
+# Benchmark result artifacts (benchmark/params.json is committed; raw run
+# outputs are machine-specific and stay local)
+/results*.json
+/benchmark/results*.json
+
 # Documentation artifacts
 /docs/build/
+
+# Intermediate Pluto render output (the committed copies live in
+# docs/src/examples/, which is tracked).
+/examples/*.md
+!/examples/README.md
 
 # Editor and OS metadata
 .DS_Store

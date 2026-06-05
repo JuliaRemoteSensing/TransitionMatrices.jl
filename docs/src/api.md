@@ -9,4 +9,5 @@ CurrentModule = TransitionMatrices
 
 ```@autodocs
 Modules = [TransitionMatrices]
+Filter = t -> !startswith(string(Base.nameof(t)), "_")
 ```

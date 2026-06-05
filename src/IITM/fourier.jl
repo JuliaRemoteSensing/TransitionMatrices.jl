@@ -1,3 +1,10 @@
+# Solve 𝐌 \ 𝐗 (= inv(𝐌) * 𝐗) through a factorization instead of forming the
+# explicit inverse and an extra matrix product — cheaper and numerically
+# cleaner on the IITM radial recursion's hot path. Arblib (Arb/Acb) matrices
+# have no generic `\`/`lu`, so they fall back to their dedicated `inv`.
+_iitm_ldiv(𝐌::AbstractMatrix{<:Union{Arb, Acb}}, 𝐗) = inv(𝐌) * 𝐗
+_iitm_ldiv(𝐌, 𝐗) = 𝐌 \ 𝐗
+
 struct _AzimuthalFourierWorkspace{P}
     contrast::Matrix{ComplexF64}
     contrast_inv::Matrix{ComplexF64}
@@ -15,7 +22,7 @@ function _azimuthal_fft_plan(Nφ, Nϑ)
     try
         return get!(_AZIMUTHAL_FFT_PLAN_CACHE, key) do
             FFTW.plan_fft(zeros(ComplexF64, Nφ, Nϑ), 1;
-                          flags = FFTW.ESTIMATE | FFTW.UNALIGNED)
+                flags = FFTW.ESTIMATE | FFTW.UNALIGNED)
         end
     finally
         unlock(_AZIMUTHAL_FFT_PLAN_CACHE_LOCK)
@@ -29,7 +36,7 @@ function _azimuthal_fourier_workspace(Nφ, Nϑ)
     spectrum_inv = similar(contrast)
     plan = _azimuthal_fft_plan(Nφ, Nϑ)
     return _AzimuthalFourierWorkspace(contrast, contrast_inv, spectrum, spectrum_inv,
-                                      plan)
+        plan)
 end
 
 function _azimuthal_fourier_mode_bins(nₘₐₓ, period = 1)
@@ -39,8 +46,8 @@ function _azimuthal_fourier_mode_bins(nₘₐₓ, period = 1)
 end
 
 function _azimuthal_fourier_coefficients(ε::AbstractMatrix{ComplexF64}, nₘₐₓ, wφ,
-                                         workspace::_AzimuthalFourierWorkspace,
-                                         mode_bins)
+        workspace::_AzimuthalFourierWorkspace,
+        mode_bins)
     Nφ, Nϑ = size(ε)
     qs, bins = mode_bins
 
@@ -50,7 +57,7 @@ function _azimuthal_fourier_coefficients(ε::AbstractMatrix{ComplexF64}, nₘₐ
     mul!(workspace.spectrum_inv, workspace.plan, workspace.contrast_inv)
 
     coeff = OffsetArray(zeros(ComplexF64, 4nₘₐₓ + 1, Nϑ), (-2nₘₐₓ):(2nₘₐₓ),
-                        1:Nϑ)
+        1:Nϑ)
     coeff_inv = similar(coeff)
 
     for i in 1:Nϑ
