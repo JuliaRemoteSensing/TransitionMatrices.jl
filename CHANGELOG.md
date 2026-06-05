@@ -25,9 +25,13 @@ next release is expected to be `v0.5.0`.
   `Iterative(EBCM; stable = true)`.
 - **Performance benchmark suite** and a PR benchmark CI workflow
   (AirspeedVelocity).
-- **`examples/` folder** with five runnable Pluto notebooks — shapes gallery,
-  angular scattering & polarization, orientation averaging, solver landscape, and
-  spectral sensitivity — rendered into the documentation site.
+- **`examples/` folder** with six runnable Pluto notebooks — shapes gallery,
+  solver landscape, angular scattering & polarization, orientation averaging,
+  and spectral sensitivity, plus a rain-radar observables example adapted from
+  [`@xiongyuup`](https://github.com/xiongyuup)'s
+  [PR #3](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/pull/3)
+  with water/ice refractive-index fits and a multi-frequency
+  brightness-temperature lookup — rendered into the documentation site.
 
 ### Changed
 
