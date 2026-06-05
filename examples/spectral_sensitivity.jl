@@ -111,7 +111,7 @@ begin
     function Csca_classic(λ, m)
         T = promote_type(typeof(λ), typeof(m))
         s = TransitionMatrices.Spheroid{T, Complex{T}}(T(2.0), T(1.0), Complex{T}(m, mᵢ))
-        calc_Csca(transition_matrix(s, λ, nmax, Ng), λ)
+        calc_Csca(transition_matrix(s, λ, EBCM(nmax, Ng)), λ)
     end
 
     f_sh(λ) = ForwardDiff.derivative(l -> Csca(l, mᵣ), λ)

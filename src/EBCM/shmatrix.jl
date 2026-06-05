@@ -621,7 +621,11 @@ The analytic `𝐔` stabilization is enabled only for `Spheroid` (see
 function prepare_sh(shape::AbstractAxisymmetricShape{T}, nmax::Integer, Ng::Integer;
         B::Integer = max(30, nmax + 15), momtype::Union{Nothing, Type} = nothing,
         store::Type = T) where {T}
-    @assert iseven(Ng) "Ng must be even!"
+    # Only the symmetry shortcut (folding the quadrature to Ng ÷ 2 for shapes with
+    # an equatorial symmetry plane) requires an even Ng; see `_sh_geometry`.
+    if has_symmetric_plane(shape)
+        @assert iseven(Ng) "Ng must be even!"
+    end
     qlo, qhi = _sh_qband(nmax, B)
 
     # For a spheroid the negative-r-power moments vanish analytically (the F⁺
@@ -679,7 +683,14 @@ Reconstruct a T-matrix at each `(λ, mᵣ)` pair, reusing the prepared moments. 
 table as `mᵣs` to sweep a material with wavelength-dependent index.
 """
 function transition_matrix_spectrum(prep::ShPreparation, λs, mᵣs)
-    ms = mᵣs isa Number ? Iterators.repeated(mᵣs, length(λs)) : mᵣs
+    if mᵣs isa Number
+        ms = Iterators.repeated(mᵣs, length(λs))
+    else
+        length(mᵣs) == length(λs) || throw(ArgumentError(
+            "transition_matrix_spectrum: length(mᵣs) = $(length(mᵣs)) does not match \
+             length(λs) = $(length(λs))"))
+        ms = mᵣs
+    end
     return [transition_matrix(prep, λ, m) for (λ, m) in zip(λs, ms)]
 end
 
