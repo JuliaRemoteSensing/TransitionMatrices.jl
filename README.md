@@ -40,4 +40,4 @@ The precision types `Double64`, `Float128`, `ComplexF128`, `Arb`, and `Acb`
 are re-exported by `TransitionMatrices.jl` and can be directly used after
 `using TransitionMatrices`.
 
-The `0.4` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.
+The `0.5` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.

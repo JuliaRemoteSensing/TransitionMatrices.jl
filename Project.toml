@@ -1,6 +1,6 @@
 name = "TransitionMatrices"
 uuid = "057c4241-e127-4181-840e-6b4b92e6eef5"
-version = "0.4.0"
+version = "0.5.0"
 authors = ["Gabriel Wu <wuzihua@pku.edu.cn> and contributors"]
 
 [deps]

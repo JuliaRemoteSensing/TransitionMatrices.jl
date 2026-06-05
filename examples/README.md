@@ -46,3 +46,11 @@ so it works from a fresh checkout (the first run installs dependencies).
   rain-drop axis-ratio model, water/ice refractive-index fits, and a drop-size
   distribution to compute dual-pol radar moments and single- / multi-frequency
   brightness-temperature integrals without external WRF/NetCDF/MAT data.
+
+## Advanced Workflows
+
+- [`radiative_transfer/`](radiative_transfer/) — **WRF-like dual-pol radar
+  workflow**: an optional standalone environment with synthetic NetCDF data
+  generation and a WRF-style rain radar pipeline. It keeps heavy NetCDF
+  workflow dependencies out of the main package and is intended as a smoke-test
+  and adaptation point for real WRF output.

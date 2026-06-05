@@ -1,0 +1,10 @@
+[deps]
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+TransitionMatrices = "057c4241-e127-4181-840e-6b4b92e6eef5"
+
+[compat]
+NCDatasets = "0.14"
+SpecialFunctions = "2"
+TransitionMatrices = "0.5"
+julia = "1.10"

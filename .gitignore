@@ -21,6 +21,11 @@ Manifest.toml
 /examples/*.md
 !/examples/README.md
 
+# Generated data/cache for optional advanced examples.
+/examples/radiative_transfer/*.nc
+/examples/radiative_transfer/*.mat
+/examples/radiative_transfer/*.jls
+
 # Editor and OS metadata
 .DS_Store
 .idea/

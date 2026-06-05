@@ -62,7 +62,7 @@ end</code></pre>
         denominator = 1 + 2x * sinpi(α / 2) + (λs / λ_m)^(2 - 2α)
         εreal = ε∞ + (εs - ε∞) * (1 + x * sinpi(α / 2)) / denominator
         εimag = (εs - ε∞) * x * cospi(α / 2) / denominator +
-                σ * λ_m / (2π * 2.99792458e8 * ε0)
+                σ * λ_m / (2π * c0_m_per_s() * ε0)
 
         sqrt(complex(εreal, εimag))
     end
