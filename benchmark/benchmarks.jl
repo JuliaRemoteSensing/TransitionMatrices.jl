@@ -13,6 +13,7 @@
 #   ebcm               – EBCM blocks, fixed-order, and auto-converging solves
 #   iitm               – Invariant Imbedding T-Matrix (axisymmetric + N-fold)
 #   postprocessing     – far-field observables from a precomputed T-matrix
+#   near_field         – external field reconstruction (VSWF) from a T-matrix
 #   linearization      – analytical Jacobian (baseline for the inv→lu work)
 #   precision          – Float64 vs Double64 on the same EBCM block
 
@@ -125,6 +126,22 @@ let g = SUITE["postprocessing"] = BenchmarkGroup(["farfield"])
         (α, β, γ) -> 1 / (8π^2);
         Nα = 20, Nβ = 20,
         Nγ = 1) seconds=30
+end
+
+# --------------------------------------------------------------------------
+# Near-field — external field reconstruction from a precomputed T-matrix.
+# `scattering_coefficients` is the per-incidence cost (the (p,q)=𝐓(a,b) apply);
+# `scattered_field` is the per-point cost that dominates a dense field grid, so
+# it is benchmarked with (p,q) precomputed (reused across points in practice).
+# --------------------------------------------------------------------------
+let g = SUITE["near_field"] = BenchmarkGroup(["nearfield"])
+    pt = [4.0, 0.0, 3.0]   # outside the spheroid's circumscribing sphere (r > 2)
+    p, q = scattering_coefficients(T_REF, 0.0, 0.0, 1.0 + 0im, 0.0im)
+    g["scattering_coefficients"] = @benchmarkable scattering_coefficients($T_REF, 0.0, 0.0,
+        1.0 + 0im, 0.0im)
+    g["scattered_field_point"] = @benchmarkable scattered_field($p, $q, $λ, $pt)
+    g["total_field_point"] = @benchmarkable total_field($T_REF, $λ, 0.0, 0.0, 1.0 + 0im,
+        0.0im, $pt)
 end
 
 # --------------------------------------------------------------------------

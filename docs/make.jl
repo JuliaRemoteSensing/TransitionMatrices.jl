@@ -13,7 +13,7 @@ const NB_DIR = normpath(joinpath(@__DIR__, "..", "examples"))
 const NB_OUT = joinpath(@__DIR__, "src", "examples")
 const NOTEBOOKS = ["shapes_gallery.jl", "solver_landscape.jl",
     "angular_scattering.jl", "orientation_averaging.jl", "spectral_sensitivity.jl",
-    "rain_radar.jl"]
+    "rain_radar.jl", "near_field.jl"]
 
 function notebook_title(nb)
     in_markdown = false
