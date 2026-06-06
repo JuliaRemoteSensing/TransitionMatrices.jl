@@ -310,11 +310,17 @@ c, d = internal_coefficients(spheroid, λ, nmax, Ng, ϑ_inc, φ_inc, Eθ, Eφ)
 E_in = internal_field(c, d, spheroid.m, λ, r⃗)
 ```
 
-!!! warning "Inscribed sphere"
-    For a non-spherical particle the single-origin interior expansion converges
-    only **within the inscribed sphere** (radius `rmin(shape)`); evaluate `r⃗`
-    there. The convention is validated against Mie on the degenerate sphere
-    (`Spheroid(R, R, mᵣ)`).
+!!! note "Region of validity and conditioning"
+    The interior expansion is mathematically guaranteed within the inscribed sphere
+    (radius `rmin(shape)`); empirically it stays stable and physical throughout the
+    interior (it does **not** diverge past the inscribed sphere). The binding limit
+    is instead EBCM ``\mathbf{Q}``-matrix conditioning at high aspect ratio with
+    high `nmax` — since ``\mathbf{c} = \tfrac12\mathbf{Q}^{-1}\mathbf{a}`` inherits
+    ``\mathbf{Q}^{-1}``, the same Float64 cancellation that limits the T-matrix
+    corrupts the coefficients everywhere — so keep `nmax`/aspect where the T-matrix
+    is reliable. The convention is validated against Mie on the degenerate sphere
+    (`Spheroid(R, R, mᵣ)`); absolute accuracy beyond the inscribed sphere for
+    non-spherical shapes is not independently verified.
 
 See the [Near-field maps from a T-matrix](examples/near_field.md) example for a
 field-enhancement map.

@@ -16,14 +16,25 @@
 # 𝐜⁽⁻ᵐ⁾ = 𝐃 (½ 𝐐⁽ᵐ⁾⁻¹) 𝐃 𝐚⁽⁻ᵐ⁾ with 𝐃 = diag(+𝐈_M, -𝐈_N). Each block stacks the
 # M (p=1) coefficients above the N (p=2) coefficients over n = max(1,m):nmax.
 #
-# VALIDITY: the single-origin regular-VSWF interior expansion converges only
-# WITHIN THE INSCRIBED SPHERE of the particle (radius `rmin(shape)`); between it
-# and the surface the series may diverge. For a sphere the inscribed sphere is the
-# whole interior. The convention is validated on the degenerate sphere (a spheroid
-# with a = c) against the analytic Mie internal field; for genuinely non-spherical
-# shapes there is no self-contained surface check (tangential boundary continuity
-# would need both the interior and exterior expansions to converge at the surface,
-# which the Rayleigh hypothesis forbids).
+# VALIDITY. The regular-VSWF interior expansion is mathematically guaranteed to
+# converge to the true field at least within the inscribed sphere (radius
+# `rmin(shape)`). Empirically (tested) it does NOT diverge outside it: the
+# reconstruction stays numerically stable and physical throughout the interior —
+# tips included, well beyond the inscribed sphere — as long as the underlying EBCM
+# build is well conditioned. The real failure mode is EBCM 𝐐-matrix
+# ill-conditioning at high aspect ratio with high nmax (the same Float64
+# cancellation the F⁺ `stable` path fixes for the T-matrix): since 𝐜 = ½ 𝐐⁻¹ 𝐚
+# inherits 𝐐⁻¹, a poorly-conditioned 𝐐 corrupts the coefficients EVERYWHERE
+# (including the core), not just near the surface. Keep aspect×nmax in the regime
+# where the T-matrix itself is reliable.
+#
+# Absolute accuracy beyond the inscribed sphere is not independently validated for
+# non-spherical shapes (there is no self-contained surface check — tangential
+# boundary continuity would need both interior and exterior expansions to converge
+# at the surface, which the Rayleigh hypothesis forbids — and no built-in reference
+# method). The convention (the ½ factor and the ±m symmetry) is pinned to machine
+# precision by the degenerate-sphere (a = c) comparison against the analytic Mie
+# internal field.
 
 @doc raw"""
 ```
@@ -37,8 +48,10 @@ particle, obtained from the EBCM matrices: per azimuthal block ``\mathbf{c} =
 Jones polarization `(Eθ, Eφ)`). Returns `OffsetArray`s indexed `[m, n]`; reuse them
 across field points with [`internal_field`](@ref).
 
-The reconstruction is valid only inside the particle's **inscribed sphere** (radius
-`rmin(shape)`).
+The interior expansion is guaranteed within the inscribed sphere (radius
+`rmin(shape)`) and is empirically stable throughout the interior; the practical
+limit is EBCM conditioning at high aspect ratio with high `nmax` (keep
+`nmax`/aspect where the T-matrix itself is reliable). See [`internal_field`](@ref).
 """
 function internal_coefficients(shape::AbstractAxisymmetricShape{T, CT}, λ, nmax::Integer,
         Ng::Integer, ϑ_inc, φ_inc, Eθ, Eφ) where {T, CT}
@@ -78,9 +91,11 @@ internal_field(shape::AbstractAxisymmetricShape, λ, nmax, Ng, ϑ_inc, φ_inc, E
 
 Internal electric field inside a general axisymmetric particle at the Cartesian
 point `r⃗`, via the EBCM internal coefficients (see [`internal_coefficients`](@ref)).
-The relative refractive index is taken from `shape`. `r⃗` must lie within the
-particle's **inscribed sphere** (radius `rmin(shape)`), where the interior
-expansion converges.
+The relative refractive index is taken from `shape`, and `r⃗` should lie inside the
+particle. Convergence is guaranteed within the inscribed sphere (radius
+`rmin(shape)`) and is empirically stable throughout the interior; the binding
+constraint is EBCM conditioning at high aspect × `nmax`, not the inscribed-sphere
+radius.
 """
 function internal_field(shape::AbstractAxisymmetricShape, λ, nmax::Integer, Ng::Integer,
         ϑ_inc, φ_inc, Eθ, Eφ, r⃗)
