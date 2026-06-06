@@ -240,6 +240,52 @@ angles ``\Theta``:
 𝐅 = scattering_matrix(𝐓, 2π, θs)     # one matrix per angle
 ```
 
+## Near-field reconstruction
+
+Beyond the far field, the **electromagnetic field around the particle** can be
+reconstructed from any T-matrix. For an incident plane wave the scattered field
+is expanded in radiating vector spherical wave functions with coefficients
+``(p, q) = \mathbf{T}\,(a, b)``, where ``(a, b)`` are the plane-wave coefficients;
+the total external field is ``\mathbf{E}_\text{inc} + \mathbf{E}_\text{sca}``.
+
+The incident plane wave propagates along ``\hat{\mathbf n} = (\vartheta_\text{inc},
+\varphi_\text{inc})`` with a Jones polarization `(Eθ, Eφ)` in the spherical basis
+``(\hat{\boldsymbol\vartheta}, \hat{\boldsymbol\varphi})`` at that direction. Field
+points are Cartesian (any `AbstractVector` of length 3); the polar axis is `+z`.
+
+```julia
+𝐓 = transition_matrix(spheroid, 2π)
+λ = 2π
+
+# +z propagation, x-polarized (θ̂ at ϑ=0 is x̂):
+ϑ_inc, φ_inc, Eθ, Eφ = 0.0, 0.0, 1.0 + 0im, 0.0im
+r⃗ = [4.0, 0.0, 3.0]                                   # a point outside the particle
+
+E_inc = incident_field(λ, ϑ_inc, φ_inc, Eθ, Eφ, r⃗)   # analytic plane wave
+E_sca = scattered_field(𝐓, λ, ϑ_inc, φ_inc, Eθ, Eφ, r⃗)
+E_tot = total_field(𝐓, λ, ϑ_inc, φ_inc, Eθ, Eφ, r⃗)   # = E_inc + E_sca
+```
+
+When evaluating a **dense grid** of field points, compute the scattered
+coefficients once and reuse them:
+
+```julia
+p, q = scattering_coefficients(𝐓, ϑ_inc, φ_inc, Eθ, Eφ)
+field = [scattered_field(p, q, λ, [x, 0.0, z]) for z in zs, x in xs]
+```
+
+The underlying VSWFs are available directly as [`vswf`](@ref) / [`vswf_cartesian`](@ref).
+
+!!! warning "Region of validity"
+    The radiating (scattered) expansion converges only **outside the smallest
+    sphere circumscribing the particle** (the Rayleigh hypothesis). For a sphere
+    that boundary is the surface; for a non-spherical particle, evaluate only
+    outside its circumscribing sphere. The field *inside* the particle (the
+    internal field) is a separate reconstruction and is not yet provided.
+
+See the [Near-field maps from a T-matrix](examples/near_field.md) example for a
+field-enhancement map.
+
 ## Orientation averaging
 
 For randomly oriented particles you usually want orientation-averaged
