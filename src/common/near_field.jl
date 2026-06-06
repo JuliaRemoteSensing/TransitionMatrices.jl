@@ -280,6 +280,10 @@ function internal_field(x::Real, mᵣ, λ, ϑ_inc, φ_inc, Eθ, Eφ, r⃗;
     return internal_field(c, d, mᵣ, λ, r⃗)
 end
 
+# The general axisymmetric (EBCM) internal field — extending `internal_coefficients`
+# / `internal_field` to non-spherical shapes — lives in `src/EBCM/near_field.jl`,
+# included after the EBCM matrices and the shape types it depends on.
+
 @testitem "Internal field is tangentially continuous with the external field" begin
     using TransitionMatrices: MieTransitionMatrix, _plane_wave_coefficients,
                               _field_from_coeffs, _mie_internal_coefficients,

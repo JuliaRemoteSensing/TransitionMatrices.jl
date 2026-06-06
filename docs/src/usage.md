@@ -298,8 +298,23 @@ c, d = internal_coefficients(x, mᵣ, ϑ_inc, φ_inc, Eθ, Eφ)
 E_in = internal_field(c, d, mᵣ, λ, r⃗)
 ```
 
-The internal field for non-spherical particles (which needs the EBCM/IITM interior
-solution rather than analytic Mie coefficients) is not yet provided.
+For a general **axisymmetric** particle the internal field is reconstructed from
+the EBCM matrices (``\mathbf{c} = \tfrac{1}{2}\mathbf{Q}^{-1}\mathbf{a}`` per
+azimuthal block), via the shape-based methods:
+
+```julia
+spheroid = Spheroid(1.0, 2.0, 1.4 + 0.02im)
+E_in = internal_field(spheroid, λ, nmax, Ng, ϑ_inc, φ_inc, Eθ, Eφ, r⃗)
+# or, reused across a grid:
+c, d = internal_coefficients(spheroid, λ, nmax, Ng, ϑ_inc, φ_inc, Eθ, Eφ)
+E_in = internal_field(c, d, spheroid.m, λ, r⃗)
+```
+
+!!! warning "Inscribed sphere"
+    For a non-spherical particle the single-origin interior expansion converges
+    only **within the inscribed sphere** (radius `rmin(shape)`); evaluate `r⃗`
+    there. The convention is validated against Mie on the degenerate sphere
+    (`Spheroid(R, R, mᵣ)`).
 
 See the [Near-field maps from a T-matrix](examples/near_field.md) example for a
 field-enhancement map.

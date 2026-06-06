@@ -59,7 +59,7 @@ Vector spherical wave functions and the external electromagnetic field
 
 ```@autodocs
 Modules = [TransitionMatrices]
-Pages = ["common/vswf.jl", "common/near_field.jl"]
+Pages = ["common/vswf.jl", "common/near_field.jl", "EBCM/near_field.jl"]
 Filter = t -> !startswith(string(Base.nameof(t)), "_")
 ```
 
