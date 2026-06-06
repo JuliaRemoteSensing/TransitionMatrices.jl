@@ -1,94 +1,9 @@
-# TransitionMatrices.jl
-
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaRemoteSensing.github.io/TransitionMatrices.jl/dev/)
-[![Build Status](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml?query=branch%3Amain)
-[![Coverage](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl)
-
-The transition matrix method, or **T-Matrix method**, is one of the most powerful and widely used tools for rigorously computing electromagnetic scattering by single and compounded particles. `TransitionMatrices.jl` is a generic, arbitrary-precision Julia implementation focused on this method.
-
-📖 **[Documentation](https://JuliaRemoteSensing.github.io/TransitionMatrices.jl/dev/)**
-
-## Installation
-
-`TransitionMatrices.jl` requires Julia ≥ 1.10. In the Julia REPL's package mode (press `]`):
-
-```julia-repl
-pkg> add TransitionMatrices
-```
-
-To track the development version, or if the package is not yet in your registry, add it by URL:
-
-```julia-repl
-pkg> add https://github.com/JuliaRemoteSensing/TransitionMatrices.jl
-```
-
-## Quick start
-
-```julia
-using TransitionMatrices
-
-# A prolate spheroid: semi-axes a = 1, c = 2, relative refractive index m = 1.5 + 0.01im
-s = Spheroid(1.0, 2.0, 1.5 + 0.01im)
-
-# Auto-converged (classic EBCM) T-matrix at wavelength λ = 2π
-𝐓 = transition_matrix(s, 2π)
-
-# Orientation-averaged far-field observables
-Qsca = scattering_cross_section(𝐓, 2π)
-Qext = extinction_cross_section(𝐓, 2π)
-ω    = albedo(𝐓)
-g    = asymmetry_parameter(𝐓, 2π)
-```
-
-## Features
-
-- Calculate the T-Matrix of various types of scatterers
-  - Homogeneous spheres (via `bhmie`)
-  - Coated spheres (via `bhcoat`)
-  - Homogeneous axisymmetric shapes (via EBCM and IITM)
-    - Spheroids
-    - Cylinders
-    - Chebyshev particles
-  - Arbitrary shapes (via IITM)
-    - Prisms
-- Calculate far-field scattering properties using the T-Matrix
-  - Cross sections and single scattering albedo (SSA)
-  - Amplitude scattering matrix
-  - Phase matrix
-  - Scattering matrix
-- Compute Jacobians through the linearization framework
-  - Numerical automatic differentiation for user-defined scalar workflows via `ForwardDiff.jl`
-  - Analytical Mie linearization for size, refractive-index, and wavelength variables
-  - Analytical EBCM slices for spheroids, cylinders, and Chebyshev particles
-  - Analytical fixed-geometry IITM material/wavelength slices for axisymmetric,
-    n-fold, and arbitrary-shape solvers
-
-Compared to existing packages, `TransitionMatrices.jl` is special in that it is generic and supports various floating-point types, e.g.:
-
-- `Float64` and `BigFloat` from [`Base`](https://docs.julialang.org/en/v1/base/)
-- `Double64` from [`DoubleFloats.jl`](https://github.com/JuliaMath/DoubleFloats.jl)
-- `Float128` from [`Quadmath.jl`](https://github.com/JuliaMath/Quadmath.jl)
-- `Arb` and `Acb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
-
-By using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.
-
-The precision types `Double64`, `Float128`, `ComplexF128`, `Arb`, and `Acb`
-are re-exported by `TransitionMatrices.jl` and can be directly used after
-`using TransitionMatrices`.
-
-The `0.5` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.
-
-## How to cite
-
-If you use `TransitionMatrices.jl` in your research, please cite it — a
-[`CITATION.bib`](CITATION.bib) is provided in this repository. Please also cite
-the original publication(s) for the specific method you use; see
-[Methods & references](#methods--references) below.
-
-## Methods & references
+# Methods & references
 
 Each solver and numerical trick follows the published literature below; the
-in-source docstrings and comments point to the specific equations used.
+in-source docstrings and comments point to the specific equations used. (This
+list mirrors the `Methods & references` section of the repository `README.md`,
+which is the authoritative copy.)
 
 **T-Matrix framework & far-field conventions**
 

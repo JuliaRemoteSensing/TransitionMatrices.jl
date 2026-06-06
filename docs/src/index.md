@@ -1,10 +1,58 @@
+```@meta
+CurrentModule = TransitionMatrices
+```
+
 # TransitionMatrices.jl
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaRemoteSensing.github.io/TransitionMatrices.jl/dev/)
 [![Build Status](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl)
 
-The transition matrix method, or T-Matrix method, is one of the most powerful and widely used tools for rigorously computing electromagnetic scattering by single and compounded particles. As a package focusing on this method, `TransitionMatrices.jl` provides the following features:
+The transition matrix method, or **T-Matrix method**, is one of the most powerful
+and widely used tools for rigorously computing electromagnetic scattering by
+single and compounded particles. `TransitionMatrices.jl` is a generic,
+arbitrary-precision Julia implementation focused on this method.
+
+## Installation
+
+`TransitionMatrices.jl` requires Julia ≥ 1.10. From the Julia REPL's package mode
+(press `]`):
+
+```julia-repl
+pkg> add TransitionMatrices
+```
+
+To track the development version, or if the package is not yet in your registry,
+add it by URL — this always works:
+
+```julia-repl
+pkg> add https://github.com/JuliaRemoteSensing/TransitionMatrices.jl
+```
+
+## Quick start
+
+```julia
+using TransitionMatrices
+
+# A prolate spheroid: semi-axes a = 1, c = 2, relative refractive index m = 1.5 + 0.01im
+s = Spheroid(1.0, 2.0, 1.5 + 0.01im)
+
+# Auto-converged (classic EBCM) T-matrix at wavelength λ = 2π
+𝐓 = transition_matrix(s, 2π)
+
+# Orientation-averaged far-field observables
+Qsca = scattering_cross_section(𝐓, 2π)   # scattering cross section
+Qext = extinction_cross_section(𝐓, 2π)   # extinction cross section
+ω    = albedo(𝐓)                         # single-scattering albedo
+g    = asymmetry_parameter(𝐓, 2π)        # asymmetry parameter ⟨cos Θ⟩
+```
+
+That is the whole loop: **define a shape → build its T-matrix → derive far-field
+quantities**. From here, [Usage](@ref) walks through every step, [Theory &
+conventions](@ref) defines the quantities and conventions used, and [Examples](@ref)
+collects runnable notebooks.
+
+## Features
 
 - Calculate the T-Matrix of various types of scatterers
   - Homogeneous spheres (via `bhmie`)
@@ -27,18 +75,40 @@ The transition matrix method, or T-Matrix method, is one of the most powerful an
   - Analytical fixed-geometry IITM material/wavelength slices for axisymmetric,
     n-fold, and arbitrary-shape solvers
 
-Compared to existing packages, `TransitionMatrices.jl` is special in that it is generic and supports various floating-point types, e.g.:
+## Floating-point genericity
+
+Compared to existing packages, `TransitionMatrices.jl` is special in that it is
+generic and supports various floating-point types, e.g.:
 
 - `Float64` and `BigFloat` from [`Base`](https://docs.julialang.org/en/v1/base/)
 - `Double64` from [`DoubleFloats.jl`](https://github.com/JuliaMath/DoubleFloats.jl)
 - `Float128` from [`Quadmath.jl`](https://github.com/JuliaMath/Quadmath.jl)
 - `Arb` and `Acb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
 
-For EBCM, by using higher-precision floating-point types, the maximum size
-parameter that can be handled is greatly improved.
+For EBCM, using a higher-precision floating-point type greatly improves the
+maximum size parameter that can be handled (see [Choosing a solver](@ref) for
+when to reach for extended precision versus the `stable` formulation).
 
 The precision types `Double64`, `Float128`, `ComplexF128`, `Arb`, and `Acb`
 are re-exported by `TransitionMatrices.jl` and can be directly used after
 `using TransitionMatrices`.
 
 The `0.5` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.
+
+## Where to go next
+
+- [Theory & conventions](@ref) — the T-matrix definition, the index/sign
+  conventions, the size parameter, and how each observable is defined.
+- [Usage](@ref) — define a shape, choose a solver, build the T-matrix, and
+  compute far-field quantities, orientation averages, and derivatives.
+- [Examples](@ref) — runnable [Pluto.jl](https://plutojl.org) notebooks with plots.
+- [Linearization Framework](@ref) — analytical and automatic differentiation.
+- [API](@ref) — the full reference, grouped by topic.
+- [Methods & references](@ref) — the literature each method is built on.
+
+## How to cite
+
+If you use `TransitionMatrices.jl` in your research, please cite it — a
+[`CITATION.bib`](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/main/CITATION.bib)
+is provided in the repository. Please also cite the original publication(s) for
+the specific method you use; see [Methods & references](@ref).

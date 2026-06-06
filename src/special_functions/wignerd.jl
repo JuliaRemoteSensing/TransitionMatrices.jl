@@ -10,7 +10,7 @@ end
 wigner_d([T=Float64,], m::Integer, n::Integer, s::Integer, ϑ::Number) where {T}
 ```
 
-Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for a single ``(m, n, s)`` combination, using Eq. (B.1) of Mishchenko et al. (2002).
+Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for a single ``(m, n, s)`` combination, using Mishchenko et al. (2002), Eq. (B.1).
 
 ```math
 \begin{aligned}
@@ -61,7 +61,7 @@ end
 wigner_d_recursion([T=Float64,], m::Integer, n::Integer, sₘₐₓ::Integer, ϑ::Number; deriv::Bool = false) where {T}
 ```
 
-Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (alternatively, its derivative as well) via upward recursion, using Eq. (B.22) of Mishchenko et al. (2002).
+Calculate Wigner (small) d-function ``d_{mn}^s(\theta)`` for ``s\in[s_{\min}=\max(|m|, |n|),s_{\max}]`` (alternatively, its derivative as well) via upward recursion, using Mishchenko et al. (2002), Eq. (B.22).
 
 ```math
 \begin{aligned}
@@ -70,7 +70,7 @@ d_{m n}^{s+1}(\vartheta)=& \frac{1}{s \sqrt{(s+1)^{2}-m^{2}} \sqrt{(s+1)^{2}-n^{
 \end{aligned}
 ```
 
-The initial terms are given by Eq. (B.23) and Eq. (B.24).
+The initial terms are given by Mishchenko et al. (2002), Eqs. (B.23) and (B.24).
 
 ```math
 \begin{array}{l}

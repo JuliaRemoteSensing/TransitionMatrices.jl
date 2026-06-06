@@ -74,10 +74,13 @@ makedocs(;
         assets = String[]),
     pages = [
         "Home" => "index.md",
+        "Theory & conventions" => "theory.md",
         "Usage" => "usage.md",
-        "Examples" => NB_PAGES,
+        "Examples" => vcat(["Overview" => "examples/index.md"], NB_PAGES),
         "Linearization" => "linearization.md",
-        "API" => "api.md"
+        "Performance" => "performance.md",
+        "API" => "api.md",
+        "Methods & references" => "references.md"
     ])
 
 if get(ENV, "DOCUMENTER_SKIP_DEPLOY", "false") != "true"

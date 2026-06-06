@@ -1,5 +1,5 @@
 @doc raw"""
-According to Eq. (5.42) -- Eq. (5.44) in Mishchenko et al. (2002), the T-Matrix for a Mie particle can be written as:
+According to Mishchenko et al. (2002), Eqs. (5.42)–(5.44), the T-Matrix for a Mie particle can be written as:
 
 ```math
 \begin{array}{l}

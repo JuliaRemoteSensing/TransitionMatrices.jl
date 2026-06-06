@@ -22,9 +22,10 @@
 # analytically, so — computed at high precision — they contribute ≈0 and the
 # catastrophic cancellation in the irregular `χ_n·ψ_{n′}` products never forms.
 #
-# References:
-# - V. G. Farafonov, Sh-matrix family (parameter separation).
-# - Somerville, Auguié & Le Ru, JQSRT 123 (2013) 153 (the `F⁺` projection).
+# References (full entries in the README "Methods & references"):
+# - Farafonov et al. (2003) — the size/material vs geometry parameter separation;
+#   Petrov et al. (2007, 2009) — the "Sh-matrix" name and formalism.
+# - Somerville et al. (2013) — the `F⁺` projection reused for the radial integrals.
 
 # ── Radial power-series term tables (reuse `_β`, `_γ`) ────────────────────────
 #
@@ -33,12 +34,12 @@
 #   ψ′_n(z) : base = n,     c_b = β_{n,b}·(n+1+2b)
 #   χ_n(z)  : base = -n,    c_b = γ_{n,b}
 #   χ′_n(z) : base = -n-1,  c_b = γ_{n,b}·(2b-n)
-"""
+@doc raw"""
     _sh_series(kind, n, B, R) -> (base, coeffs::Vector{R})
 
 Coefficients `c_b` (`b = 0:B-1`) and the lowest exponent `base` of the power
 series of a Riccati–Bessel function `kind ∈ (:ψ, :ψ′, :χ, :χ′)` of order `n`,
-i.e. `f_n(z) = Σ_b coeffs[b+1] · z^{base + 2b}`.
+i.e. ``f_n(z) = \sum_b \text{coeffs}[b+1] \cdot z^{\text{base} + 2b}``.
 """
 function _sh_series(kind::Symbol, n::Integer, B::Integer, ::Type{R}) where {R}
     coeffs = Vector{R}(undef, B)
@@ -83,11 +84,11 @@ function _sh_coeff_tables(nmax::Integer, B::Integer, ::Type{R}) where {R}
 end
 
 # ── Per-evaluation power weighting ────────────────────────────────────────────
-"""
+@doc raw"""
     _sh_weighted(tbl, nmin, nmax, z) -> OffsetVector of (base, w)
 
-Fold the argument power `z^{base+2b}` into the series coefficients, giving
-`w[b+1] = coeffs[b+1]·z^{base+2b}`, with `z = k` for the regular factor `f(kr)`
+Fold the argument power ``z^{\text{base}+2b}`` into the series coefficients, giving
+``w[b+1] = \text{coeffs}[b+1]\cdot z^{\text{base}+2b}``, with `z = k` for the regular factor `f(kr)`
 or `z = s·k` for the internal factor `g(s·kr)`. Built once per `(k, mᵣ)` point
 per order and reused across all integrands. Powers advance incrementally — no
 `^` in the hot loop. The `base` is kept so `_sh_conv` can index the
@@ -112,15 +113,15 @@ function _sh_weighted(tbl, nmin::Integer, nmax::Integer, z::Number)
 end
 
 # ── Folded coefficient×moment reconstruction ──────────────────────────────────
-"""
+@doc raw"""
     _sh_conv(f, g, M, shift) -> Complex
 
-Reconstruct `∫ (geometry) · f_n(kr) · g_{n′}(s·kr) · r^{shift} dϑ` from the
+Reconstruct ``\int (\text{geometry}) \cdot f_n(kr) \cdot g_{n'}(s\cdot kr) \cdot r^{\text{shift}} \, d\vartheta`` from the
 weighted radial terms `f = (basef, u)`, `g = (baseg, v)` (see `_sh_weighted`)
 and the shape-moment lookup `M(q)`. The double sum is folded along the
-anti-diagonals `j = b+c`: the `r`-power is `q₀ + 2j` (`q₀ = basef+baseg+shift`)
+anti-diagonals `j = b+c`: the `r`-power is ``q_0 + 2j`` (``q_0 = \text{basef}+\text{baseg}+\text{shift}``)
 and depends only on `j`, so the moment `M` is fetched `O(B)` times instead of
-`O(B²)`, and the inner convolution `Σ_{b+c=j} u[b]·v[c]` reuses the precomputed
+`O(B²)`, and the inner convolution ``\sum_{b+c=j} u[b]\cdot v[c]`` reuses the precomputed
 weighted terms with no `^` and no per-term coefficient work.
 """
 @inline function _sh_conv(f, g, M, shift::Integer)
@@ -151,23 +152,23 @@ end
 _sh_widen(s, ::Type{R}) where {R} = s
 
 # ── Shape moments for one azimuthal index `m` ────────────────────────────────
-"""
+@doc raw"""
     _sh_geometry(shape, Ng, qlo, qhi; momtype, store) -> NamedTuple
 
 Compute the `m`-independent geometry once: the (high-precision) Gauss–Legendre
 nodes/weights, the polar angles `ϑ`, and the two `r`-power weight tables shared
 by every azimuthal block,
 
-  WR[i,q] = wᵢ r′ᵢ rᵢ^q     (for the `τd`/`πd` families)
-  Wq[i,q] = wᵢ rᵢ^q         (for the `ππττ` family, which carries no `r′`)
+  ``WR[i,q] = w_i r'_i r_i^q``     (for the `τd`/`πd` families)
+  ``Wq[i,q] = w_i r_i^q``          (for the `ππττ` family, which carries no `r′`)
 
-`gaussquad` and the `rᵢ^q` table do not depend on `m`, so hoisting them out of
+`gaussquad` and the ``r_i^q`` table do not depend on `m`, so hoisting them out of
 the per-`m` loop avoids recomputing them `nmax+1` times.
 
 The weights are also returned cast to the fast accumulation type
 `Tf = store<:IEEEFloat ? store : momtype` as `WRf`/`Wqf`: the catastrophic
 cancellation lives entirely in the negative-`r`-power (`q<0`) moments, so the
-well-conditioned `q≥0` bulk can be contracted in hardware precision while only
+well-conditioned ``q \ge 0`` bulk can be contracted in hardware precision while only
 the `q<0` part keeps the slow `momtype` accumulation (see `_sh_moments_m`).
 """
 function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
@@ -209,29 +210,29 @@ function _sh_geometry(shape, Ng::Integer, qlo::Integer, qhi::Integer;
     return (; sym, ng, ϑ, WR, Wq, WRf, Wqf, qlo, qhi)
 end
 
-"""
+@doc raw"""
     _sh_moments_m(geom, m, nmax; store) -> NamedTuple
 
 Compute the shape-only moment tables for azimuthal index `m` from the shared
 `_sh_geometry` `geom`, stored as `store` (default `Float64`). Families
 (sum over `i in 1:ng`, mirroring `ebcm_matrices_m₀`):
 
-  Mτd[n,n′,q]  = Σ WR[i,q] τ[i,n] d[i,n′]
-  Mπd[n,n′,q]  = Σ WR[i,q] π[i,n] d[i,n′]   (only `m>0`)
-  Mππττ[n,q]   = Σ Wq[i,q] (π[i,n]²+τ[i,n]²)
+  ``M_{\tau d}[n,n',q]  = \sum_i WR[i,q]\,\tau[i,n]\,d[i,n']``
+  ``M_{\pi d}[n,n',q]  = \sum_i WR[i,q]\,\pi[i,n]\,d[i,n']``   (only `m>0`)
+  ``M_{\pi\pi\tau\tau}[n,q]   = \sum_i Wq[i,q]\,(\pi[i,n]^2+\tau[i,n]^2)``
 
-`Mdτ[n,n′,q] = Mτd[n′,n,q]` exactly (swap the two orders), so it is not stored —
+``Md\tau[n,n',q] = M\tau d[n',n,q]`` exactly (swap the two orders), so it is not stored —
 the assembly reads `Mτd` with the indices transposed. The angular products are
 formed once per `(n,n′)` instead of once per `q`.
 
 **Precision split.** The catastrophic cancellation that motivates the
 high-precision accumulation lives entirely in the negative-`r`-power (`q<0`)
 moments — for a spheroid those vanish analytically and must reach ≈0 rather than
-round-off. The `q≥0` bulk is well conditioned, so it is contracted in the fast
+round-off. The ``q \ge 0`` bulk is well conditioned, so it is contracted in the fast
 type `Tf` (hardware float when `store` is one), while only the `q<0` slice keeps
 the slow `momtype` accumulation. This is where most of the precompute time goes,
 so the split is the dominant speedup; it leaves results unchanged because the
-`q≥0` moments never needed the extra precision.
+``q \ge 0`` moments never needed the extra precision.
 """
 function _sh_moments_m(geom, m::Integer, nmax::Integer;
         store::Type{Ts} = Float64, vanish_negative::Bool = false) where {Ts}
@@ -447,13 +448,13 @@ function _sh_matrices_m₀(mom, coeffs, k::Real, s::Number, nmax::Integer,
 end
 
 # ── m>0 assembly from moments (mirrors `_transition_matrix_m_core`) ───────────
-"""
+@doc raw"""
     _sh_matrices_m(mom, coeffs, m, k, s, nmax, CT) -> (𝐏, 𝐔)
 
-Reconstruct the `m`-th `𝐏` and `𝐔` blocks (`2nn × 2nn`, `nn = nmax-m+1` for
-`m≥1`) from the precomputed moment tables `mom` for that `m` and the
+Reconstruct the `m`-th `𝐏` and `𝐔` blocks (``2nn \times 2nn``, ``nn = \text{nmax}-m+1`` for
+``m \ge 1``) from the precomputed moment tables `mom` for that `m` and the
 size/material-independent coefficient tables `coeffs`. The `K`-blocks use the
-`M^{πd}` family; the `L`-blocks reuse the same reconstruction as the `m=0` case
+``M^{\pi d}`` family; the `L`-blocks reuse the same reconstruction as the `m=0` case
 (with the `m`-dependent Wigner functions baked into `mom`). The algebra
 reproduces `_transition_matrix_m_core` term by term.
 """
@@ -587,7 +588,7 @@ struct ShPreparation{ST, MT, CF}
     stable::Bool
 end
 
-"""
+@doc raw"""
     prepare_sh(shape, nmax, Ng; B, momtype, store) -> ShPreparation
 
 Precompute the Sh-matrix shape-only moment tables for `shape` up to order `nmax`
@@ -599,7 +600,7 @@ Keyword arguments:
 
 - `B`: number of radial power-series terms per Riccati–Bessel function. It sets
   the largest size parameter the reconstruction resolves (the series, like the
-  `F⁺` evaluation, needs more terms as `k·rₘₐₓ·|mᵣ|` grows); it is fixed at
+  `F⁺` evaluation, needs more terms as ``k\cdot r_{\max}\cdot|m_r|`` grows); it is fixed at
   preparation time because it determines the moment band. Default `max(30,
   nmax+15)`.
 - `momtype`: precision used to accumulate the moments. The default (`nothing`)

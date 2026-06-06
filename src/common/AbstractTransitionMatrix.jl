@@ -32,7 +32,7 @@ rotate(𝐓::AbstractTransitionMatrix{CT, N}, rot::Rotation{3})
 
 Rotate the given T-Matrix `𝐓` by the Euler angle `rot` and generate a new T-Matrix.
 
-For a general T-Matrix, Eq. (5.29) in Mishchenko et al. (2002) is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
+For a general T-Matrix, Mishchenko et al. (2002), Eq. (5.29), is used as a fallback. A `TransitionMatrix` will be returned, which is the most general yet concrete type.
 
 ```math
 T_{m n m^{\prime} n^{\prime}}^{p p′}(L ; \alpha, \beta, \gamma)=\sum_{m_1=-n}^n \sum_{m_2=-n^{\prime}}^{n^{\prime}} D_{m m_1}^n(\alpha, \beta, \gamma) T_{m_1 n m_2 n^{\prime}}^{p p′}(P) D_{m_2 m^{\prime}}^{n^{\prime}}(-\gamma,-\beta,-\alpha)\quad p,p′=1,2
@@ -95,7 +95,7 @@ Parameters:
 - `φₛ`: the scattering azimuthal angle in radians.
 - `λ`: the wavelength of the incident wave in the host medium. Default to 2π.
 
-For a general T-Matrix, Eq. (5.11) -- Eq. (5.17) in Mishchenko et al. (2002) is used as a fallback.
+For a general T-Matrix, Mishchenko et al. (2002), Eqs. (5.11)–(5.17), is used as a fallback.
 
 ```math
 \begin{array}{l}
@@ -257,7 +257,7 @@ end
 scattering_cross_section(𝐓::AbstractTransitionMatrix{CT, N}, λ=2π) where {CT, N}
 ```
 
-Calculate the scattering cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.140) in Mishchenko et al. (2002).
+Calculate the scattering cross section per particle averaged over the uniform orientation distribution, according to Mishchenko et al. (2002), Eq. (5.140).
 
 ```math
 \left\langle C_{\mathrm{sca}}\right\rangle=\frac{2 \pi}{k_1^2} \sum_{n=1}^{\infty} \sum_{m=-n}^n \sum_{n^{\prime}=1}^{\infty} \sum_{m^{\prime}=-n^{\prime}}^{n^{\prime}} \sum_{k=1}^2 \sum_{l=1}^2\left|T_{m n m^{\prime} n^{\prime}}^{k l}(P)\right|^2
@@ -278,7 +278,7 @@ end
 extinction_cross_section(𝐓::AbstractTransitionMatrix{CT, N}, λ=2π) where {CT, N}
 ```
 
-Calculate the extinction cross section per particle averaged over the uniform orientation distribution, according to Eq. (5.102) in Mishchenko et al. (2002).
+Calculate the extinction cross section per particle averaged over the uniform orientation distribution, according to Mishchenko et al. (2002), Eq. (5.102).
 
 ```math
 \left\langle C_{\mathrm{ext}}\right\rangle=-\frac{2 \pi}{k_1^2} \operatorname{Re} \sum_{n=1}^{\infty} \sum_{m=-n}^n\left[T_{m n n n}^{11}(P)+T_{m n m n}^{22}(P)\right]
@@ -307,7 +307,7 @@ end
 phase_matrix(𝐒::AbstractMatrix)
 ```
 
-Calculate the phase matrix `𝐙` from the amplitude matrix `𝐒`, according to Eq. (2.106) -- Eq. (2.121) in Mishchenko et al. (2002).
+Calculate the phase matrix `𝐙` from the amplitude matrix `𝐒`, according to Mishchenko et al. (2002), Eqs. (2.106)–(2.121).
 """
 function phase_matrix(𝐒::AbstractMatrix)
     𝐙₁₁ = 0.5 * (𝐒[1, 1] * 𝐒[1, 1]' + 𝐒[1, 2] * 𝐒[1, 2]' + 𝐒[2, 1] * 𝐒[2, 1]' +
@@ -406,7 +406,7 @@ end
 expansion_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, λ) where {CT, N}
 ```
 
-Calculate the expansion coefficients from an arbitrary T-Matrix, using Eq. (24) -- (74) in Bi et al. (2014).
+Calculate the expansion coefficients from an arbitrary T-Matrix, using Bi & Yang (2014), Eqs. (24)–(74).
 
 Parameters:
 
@@ -664,7 +664,7 @@ end
 asymmetry_parameter(𝐓, λ)
 ```
 
-Calculate the asymmetry parameter from the given transition matrix, using Eq. (4.92) in Mishchenko et al. (2002):
+Calculate the asymmetry parameter from the given transition matrix, using Mishchenko et al. (2002), Eq. (4.92):
 
 ```math
 \langle\cos\Theta\rangle=\frac{\alpha_1^1}{3}
