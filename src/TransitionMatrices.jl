@@ -42,7 +42,7 @@ export AbstractLinearizationBackend, MieLinearization, EBCMLinearization, IITMLi
 
 # Near-field reconstruction
 export vswf, vswf_cartesian, scattering_coefficients, incident_field, scattered_field,
-       total_field
+       total_field, internal_coefficients, internal_field
 
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,

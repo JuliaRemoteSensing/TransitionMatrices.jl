@@ -280,8 +280,26 @@ The underlying VSWFs are available directly as [`vswf`](@ref) / [`vswf_cartesian
     The radiating (scattered) expansion converges only **outside the smallest
     sphere circumscribing the particle** (the Rayleigh hypothesis). For a sphere
     that boundary is the surface; for a non-spherical particle, evaluate only
-    outside its circumscribing sphere. The field *inside* the particle (the
-    internal field) is a separate reconstruction and is not yet provided.
+    outside its circumscribing sphere.
+
+For the field **inside** a homogeneous sphere, [`internal_field`](@ref)
+reconstructs it from the analytic Mie internal coefficients (at the internal
+wavenumber ``k_\text{int} = m_r k``); it is continuous, tangentially, with the
+external [`total_field`](@ref) across the surface:
+
+```julia
+x, mᵣ = 3.0, 1.5 + 0.05im                        # size parameter and index
+r⃗ = [0.3, 0.2, 0.5]                              # a point inside the sphere
+
+E_in = internal_field(x, mᵣ, λ, ϑ_inc, φ_inc, Eθ, Eφ, r⃗)
+
+# reuse the coefficients across a dense interior grid:
+c, d = internal_coefficients(x, mᵣ, ϑ_inc, φ_inc, Eθ, Eφ)
+E_in = internal_field(c, d, mᵣ, λ, r⃗)
+```
+
+The internal field for non-spherical particles (which needs the EBCM/IITM interior
+solution rather than analytic Mie coefficients) is not yet provided.
 
 See the [Near-field maps from a T-matrix](examples/near_field.md) example for a
 field-enhancement map.
