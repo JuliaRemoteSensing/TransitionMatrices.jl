@@ -36,6 +36,19 @@ The following defines a Chebyshev particle with radius `r₀=1.0`, deformation c
 chebyshev = Chebyshev{Arb, Acb}(1.0, 0.1, 4, 1.5+0.01im);
 ```
 
+### Prism
+
+The following defines a hexagonal prism (`N = 6` base edges) with base edge
+length `a = 1.0`, height `h = 2.0`, and refractive index `m = 1.5 + 0.01im`. The
+number of base edges is a type parameter, supplied as the first argument:
+
+```julia
+prism = Prism(6, 1.0, 2.0, 1.5 + 0.01im);
+```
+
+A prism is **not** axisymmetric, so its T-matrix is built with the [`IITM`](@ref)
+solver rather than EBCM (see [Choosing a solver](@ref)).
+
 ## Calculate the T-Matrix
 
 After defining a shape, the T-Matrix is computed with `transition_matrix` (alias
@@ -66,10 +79,39 @@ For a fixed build, pass a fixed solver with its discretization:
 ```julia
 𝐓 = transition_matrix(spheroid, 2π, EBCM(10, 100))       # order 10, 100 quadrature points
 𝐓 = transition_matrix(cylinder, 2π, IITM(10, 20, 24))    # IITM: order, Nr, Nϑ
+𝐓 = transition_matrix(prism, 2π, IITM(10, 20, 24, 24))   # non-axisymmetric: add Nφ
 𝐓 = transition_matrix(spheroid, 2π, ShMatrix(10, 200))   # Sh-matrix moment separation
 ```
 
-### High-aspect-ratio spheroids (`stable`)
+## Choosing a solver
+
+All engines produce the same kind of transition matrix; pick by the scatterer
+and the regime:
+
+| Situation | Recommended |
+| --- | --- |
+| Sphere or coated sphere | Mie (`bhmie` / `bhcoat`) — analytic and exact |
+| Axisymmetric, moderate size and aspect ratio | bare `transition_matrix(s, λ)` (auto-converged classic EBCM) |
+| High-aspect-ratio **spheroid** | [`Iterative(EBCM; stable = true)`](@ref Iterative) (see the next section) |
+| Non-axisymmetric shape (e.g. a prism) | [`IITM`](@ref) — the only built-in route |
+| Axisymmetric but EBCM ill-conditioned | [`IITM`](@ref) |
+| Many wavelengths / refractive indices for **one** shape | [`ShMatrix`](@ref) / [`prepare_sh`](@ref) — prepare once, reuse |
+
+Two orthogonal knobs control accuracy in hard cases:
+
+- **`stable`** rebuilds the EBCM `𝐔`-matrix integrals with a cancellation-free
+  formulation. It is the right tool for high-aspect-ratio spheroids in `Float64`,
+  and is **spheroid-only** (see the next section).
+- **Extended precision** (`Double64`, `Float128`, `Arb`) raises the size
+  parameter EBCM can reach and lowers round-off floors in general. It works for
+  any shape but is several times slower. The two stack: `stable` with a
+  `Double64` element type reaches `~1e-25` at high aspect ratio.
+
+When in doubt, start with the bare call; if it fails to converge or loses
+accuracy, switch to `Iterative(EBCM; stable = true)` for spheroids, or to
+[`IITM`](@ref) otherwise.
+
+## High-aspect-ratio spheroids: the `stable` formulation
 
 For spheroids of high aspect ratio the standard EBCM surface integrals lose all
 precision in `Float64`: the irregular Riccati–Bessel products develop large
@@ -101,7 +143,7 @@ combine the two: `stable` with a `Double64` element type reaches `~1e-25` at hig
 aspect ratio, and also lowers the residual `Float64` round-off floor that appears
 as the refractive index approaches `s → 1`.
 
-### Parameter sweeps with the Sh-matrix method (`prepare_sh`)
+## Parameter sweeps with the Sh-matrix method (`prepare_sh`)
 
 When you need the T-matrix of one fixed shape at *many* wavelengths or
 refractive indices — a spectrum, a dispersion curve, a refractive-index scan —
@@ -156,7 +198,8 @@ still applies, but the `𝐔` reconstruction is not stabilized.
 
 ## Post-processing
 
-After getting the T-Matrix, you can calculate the far-field scattering properties using the following functions:
+After getting the T-Matrix, you can calculate the far-field scattering
+properties. Each function has a short `calc_*` alias:
 
 - [`amplitude_matrix`](@ref), a.k.a. `calc_S`
 - [`phase_matrix`](@ref), a.k.a. `calc_Z`
@@ -165,10 +208,64 @@ After getting the T-Matrix, you can calculate the far-field scattering propertie
 - [`absorption_cross_section`](@ref), a.k.a. `calc_Cabs`
 - [`albedo`](@ref), a.k.a. `calc_ω`
 - [`asymmetry_parameter`](@ref), a.k.a. `calc_g`
+- [`scattering_matrix`](@ref), a.k.a. `calc_F` (orientation-averaged)
 
-And the orientation-averaged scattering matrix:
+The orientation-averaged scalar quantities take the T-matrix and the wavelength:
 
-- [`scattering_matrix`](@ref), a.k.a. `calc_F`
+```julia
+𝐓 = transition_matrix(spheroid, 2π)
+
+Csca = scattering_cross_section(𝐓, 2π)
+Cext = extinction_cross_section(𝐓, 2π)
+Cabs = absorption_cross_section(𝐓, 2π)
+ω    = albedo(𝐓)                     # = Csca / Cext
+g    = asymmetry_parameter(𝐓, 2π)    # ⟨cos Θ⟩
+```
+
+For a **fixed scattering geometry**, the ``2\times2`` amplitude (Jones) matrix is
+evaluated at an incidence direction `(ϑᵢ, φᵢ)` and a scattering direction
+`(ϑₛ, φₛ)` (all angles in radians); the ``4\times4`` Mueller / phase matrix
+follows from it:
+
+```julia
+𝐒 = amplitude_matrix(𝐓, 0.0, 0.0, π / 2, 0.0; λ = 2π)   # forward-to-side geometry
+𝐙 = phase_matrix(𝐒)
+```
+
+The orientation-averaged scattering matrix is evaluated on a grid of scattering
+angles ``\Theta``:
+
+```julia
+θs = range(0, π; length = 181)
+𝐅 = scattering_matrix(𝐓, 2π, θs)     # one matrix per angle
+```
+
+## Orientation averaging
+
+For randomly oriented particles you usually want orientation-averaged
+quantities. There are two routes:
+
+```julia
+𝐓 = transition_matrix(spheroid, 2π)
+
+# analytic random-orientation average — fast and exact (Mishchenko et al. (2002), Eq. 5.96)
+𝐓ᵣ = RandomOrientationTransitionMatrix(𝐓)
+
+# numerical average over an orientation distribution p(α, β, γ); uniform here
+𝐓ₙ = orientation_average(𝐓, (α, β, γ) -> 1 / (8π^2); Nα = 40, Nβ = 40, Nγ = 1)
+```
+
+The numerical average converges to the analytic one as the angular grid is
+refined (see the *Orientation averaging* example in [Examples](@ref)). The cross
+sections and `scattering_matrix` above apply to either result.
+
+A single **fixed** orientation is obtained by rotating the T-matrix by Euler
+angles (Z-Y-Z), without recomputing it from the shape (`RotZYZ` is re-exported):
+
+```julia
+𝐓rot = rotate(𝐓, RotZYZ(0.3, 0.5, 0.0))
+𝐒    = amplitude_matrix(𝐓rot, 0.0, 0.0, π / 2, 0.0)
+```
 
 ## Differentiation
 

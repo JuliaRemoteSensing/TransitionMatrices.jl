@@ -60,6 +60,17 @@ throw `UnsupportedLinearization`.
 This explicit failure is part of the design. It prevents users from mistaking a
 numerical finite-difference fallback for an analytical Jacobian.
 
+### Support at a glance
+
+| Backend | Model / shapes | Canonical variables | Notes |
+| --- | --- | --- | --- |
+| `MieLinearization()` | sphere (direct size-parameter model) | `:x`, `:mᵣ`, `:mᵢ`, `:λ` | `linearize_observable` covers `scattering_cross_section`, `extinction_cross_section`, `absorption_cross_section`, `albedo`, and fixed-angle `amplitude_matrix` |
+| `EBCMLinearization()` | spheroid, Chebyshev, cylinder (fixed `nₘₐₓ`, `Ng`) | spheroid `:a`, `:c`, `:mᵣ`, `:mᵢ`, `:λ`; Chebyshev `:r₀`, `:ε`, `:mᵣ`, `:mᵢ`, `:λ`; cylinder `:r`, `:h`, `:mᵣ`, `:mᵢ`, `:λ` | forward tangents propagated through `T = -P * inv(P + im * U)` |
+| `IITMLinearization()` (`:axisymmetric` / `:nfold` / `:arbitrary`) | fixed geometry | `:mᵣ`, `:mᵢ`, `:λ` | geometry variables not yet supported analytically |
+
+Always confirm a specific combination at runtime with
+`supports_linearization(problem, backend; output = :transition_matrix)`.
+
 The Mie backend is the first implemented backend. It supports the direct size
 parameter model with unique canonical variables drawn from `:x`, `:mᵣ`,
 `:mᵢ`, and `:λ`.
@@ -85,6 +96,21 @@ wavelength-dependent wavenumber, and Ricatti-Bessel functions, then propagate
 `dP` and `dU` through the analytical identity `T = -P * inv(P + im * U)`.
 `ForwardDiff.jl` is still used in tests as the reference, but not in the EBCM
 production linearization path.
+
+A spheroid EBCM Jacobian is requested the same way as the Mie one — the rebuild
+function returns the canonical `shape`, `λ`, `nₘₐₓ`, and `Ng` fields:
+
+```julia
+problem = LinearizationProblem(
+    [2.0, 3.0, 1.311, 0.02, 2π];
+    variables = (:a, :c, :mᵣ, :mᵢ, :λ),
+) do x
+    (; shape = Spheroid(x[1], x[2], complex(x[3], x[4])), λ = x[5], nₘₐₓ = 10, Ng = 100)
+end
+
+result = linearize_transition_matrix(problem, EBCMLinearization())
+∂T_∂a = derivative(result, :a)   # ∂T / ∂a  (semi-major axis)
+```
 
 The IITM backend currently has fixed-geometry analytical slices for
 axisymmetric, n-fold, and arbitrary-shape solvers. `IITMLinearization()`,

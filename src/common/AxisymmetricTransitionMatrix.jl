@@ -1,3 +1,11 @@
+@doc raw"""
+Transition matrix of an **axisymmetric** scatterer (spheroid, cylinder, or
+Chebyshev particle). Axial symmetry makes the matrix block-diagonal in the
+azimuthal order `m`, so only the per-`m` blocks are stored (in the field `𝐓`) —
+a far more compact representation than the general [`TransitionMatrix`](@ref).
+Indexing as `T[m, n, m′, n′, p, p′]` transparently returns the corresponding
+element of the dense layout.
+"""
 struct AxisymmetricTransitionMatrix{CT, N, V <: AbstractVector{<:AbstractMatrix{CT}}, T} <:
        AbstractTransitionMatrix{CT, N}
     𝐓::V
