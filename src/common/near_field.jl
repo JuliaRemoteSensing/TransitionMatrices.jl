@@ -77,9 +77,11 @@ function scattering_coefficients(𝐓::AbstractTransitionMatrix{CT, N}, ϑ_inc, 
     p = OffsetArray(zeros(CT, 2N + 1, N), (-N):N, 1:N)
     q = OffsetArray(zeros(CT, 2N + 1, N), (-N):N, 1:N)
     for n in 1:N, m in (-n):n
+
         s1 = zero(CT)
         s2 = zero(CT)
         for n′ in 1:N, m′ in (-n′):n′
+
             aₘ′ₙ′ = a[m′, n′]
             bₘ′ₙ′ = b[m′, n′]
             s1 += 𝐓[m, n, m′, n′, 1, 1] * aₘ′ₙ′ + 𝐓[m, n, m′, n′, 1, 2] * bₘ′ₙ′
@@ -98,8 +100,20 @@ end
 # argument x = k·r and the resulting field become complex.
 function _field_from_coeffs(c₁, c₂, kind::Symbol, k::Number, r⃗, N::Integer)
     T = float(real(promote_type(typeof(k), eltype(r⃗))))
-    r, ϑ, φ = _cart_to_sph(SVector{3, T}(r⃗[1], r⃗[2], r⃗[3]))
+    r⃗T = SVector{3, T}(r⃗[1], r⃗[2], r⃗[3])
+    r = sqrt(r⃗T[1]^2 + r⃗T[2]^2 + r⃗T[3]^2)
     x = k * r
+    if _is_regular_origin(kind, x, T)
+        CT = complex(T)
+        E = zero(SVector{3, CT})
+        N ≥ 1 || return E
+        for m in -1:1
+            _, 𝐆 = _regular_vswf_origin_limit(T, m, 1)
+            E += c₂[m, 1] * 𝐆
+        end
+        return E
+    end
+    _, ϑ, φ = _cart_to_sph(r⃗T)
     zₙ, xzₙ′ = _vswf_radial(kind, N, x)
     r̂, ϑ̂, φ̂ = _sph_unit_vectors(ϑ, φ)
 
@@ -245,6 +259,7 @@ function internal_coefficients(x::Real, mᵣ::Number, ϑ_inc, φ_inc, Eθ, Eφ;
     c = OffsetArray(zeros(CT, 2nmax + 1, nmax), (-nmax):nmax, 1:nmax)
     d = OffsetArray(zeros(CT, 2nmax + 1, nmax), (-nmax):nmax, 1:nmax)
     for n in 1:nmax, m in (-n):n
+
         c[m, n] = cₙ[n] * a[m, n]
         d[m, n] = dₙ[n] * b[m, n]
     end
@@ -292,7 +307,9 @@ end
     # Maxwell boundary conditions on a sphere: tangential 𝐄 and 𝐇 are continuous
     # across the surface. Comparing the (validated) external field to the internal
     # reconstruction at r = a is a complete physical check of the internal coeffs.
-    tangential(E, ϑ̂, φ̂) = (ϑ̂[1] * E[1] + ϑ̂[2] * E[2] + ϑ̂[3] * E[3],
+    tangential(E,
+        ϑ̂,
+        φ̂) = (ϑ̂[1] * E[1] + ϑ̂[2] * E[2] + ϑ̂[3] * E[3],
         φ̂[1] * E[1] + φ̂[2] * E[2] + φ̂[3] * E[3])
 
     λ = 2π
@@ -310,6 +327,7 @@ end
     c = similar(a_inc)
     d = similar(b_inc)
     for n in 1:N, m in (-n):n
+
         c[m, n] = cₙ[n] * a_inc[m, n]
         d[m, n] = dₙ[n] * b_inc[m, n]
     end
@@ -359,6 +377,7 @@ end
     E0 = [1.0 + 0im, 0.0im, 0.0im]
     devs = Float64[]
     for x in (0.02, 0.005), mᵣ in (1.5 + 0.0im, 2.0 + 0.1im)
+
         a = x / (2π / λ)
         pred = 3 / (mᵣ^2 + 2)
         pts = (0.3a .* [1.0, 0, 0], 0.3a .* [0, 1.0, 0], 0.2a .* [0, 0, 1.0])
@@ -394,6 +413,29 @@ end
             @test maximum(abs, Erec - Epw) < 1e-10
         end
     end
+end
+
+@testitem "Regular field reconstruction is finite at the origin" begin
+    using TransitionMatrices: _plane_wave_coefficients, _field_from_coeffs, incident_field,
+                              internal_field
+
+    λ = 2π
+    k = 2π / λ
+    N = 20
+    pos = [0.0, 0.0, 0.0]
+    for (Eθ, Eφ) in ((1.0 + 0im, 0.0im), (0.0im, 1.0 + 0im),
+            (0.6 + 0.2im, 0.3 - 0.4im)),
+        (ϑi, φi) in ((0.7, 0.4), (2.1, -1.3), (0.0, 0.0))
+
+        a, b = _plane_wave_coefficients(N, ϑi, φi, ComplexF64(Eθ), ComplexF64(Eφ))
+        Erec = _field_from_coeffs(a, b, :regular, k, pos, N)
+        Epw = incident_field(λ, ϑi, φi, Eθ, Eφ, pos)
+        @test all(isfinite, abs.(Erec))
+        @test maximum(abs, Erec - Epw) < 1e-10
+    end
+
+    Eint = internal_field(2.5, 1.5 + 0.05im, λ, 0.0, 0.0, 1.0 + 0im, 0.0im, pos)
+    @test all(isfinite, abs.(Eint))
 end
 
 @testitem "Scattered field reproduces amplitude_matrix in the far zone" begin

@@ -10,7 +10,7 @@ begin
     Pkg.activate(@__DIR__)                 # the examples/ environment
     Pkg.develop(; path = dirname(@__DIR__)) # point TransitionMatrices at this repo
     Pkg.instantiate()
-    using TransitionMatrices, Plots
+    using TransitionMatrices, Plots, LinearAlgebra
 end
 
 # ╔═╡ 7a1f0002-0000-4000-8000-000000000002
@@ -89,12 +89,13 @@ begin
     zs = range(-3a, 3a; length = 161)
     enhancement = fill(NaN, length(zs), length(xs))
     for (i, zz) in enumerate(zs), (j, xx) in enumerate(xs)
+
         r = hypot(xx, zz)
         r ≤ a && continue                      # inside the sphere: masked
         pos = [xx, 0.0, zz]
-        E = incident_field(λ, ϑ_inc, φ_inc, Eθ, Eφ, pos) +
-            scattered_field(p, q, λ, pos)
-        enhancement[i, j] = sqrt(abs2(E[1]) + abs2(E[2]) + abs2(E[3]))
+        E_inc = incident_field(λ, ϑ_inc, φ_inc, Eθ, Eφ, pos)
+        E = E_inc + scattered_field(p, q, λ, pos)
+        enhancement[i, j] = norm(E) / norm(E_inc)
     end
     nothing
 end
@@ -134,8 +135,9 @@ let
     amp = map(zline) do zz
         abs(zz) ≤ a && return NaN
         pos = [0.0, 0.0, zz]
-        E = incident_field(λ, ϑ_inc, φ_inc, Eθ, Eφ, pos) + scattered_field(p, q, λ, pos)
-        sqrt(abs2(E[1]) + abs2(E[2]) + abs2(E[3]))
+        E_inc = incident_field(λ, ϑ_inc, φ_inc, Eθ, Eφ, pos)
+        E = E_inc + scattered_field(p, q, λ, pos)
+        norm(E) / norm(E_inc)
     end
     plot(zline, amp; lw = 2, xlabel = "z (optical axis)", ylabel = "|E| / |E₀|",
         label = "", title = "axial cut (x = y = 0)", size = (720, 320))
@@ -151,8 +153,18 @@ gives the full external field for any T-matrix — sphere, spheroid, cylinder,
 Chebyshev, or a general particle. Reusing the precomputed `(p, q)` keeps a dense
 field grid cheap.
 
-For the field **inside** the particle, see the internal-field reconstruction
-(`TODO`, Tier 2).
+For the field **inside** the particle, use `internal_field`, which reconstructs
+the regular internal solution from `internal_coefficients`. Those coefficients
+are the VSWF expansion amplitudes for the field inside the particle; compute them
+once and reuse them just like `(p, q)`:
+
+```julia
+c, d = internal_coefficients(x, mᵣ, ϑ_inc, φ_inc, Eθ, Eφ; nmax = N)
+E_inside = internal_field(c, d, mᵣ, λ, [0.2a, 0.0, 0.0])
+```
+
+The Tier-2 implementations live in `src/common/near_field.jl` for homogeneous
+spheres and `src/EBCM/near_field.jl` for axisymmetric particles.
 """
 
 # ╔═╡ Cell order:

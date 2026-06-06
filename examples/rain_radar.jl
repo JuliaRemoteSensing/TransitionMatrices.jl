@@ -48,8 +48,8 @@ begin
         λ_m = c0_m_per_s() / freq_hz
         ε0 = 8.854e-12
         εs = 78.54 * (1 - 4.579e-3 * (T_celsius - 25) +
-                      1.19e-5 * (T_celsius - 25)^2 -
-                      2.8e-8 * (T_celsius - 25)^3)
+              1.19e-5 * (T_celsius - 25)^2 -
+              2.8e-8 * (T_celsius - 25)^3)
         ε∞ = 5.27137 + 2.16474e-2 * T_celsius - 1.31198e-3 * T_celsius^2
         α = -16.8129 / (T_celsius + 273) + 6.09265e-2
         λs = 3.3836e-6 * exp(2513.98 / (T_celsius + 273))
@@ -85,16 +85,15 @@ begin
     function rain_axis_ratio(D_mm)
         D_mm < 0.7 && return 1.0
         D_mm < 1.5 && return 1.173 - 0.5265D_mm + 0.4698D_mm^2 -
-                            0.1317D_mm^3 - 8.5e-3D_mm^4
+                             0.1317D_mm^3 - 8.5e-3D_mm^4
         1.065 - 6.25e-2D_mm - 3.99e-3D_mm^2 +
-            7.66e-4D_mm^3 - 4.095e-5D_mm^4
+        7.66e-4D_mm^3 - 4.095e-5D_mm^4
     end
 end
 
 # ╔═╡ 07e1ca0a-3bf8-45a9-ae4d-8c51971c6f57
 begin
-    round_complex(z; digits = 4) =
-        complex(round(real(z); digits), round(imag(z); digits))
+    round_complex(z; digits = 4) = complex(round(real(z); digits), round(imag(z); digits))
 
     material_summary = [
         (; material = "water", freq_GHz = 9.375, T = 0.0,
@@ -149,12 +148,10 @@ begin
     solver = IITM(6, 10, 16)
 
     table = scattering_table(Ds, freq_hz; temperature_celsius, solver)
-    table_summary = [
-        (; D = row.D_mm,
-            axis_ratio = round(row.axis_ratio; digits = 3),
-            Cext = round(row.Cext_mm2; digits = 4))
-        for row in table
-    ]
+    table_summary = [(; D = row.D_mm,
+                         axis_ratio = round(row.axis_ratio; digits = 3),
+                         Cext = round(row.Cext_mm2; digits = 4))
+                     for row in table]
 end
 
 # ╔═╡ aaef0a83-7657-4c40-a875-bc7f18a7b42e
@@ -172,8 +169,9 @@ algorithm.
 
 # ╔═╡ d78d1d83-508b-4521-ae44-9068d15f4d14
 begin
-    drop_distribution(D_mm, rain_rate_mm_h) =
+    function drop_distribution(D_mm, rain_rate_mm_h)
         rain_rate_mm_h == 0 ? 0.0 : 8.0e3 * exp(-4.1 * rain_rate_mm_h^(-0.21) * D_mm)
+    end
 
     function dualpol_moments(table, freq_hz, rain_rate_mm_h;
             temperature_celsius = 0.0)
@@ -181,21 +179,19 @@ begin
         ΔD = spacing(table)
         m = water_refractive_index(freq_hz, temperature_celsius)
         Kw2 = abs2((m^2 - 1) / (m^2 + 2))
-        weights = [
-            drop_distribution(row.D_mm, rain_rate_mm_h) * ΔD
-            for row in table
-        ]
+        weights = [drop_distribution(row.D_mm, rain_rate_mm_h) * ΔD
+                   for row in table]
 
         hh = sum(abs2(row.Shh_back) * weights[i] for (i, row) in pairs(table))
         vv = sum(abs2(row.Svv_back) * weights[i] for (i, row) in pairs(table))
         Zhh = hh * λ^4 / (π^5 * Kw2)
         Zvv = vv * λ^4 / (π^5 * Kw2)
         cov = sum(conj(row.Shh_back) * row.Svv_back * weights[i]
-            for (i, row) in pairs(table))
+        for (i, row) in pairs(table))
         ρhv = abs(cov) / sqrt(hh * vv)
         kdp = 180 / π * 1e-3 * λ *
               sum(real(row.Shh_forward - row.Svv_forward) * weights[i]
-                  for (i, row) in pairs(table))
+              for (i, row) in pairs(table))
 
         (; R = rain_rate_mm_h,
             ZH = round(10log10(Zhh); digits = 2),
@@ -217,14 +213,10 @@ end
 # ╔═╡ 383e1078-e216-4810-b83d-cd7a6590749b
 begin
     rain_rates = [1.0, 10.0, 50.0]
-    radar = [
-        dualpol_moments(table, freq_hz, R; temperature_celsius)
-        for R in rain_rates
-    ]
-    tb = [
-        (; R, TB = round(brightness_temperature(table, R); digits = 4))
-        for R in rain_rates
-    ]
+    radar = [dualpol_moments(table, freq_hz, R; temperature_celsius)
+             for R in rain_rates]
+    tb = [(; R, TB = round(brightness_temperature(table, R); digits = 4))
+          for R in rain_rates]
     (; radar, tb)
 end
 
@@ -246,9 +238,11 @@ begin
         for f in frequencies_hz
             local_table = scattering_table(Ds, f; temperature_celsius, solver)
             for R in rain_rates
-                push!(rows, (; freq_GHz = round(f / 1e9; digits = 3), R,
-                    TB = round(brightness_temperature(local_table, R;
-                        path_km, Tatm_K); digits = 4)))
+                push!(rows,
+                    (; freq_GHz = round(f / 1e9; digits = 3), R,
+                        TB = round(
+                            brightness_temperature(local_table, R;
+                                path_km, Tatm_K); digits = 4)))
             end
         end
         rows

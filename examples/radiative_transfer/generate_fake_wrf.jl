@@ -77,6 +77,7 @@ function synthetic_fields(nx, ny, nz, nt)
 
     for t in 1:nt
         for j in 1:ny, i in 1:nx
+
             xlat[i, j, t] = 34.0f0 + 0.04f0 * Float32(j - 1)
             xlon[i, j, t] = -98.0f0 + 0.04f0 * Float32(i - 1)
         end

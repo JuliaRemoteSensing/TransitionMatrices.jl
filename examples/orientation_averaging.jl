@@ -58,7 +58,7 @@ begin
         (; method = "analytic (Mishchenko)", Qsca = calc_Csca(Tanalytic, λ),
             Qext = calc_Cext(Tanalytic, λ), g = asymmetry_parameter(Tanalytic, λ)),
         (; method = "numerical (20³ grid)", Qsca = calc_Csca(Tnumeric, λ),
-            Qext = calc_Cext(Tnumeric, λ), g = asymmetry_parameter(Tnumeric, λ)),
+            Qext = calc_Cext(Tnumeric, λ), g = asymmetry_parameter(Tnumeric, λ))
     ]
 end
 
@@ -74,7 +74,8 @@ the analytic closed form gives it directly, at a fraction of the cost.
 begin
     Qref = calc_Csca(Tanalytic, λ)
     Ns = 4:2:18
-    errs = [abs(calc_Csca(orientation_average(T, uniform; Nα = 2, Nβ = N, Nγ = 2), λ) - Qref) / Qref
+    errs = [abs(calc_Csca(orientation_average(T, uniform; Nα = 2, Nβ = N, Nγ = 2), λ) -
+                Qref) / Qref
             for N in Ns]
     nothing
 end

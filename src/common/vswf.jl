@@ -39,9 +39,42 @@
     return r̂, ϑ̂, φ̂
 end
 
+@inline _is_regular_origin(kind::Symbol, x,
+    ::Type{T}) where {T} = kind === :regular && (iszero(x) || abs(x) < eps(T))
+
+function _regular_vswf_origin_limit(::Type{T}, m::Integer, n::Integer) where {T}
+    CT = Complex{T}
+    zero3 = zero(SVector{3, CT})
+    n == 1 || return zero3, zero3
+
+    α = inv(sqrt(T(12) * T(π)))
+    β = inv(sqrt(T(6) * T(π)))
+    𝐍 = if m == -1
+        SVector{3, CT}(α, -im * α, zero(CT))
+    elseif m == 0
+        SVector{3, CT}(zero(CT), zero(CT), β)
+    elseif m == 1
+        SVector{3, CT}(-α, -im * α, zero(CT))
+    else
+        zero3
+    end
+    return zero3, 𝐍
+end
+
+function _regular_vswf_radial_origin(::Type{T}, nₘₐₓ::Integer, x::Number) where {T}
+    XT = x isa Real ? T : Complex{T}
+    zₙ = zeros(XT, nₘₐₓ)
+    xzₙ′ = zeros(XT, nₘₐₓ)
+    nₘₐₓ ≥ 1 && (xzₙ′[1] = XT(T(2) / T(3)))
+    return zₙ, xzₙ′
+end
+
 # Radial factors zₙ(x) and [x·zₙ(x)]′/x for n = 1:nₘₐₓ, plus zₙ(x)/x (the factor
 # multiplying the 𝐫̂ component of 𝐍).
 function _vswf_radial(kind::Symbol, nₘₐₓ::Integer, x::Number)
+    T = float(real(typeof(x)))
+    _is_regular_origin(kind, x, T) && return _regular_vswf_radial_origin(T, nₘₐₓ, x)
+
     if kind === :regular
         ψ, ψ′ = ricattibesselj(nₘₐₓ, estimate_ricattibesselj_extra_terms(nₘₐₓ, x), x)
         zₙ = ψ ./ x
@@ -84,6 +117,7 @@ function vswf(kind::Symbol, m::Integer, n::Integer, k::Real, r::Real, ϑ::Real, 
     T = float(promote_type(typeof(k), typeof(r), typeof(ϑ), typeof(φ)))
     ϑ, φ = T(ϑ), T(φ)
     x = T(k) * T(r)
+    _is_regular_origin(kind, x, T) && return _regular_vswf_origin_limit(T, m, n)
 
     zₙ, xzₙ′ = _vswf_radial(kind, n, x)
     zn = zₙ[n]
@@ -119,9 +153,12 @@ and returning the `(𝐌, 𝐍)` Cartesian field vectors. The polar axis is `+z`
 function vswf_cartesian(kind::Symbol, m::Integer, n::Integer, k::Real,
         xyz::AbstractVector)
     x, y, z = xyz[1], xyz[2], xyz[3]
-    r = sqrt(x^2 + y^2 + z^2)
-    ϑ = acos(clamp(z / r, -one(r), one(r)))
-    φ = atan(y, x)
+    T = float(promote_type(typeof(k), typeof(x), typeof(y), typeof(z)))
+    xT, yT, zT = T(x), T(y), T(z)
+    r = sqrt(xT^2 + yT^2 + zT^2)
+    _is_regular_origin(kind, T(k) * r, T) && return _regular_vswf_origin_limit(T, m, n)
+    ϑ = acos(clamp(zT / r, -one(T), one(T)))
+    φ = atan(yT, xT)
     return vswf(kind, m, n, k, r, ϑ, φ)
 end
 
@@ -147,6 +184,7 @@ end
     @testset "kind = $kind" for kind in (:regular, :outgoing)
         for p in points
             for n in 1:4, m in (-n):n
+
                 M(q) = vswf_cartesian(kind, m, n, k, q)[1]
                 N(q) = vswf_cartesian(kind, m, n, k, q)[2]
                 curlM = fd_curl(M, p, h)
@@ -157,5 +195,41 @@ end
                 @test maximum(abs, curlN - kM) / maximum(abs, kM) < 1e-6
             end
         end
+    end
+end
+
+@testitem "Regular VSWFs have finite analytic origin limits" begin
+    using TransitionMatrices: _vswf_radial, vswf, vswf_cartesian
+
+    α = 1 / sqrt(12π)
+    β = 1 / sqrt(6π)
+    zero3 = [0.0, 0.0, 0.0]
+
+    zₙ, xzₙ′ = _vswf_radial(:regular, 4, 0.0)
+    @test all(isfinite, zₙ)
+    @test all(isfinite, xzₙ′)
+    @test maximum(abs, zₙ) == 0
+    @test xzₙ′[1] == 2 / 3
+    @test maximum(abs, xzₙ′[2:end]) == 0
+
+    expected_N(m,
+        n) = n == 1 ?
+             (
+        m == -1 ? α .* [1.0, -im, 0.0] :
+        m == 0 ? β .* [0.0, 0.0, 1.0] :
+        m == 1 ? -α .* [1.0, im, 0.0] :
+        zeros(ComplexF64, 3)) : zeros(ComplexF64, 3)
+
+    for n in 1:4, m in (-n):n
+
+        M, N = vswf_cartesian(:regular, m, n, 1.0, zero3)
+        @test all(isfinite, abs.(M))
+        @test all(isfinite, abs.(N))
+        @test maximum(abs, M) < 1e-14
+        @test maximum(abs, N - expected_N(m, n)) < 1e-14
+
+        M_sph, N_sph = vswf(:regular, m, n, 1.0, 0.0, 0.4, 0.2)
+        @test maximum(abs, M_sph - M) < 1e-14
+        @test maximum(abs, N_sph - N) < 1e-14
     end
 end

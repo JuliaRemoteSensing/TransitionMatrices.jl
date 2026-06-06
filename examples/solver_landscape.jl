@@ -39,12 +39,16 @@ Three routes to the same cross section:
 # ╔═╡ 246053c2-6082-11f1-9425-cd50e8e63bdd
 begin
     λ = 2π
-    prolate = TransitionMatrices.Spheroid{Float64, ComplexF64}(2.5198421, 10.079368, 1.55 + 0.01im)
+    prolate = TransitionMatrices.Spheroid{Float64, ComplexF64}(2.5198421, 10.079368, 1.55 +
+                                                                                     0.01im)
 
     routes = [
-        (; route = "EBCM fixed (n=24)", Csca = calc_Csca(transition_matrix(prolate, λ, EBCM(24, 384)), λ)),
-        (; route = "Iterative(EBCM; stable)", Csca = calc_Csca(transition_matrix(prolate, λ, Iterative(EBCM; stable = true)), λ)),
-        (; route = "IITM", Csca = calc_Csca(transition_matrix(prolate, λ, IITM(24, 30, 60)), λ)),
+        (; route = "EBCM fixed (n=24)",
+            Csca = calc_Csca(transition_matrix(prolate, λ, EBCM(24, 384)), λ)),
+        (; route = "Iterative(EBCM; stable)",
+            Csca = calc_Csca(transition_matrix(prolate, λ, Iterative(EBCM; stable = true)), λ)),
+        (; route = "IITM",
+            Csca = calc_Csca(transition_matrix(prolate, λ, IITM(24, 30, 60)), λ))
     ]
 end
 
@@ -60,8 +64,10 @@ classic EBCM vs the `stable = true` EBCM. Watch the classic curve blow up.
 begin
     ref = calc_Csca(transition_matrix(prolate, λ, EBCM(40, 600; stable = true)), λ)
     ns = 16:2:40
-    classic_err = [abs(calc_Csca(transition_matrix(prolate, λ, EBCM(n, 16n)), λ) - ref) / ref for n in ns]
-    stable_err = [abs(calc_Csca(transition_matrix(prolate, λ, EBCM(n, 16n; stable = true)), λ) - ref) / ref for n in ns]
+    classic_err = [abs(calc_Csca(transition_matrix(prolate, λ, EBCM(n, 16n)), λ) - ref) /
+                   ref for n in ns]
+    stable_err = [abs(calc_Csca(transition_matrix(prolate, λ, EBCM(n, 16n; stable = true)), λ) -
+                      ref) / ref for n in ns]
     nothing
 end
 

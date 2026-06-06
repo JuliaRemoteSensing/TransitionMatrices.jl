@@ -60,8 +60,9 @@ function internal_coefficients(shape::AbstractAxisymmetricShape{T, CT}, λ, nmax
     c = OffsetArray(zeros(CT, 2nmax + 1, nmax), (-nmax):nmax, 1:nmax)
     d = OffsetArray(zeros(CT, 2nmax + 1, nmax), (-nmax):nmax, 1:nmax)
     for mₐ in 0:nmax
-        𝐏, 𝐔 = mₐ == 0 ? ebcm_matrices_m₀(shape, λ, nmax, Ng) :
-                ebcm_matrices_m(mₐ, shape, λ, nmax, Ng)
+        𝐏,
+        𝐔 = mₐ == 0 ? ebcm_matrices_m₀(shape, λ, nmax, Ng) :
+            ebcm_matrices_m(mₐ, shape, λ, nmax, Ng)
         𝐐 = 𝐏 .+ im .* 𝐔
         ns = max(1, mₐ):nmax
         nn = length(ns)

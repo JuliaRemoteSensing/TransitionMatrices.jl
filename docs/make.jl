@@ -33,10 +33,8 @@ function notebook_title(nb)
 end
 
 const NB_PAGE_PATHS = ["examples/" * replace(nb, ".jl" => ".md") for nb in NOTEBOOKS]
-const NB_PAGES = [
-    notebook_title(nb) => path
-    for (nb, path) in zip(NOTEBOOKS, NB_PAGE_PATHS)
-]
+const NB_PAGES = [notebook_title(nb) => path
+                  for (nb, path) in zip(NOTEBOOKS, NB_PAGE_PATHS)]
 
 function build_examples()
     mkpath(NB_OUT)
