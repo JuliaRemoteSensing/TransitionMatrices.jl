@@ -28,6 +28,10 @@ directory of the repository.
   radiative-transfer prototype: spheroidal IITM T-matrices, a rain-drop
   axis-ratio model, water/ice refractive-index fits, and a drop-size distribution
   feeding dual-pol radar moments and brightness-temperature integrals.
+- [**Near-field maps from a T-matrix**](near_field.md) — reconstruct the external
+  electromagnetic field (incident + scattered) from any T-matrix; a
+  field-enhancement ``|E|/|E_0|`` map and axial cut around a Mie sphere, with the
+  Rayleigh-hypothesis region-of-validity note.
 
 ## Running them locally
 

@@ -1,4 +1,6 @@
 include("AbstractTransitionMatrix.jl")
 include("AxisymmetricTransitionMatrix.jl")
 include("RandomOrientationTransitionMatrix.jl")
+include("vswf.jl")
+include("near_field.jl")
 include("utils.jl")

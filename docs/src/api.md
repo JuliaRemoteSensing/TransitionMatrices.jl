@@ -51,6 +51,18 @@ Pages = ["common/index.jl", "common/AbstractTransitionMatrix.jl",
 Filter = t -> !startswith(string(Base.nameof(t)), "_")
 ```
 
+## Near-field reconstruction
+
+Vector spherical wave functions and the external electromagnetic field
+(incident, scattered, total) reconstructed from any transition matrix (see the
+[Near-field maps from a T-matrix](examples/near_field.md) example).
+
+```@autodocs
+Modules = [TransitionMatrices]
+Pages = ["common/vswf.jl", "common/near_field.jl", "EBCM/near_field.jl"]
+Filter = t -> !startswith(string(Base.nameof(t)), "_")
+```
+
 ## Linearization
 
 The differentiation framework and its backends (see

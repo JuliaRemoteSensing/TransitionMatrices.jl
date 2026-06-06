@@ -40,6 +40,10 @@ export AbstractLinearizationBackend, MieLinearization, EBCMLinearization, IITMLi
        UnsupportedLinearization, variables, rebuild, derivative, supports_linearization,
        linearize_transition_matrix, linearize_observable
 
+# Near-field reconstruction
+export vswf, vswf_cartesian, scattering_coefficients, incident_field, scattered_field,
+       total_field, internal_coefficients, internal_field
+
 # Utility functions
 export OrderDegreeIterator, rotate, amplitude_matrix, phase_matrix, scattering_matrix,
        expansion_coefficients,

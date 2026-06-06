@@ -40,10 +40,10 @@ begin
     λ = 2π
     m = 1.5 + 0.02im
     shapes = (
-        spheroid  = TransitionMatrices.Spheroid{Float64, ComplexF64}(2.0, 1.0, m),
-        cylinder  = TransitionMatrices.Cylinder{Float64, ComplexF64}(1.0, 2.0, m),
+        spheroid = TransitionMatrices.Spheroid{Float64, ComplexF64}(2.0, 1.0, m),
+        cylinder = TransitionMatrices.Cylinder{Float64, ComplexF64}(1.0, 2.0, m),
         chebyshev = TransitionMatrices.Chebyshev{Float64, ComplexF64}(1.0, 0.1, 4, m),
-        prism6    = TransitionMatrices.Prism(6, 1.0, 2.0, m),
+        prism6 = TransitionMatrices.Prism(6, 1.0, 2.0, m)
     )
 end
 
@@ -57,8 +57,10 @@ IITM solve. Pluto renders the resulting vector of named tuples as a table.
 
 # ╔═╡ 2173874a-6082-11f1-8f4b-f3cee77b5fae
 begin
-    Tmatrix(s) = s isa TransitionMatrices.Prism ?
+    function Tmatrix(s)
+        s isa TransitionMatrices.Prism ?
         transition_matrix(s, λ, IITM(8, 12, 24, 24)) : calc_T(s, λ)
+    end
 
     summary = map(collect(pairs(shapes))) do (name, s)
         T = Tmatrix(s)

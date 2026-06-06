@@ -13,7 +13,7 @@ const NB_DIR = normpath(joinpath(@__DIR__, "..", "examples"))
 const NB_OUT = joinpath(@__DIR__, "src", "examples")
 const NOTEBOOKS = ["shapes_gallery.jl", "solver_landscape.jl",
     "angular_scattering.jl", "orientation_averaging.jl", "spectral_sensitivity.jl",
-    "rain_radar.jl"]
+    "rain_radar.jl", "near_field.jl"]
 
 function notebook_title(nb)
     in_markdown = false
@@ -33,10 +33,8 @@ function notebook_title(nb)
 end
 
 const NB_PAGE_PATHS = ["examples/" * replace(nb, ".jl" => ".md") for nb in NOTEBOOKS]
-const NB_PAGES = [
-    notebook_title(nb) => path
-    for (nb, path) in zip(NOTEBOOKS, NB_PAGE_PATHS)
-]
+const NB_PAGES = [notebook_title(nb) => path
+                  for (nb, path) in zip(NOTEBOOKS, NB_PAGE_PATHS)]
 
 function build_examples()
     mkpath(NB_OUT)

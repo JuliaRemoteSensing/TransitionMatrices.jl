@@ -95,8 +95,8 @@ function water_refractive_index(freq_hz, T_celsius)
     λ_m = C0_M_PER_S / freq_hz
     ε0 = 8.854e-12
     εs = 78.54 * (1 - 4.579e-3 * (T_celsius - 25) +
-                  1.19e-5 * (T_celsius - 25)^2 -
-                  2.8e-8 * (T_celsius - 25)^3)
+          1.19e-5 * (T_celsius - 25)^2 -
+          2.8e-8 * (T_celsius - 25)^3)
     ε∞ = 5.27137 + 2.16474e-2 * T_celsius - 1.31198e-3 * T_celsius^2
     α = -16.8129 / (T_celsius + 273) + 6.09265e-2
     λs = 3.3836e-6 * exp(2513.98 / (T_celsius + 273))
@@ -114,9 +114,9 @@ end
 function rain_axis_ratio(D_mm)
     D_mm < 0.7 && return 1.0
     D_mm < 1.5 && return 1.173 - 0.5265D_mm + 0.4698D_mm^2 -
-                        0.1317D_mm^3 - 8.5e-3D_mm^4
+                         0.1317D_mm^3 - 8.5e-3D_mm^4
     1.065 - 6.25e-2D_mm - 3.99e-3D_mm^2 +
-        7.66e-4D_mm^3 - 4.095e-5D_mm^4
+    7.66e-4D_mm^3 - 4.095e-5D_mm^4
 end
 
 function scattering_table(Ds, freq_hz; temperature_celsius = 0.0,
@@ -269,11 +269,11 @@ function radar_moments(table, freq_hz, N0, Λ)
     Zhh = hh * λ^4 / (π^5 * Kw2)
     Zvv = vv * λ^4 / (π^5 * Kw2)
     cov = sum(conj(row.Shh_back) * row.Svv_back * weights[i]
-        for (i, row) in pairs(table))
+    for (i, row) in pairs(table))
     ρhv = abs(cov) / sqrt(hh * vv)
     kdp = 180 / π * 1e-3 * λ *
           sum(real(row.Shh_forward - row.Svv_forward) * weights[i]
-              for (i, row) in pairs(table))
+          for (i, row) in pairs(table))
 
     (; ZH = 10log10(Zhh),
         ZV = 10log10(Zvv),
