@@ -66,17 +66,20 @@ g    = asymmetry_parameter(𝐓, 2π)
 Compared to existing packages, `TransitionMatrices.jl` is special in that it is generic and supports various floating-point types, e.g.:
 
 - `Float64` and `BigFloat` from [`Base`](https://docs.julialang.org/en/v1/base/)
-- `Double64` from [`DoubleFloats.jl`](https://github.com/JuliaMath/DoubleFloats.jl)
-- `Float128` from [`Quadmath.jl`](https://github.com/JuliaMath/Quadmath.jl)
+- `Double64` from [`DoubleFloats.jl`](https://github.com/JuliaMath/DoubleFloats.jl) when `DoubleFloats` is loaded
+- `Float128` from [`Quadmath.jl`](https://github.com/JuliaMath/Quadmath.jl) when `Quadmath` is loaded
 - `Arb` and `Acb` from [`Arblib.jl`](https://github.com/kalmarek/Arblib.jl)
 
 By using higher-precision floating-point types, the maximum size parameter that can be handled is greatly improved.
 
-The precision types `Double64`, `Float128`, `ComplexF128`, `Arb`, and `Acb`
-are re-exported by `TransitionMatrices.jl` and can be directly used after
-`using TransitionMatrices`.
+The precision types `Arb` and `Acb` are re-exported by `TransitionMatrices.jl`.
+The `DoubleFloats.jl` and `Quadmath.jl` precision types are optional: load them
+explicitly with `using DoubleFloats` or `using Quadmath` before constructing
+`Double64`, `Float128`, or `ComplexF128` values.
 
-The `0.5` compatibility line uses `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x.
+The `0.6` compatibility line keeps `Quadmath.jl` 1.x and `Wigxjpf.jl` 0.3.x,
+and moves `DoubleFloats.jl`, `Quadmath.jl`, and `GenericFFT.jl` to optional
+package extensions.
 
 ## How to cite
 

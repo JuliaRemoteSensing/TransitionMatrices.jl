@@ -8,6 +8,37 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 No unreleased changes yet.
 
+## [0.6.0] - 2026-06-10
+
+### Added
+
+- **Near-field reconstruction API** for incident, scattered, total, and internal
+  fields, with Cartesian VSWF origin handling and a rendered near-field example.
+- **Super-spheroid / super-ellipsoid shape families** for Bi & Lin dust-style
+  models: `SuperSpheroid`, `SuperEllipsoid`, and `SuperSpheroidRevolved`.
+- **Generic FFT support for n-fold IITM** via a package extension, enabling the
+  azimuthal FFT path for generic complex element types when `GenericFFT` is
+  loaded.
+- Expanded documentation: theory, usage, performance, API, methods/references,
+  and example index pages.
+
+### Changed
+
+- **(Breaking)** `DoubleFloats`, `Quadmath`, and `GenericFFT` are now weak
+  dependencies loaded through package extensions. `Double64`, `Float128`, and
+  `ComplexF128` are no longer re-exported by `TransitionMatrices`; load them with
+  `using DoubleFloats` or `using Quadmath` when those precision types are needed.
+- Benchmark and test environments explicitly load optional precision packages
+  used by their weak-dependency coverage.
+
+### Fixed
+
+- Regular VSWFs and internal near-field reconstruction now return finite values
+  at the Cartesian origin.
+- Near-field example plots now normalize by the local incident-field magnitude,
+  so the displayed quantity is an enhancement ratio independent of incident
+  polarization amplitude.
+
 ## [0.5.0] - 2026-06-05
 
 ### Added
@@ -84,7 +115,8 @@ No unreleased changes yet.
 
 - Initial release.
 
-[Unreleased]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/compare/v0.3.0...v0.3.1

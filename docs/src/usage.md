@@ -22,9 +22,11 @@ The type specification `{Float64, ComplexF64}` can be omitted, and in that case,
 
 ### Cylinder
 
-The following defines a cylinder with radius `r=1.0`, height `h=2.0`, and a refractive index of `m=1.5+0.01im`. Note that the type specification `{Float128, ComplexF128}` is used to specify the real and complex types used in the calculations.
+The following defines a cylinder with radius `r=1.0`, height `h=2.0`, and a refractive index of `m=1.5+0.01im`. Note that the type specification `{Float128, ComplexF128}` is used to specify the real and complex types used in the calculations. `Float128` and `ComplexF128` come from the optional `Quadmath.jl` package.
 
 ```julia
+using Quadmath: Float128, ComplexF128
+
 cylinder = Cylinder{Float128, ComplexF128}(1.0, 2.0, 1.5+0.01im);
 ```
 
