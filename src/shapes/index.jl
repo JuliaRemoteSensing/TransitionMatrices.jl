@@ -15,6 +15,12 @@ include("spheroid.jl")
 include("cylinder.jl")
 include("chebyshev.jl")
 
+# Axisymmetric super-spheroid (surface of revolution)
+
+include("superspheroidrevolved.jl")
+
 # NFold shapes
 
 include("prism.jl")
+include("superspheroid.jl")
+include("superellipsoid.jl")
