@@ -40,16 +40,8 @@ SuperSpheroid(a, c, n, m) = SuperSpheroid{typeof(a), typeof(m)}(a, c, n, m)
 # needless detour and, because `BigFloat(::Arb)` uses the *global* precision, silently
 # truncate high-precision `T` (Arb, large BigFloat). `precision(x)` reads the instance's
 # precision, so Float64/Double64/Float128/BigFloat/Arb shapes each compute at their own.
-# Working precision (bits) from the value's own precision, so high-precision shapes
-# (Double64, BigFloat, Arb instances) are not truncated. `precision(::Float128)` (the
-# instance method) is unimplemented in the current Quadmath/Julia (it routes to a
-# missing `_precision_with_base_2`), so Float128 is pinned to its 113-bit mantissa via
-# the working type method `precision(Float128)`.
-_beta_prec(::Float128) = precision(Float128)
-_beta_prec(x::Real) = precision(x)
-
 function _beta_lgamma(x::T, y::T) where {T <: Real}
-    prec = max(_beta_prec(x), _beta_prec(y))
+    prec = max(precision(x), precision(y))
     lΓx = Arblib.lgamma!(Arb(; prec), Arb(x; prec); prec)
     lΓy = Arblib.lgamma!(Arb(; prec), Arb(y; prec); prec)
     lΓxy = Arblib.lgamma!(Arb(; prec), Arb(x + y; prec); prec)
@@ -79,7 +71,9 @@ has_symmetric_plane(::SuperSpheroid) = true
 
 @testitem "SuperSpheroid utility functions" begin
     using TransitionMatrices: SuperSpheroid, volume, volume_equivalent_radius,
-                              has_symmetric_plane, Double64, Float128, ComplexF128
+                              has_symmetric_plane
+    using DoubleFloats: Double64
+    using Quadmath: Float128, ComplexF128
 
     # n=1 reduces to spheroid: V = 4π/3 * a^2 * c
     @testset "n=1 reduction to spheroid" begin

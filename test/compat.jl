@@ -2,6 +2,8 @@
     using TransitionMatrices
     using Arblib
     using ForwardDiff
+    using Quadmath: Quadmath, Float128, ComplexF128   # weak deps: load explicitly
+    using DoubleFloats: Double64
 
     @test precision(ComplexF32) == 24
     @test precision(ComplexF64) == 53
@@ -15,7 +17,7 @@
 
     arb = Arb(1.25)
     @test convert(Float128, arb) == Float128(1.25)
-    @test TransitionMatrices.Quadmath.Float128(arb) == Float128(1.25)
+    @test Quadmath.Float128(arb) == Float128(1.25)
     @test Float32(arb) == Float32(1.25)
     @test Int64(Arb(2.0)) == 2
     @test round(Arb(1.2), RoundUp) == ceil(BigFloat(Arb(1.2)))
@@ -63,6 +65,7 @@ end
 
 @testitem "cbrt on Double64 returns a Double64 (DoubleFloats v1.9 workaround)" begin
     using TransitionMatrices
+    using DoubleFloats: Double64
 
     # Upstream DoubleFloats returns a (hi, lo) tuple here; ensure our shim wraps it.
     @test cbrt(Double64(8.0)) isa Double64

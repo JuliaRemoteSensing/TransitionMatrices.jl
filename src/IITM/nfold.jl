@@ -216,7 +216,9 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
 end
 
 @testitem "Generic FFT: Complex{Double64} Prism matches ComplexF64 reference" begin
-    using TransitionMatrices: Prism, calc_T_iitm, calc_Csca, calc_Cext, Double64
+    using TransitionMatrices: Prism, calc_T_iitm, calc_Csca, calc_Cext
+    using DoubleFloats: Double64
+    using GenericFFT   # weak dep: load it so the Complex{Double64} azimuthal FFT path is exercised
 
     # Reference: ComplexF64 (FFTW path)
     m_f64 = complex(1.5)

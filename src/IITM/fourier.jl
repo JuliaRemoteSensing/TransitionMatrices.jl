@@ -6,9 +6,12 @@ _iitm_ldiv(𝐌::AbstractMatrix{<:Union{Arb, Acb}}, 𝐗) = inv(𝐌) * 𝐗
 _iitm_ldiv(𝐌, 𝐗) = 𝐌 \ 𝐗
 
 # Capability predicate: true when the FFT path is available for this complex type.
-_iitm_fft_capable(::Type{<:Complex{<:AbstractFloat}}) = true  # FFTW / GenericFFT
-_iitm_fft_capable(::Type{Acb}) = true                         # Arblib.dft!
-_iitm_fft_capable(::Type) = false                             # direct fallback
+# ComplexF64 → FFTW (hard dep); Acb → Arblib.dft! (hard dep). Other Complex{<:AbstractFloat}
+# (Double64/BigFloat) become capable only when GenericFFT is loaded — see
+# `ext/TransitionMatricesGenericFFTExt.jl`; without it they use the direct azimuthal sum.
+_iitm_fft_capable(::Type{ComplexF64}) = true  # FFTW
+_iitm_fft_capable(::Type{Acb}) = true         # Arblib.dft!
+_iitm_fft_capable(::Type) = false             # direct fallback (incl. generic float w/o GenericFFT)
 
 struct _AzimuthalFourierWorkspace{CT, P}
     contrast::Matrix{CT}
@@ -49,11 +52,8 @@ function _azimuthal_fft_plan(::Type{ComplexF64}, Nφ, Nϑ)
     end
 end
 
-# GenericFFT path: fresh plan each time (bakes in precision-specific twiddles).
-# Do NOT cache — a BigFloat plan would go stale if precision changes.
-function _azimuthal_fft_plan(::Type{CT}, Nφ, Nϑ) where {CT <: Complex{<:AbstractFloat}}
-    return plan_fft(zeros(CT, Nφ, Nϑ), 1)   # GenericFFT; no flags kwarg
-end
+# The GenericFFT plan for non-Float64 complex-float types lives in
+# `ext/TransitionMatricesGenericFFTExt.jl` (GenericFFT is a weak dependency).
 
 # ---------- Workspace constructors ----------
 
@@ -102,13 +102,8 @@ function _apply_forward_dft!(spectrum::Matrix{ComplexF64},
     mul!(spectrum, plan, contrast)
 end
 
-# ---------- Forward column DFT: generic Complex{<:AbstractFloat} (GenericFFT) ----------
-# GenericFFT's DummyFFTPlan only supports `plan * A` (allocating), not mul!.
-function _apply_forward_dft!(spectrum::Matrix{CT},
-        contrast::Matrix{CT},
-        plan) where {CT <: Complex{<:AbstractFloat}}
-    spectrum .= plan * contrast
-end
+# The generic (non-ComplexF64) forward column DFT — used by the GenericFFT plan — lives in
+# `ext/TransitionMatricesGenericFFTExt.jl` (GenericFFT is a weak dependency).
 
 # ---------- Fourier coefficient extraction: generic Complex{<:AbstractFloat} ----------
 
