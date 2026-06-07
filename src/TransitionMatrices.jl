@@ -5,6 +5,7 @@ using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, Acb
 using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 import FFTW
+using GenericFFT
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using LinearAlgebra: lu, mul!
