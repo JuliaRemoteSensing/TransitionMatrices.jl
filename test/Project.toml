@@ -1,8 +1,11 @@
 [deps]
 Arblib = "fb37089c-8514-4489-9461-98f9c8763369"
+DoubleFloats = "497a8b3b-efae-58df-a0af-a86822472b78"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GSL = "92c85e6c-cbff-5e0c-80f7-495c94daaecd"
+GenericFFT = "a8297547-1b15-4a5a-a998-a2ac5f1cef28"
+Quadmath = "be4d8f0f-7fa4-5f49-b795-2f01399ab2dd"
 Rotations = "6038ab10-8711-5258-84ad-4b1120ba62dc"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"

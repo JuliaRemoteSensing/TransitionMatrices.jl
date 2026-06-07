@@ -19,6 +19,7 @@
 
 using BenchmarkTools
 using TransitionMatrices
+using DoubleFloats: Double64   # weak dep of TransitionMatrices; load explicitly for the precision benchmark
 
 const SUITE = BenchmarkGroup()
 

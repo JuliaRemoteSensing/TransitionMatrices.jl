@@ -2,15 +2,12 @@ module TransitionMatrices
 
 using Arblib
 using Arblib: ArbLike, AcbLike, ArbVectorLike, AcbVectorLike, ArbMatrixLike, AcbMatrixLike
-using DoubleFloats: Double64
 using FastGaussQuadrature: FastGaussQuadrature
 import FFTW
-using GenericFFT
 using ForwardDiff: ForwardDiff
 using GenericLinearAlgebra: Diagonal, GenericLinearAlgebra, cond, inv
 using LinearAlgebra: lu, mul!
 using OffsetArrays: OffsetArray
-using Quadmath: Quadmath, Float128, ComplexF128
 using Rotations: Angle2d, Rotation, RotMatrix2, RotZYZ
 using StableTasks: StableTasks
 using StaticArrays: SVector, SMatrix, SArray, @SVector, @SMatrix, @SArray
@@ -78,7 +75,8 @@ export AbstractShape, AbstractAxisymmetricShape, AbstractNFoldShape, volume,
        rmin, rmax, Spheroid, Cylinder, Chebyshev, Prism,
        SuperSpheroid, SuperEllipsoid, SuperSpheroidRevolved
 
-# Re-exports
-export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb
+# Re-exports. Double64 / Float128 / ComplexF128 are NOT re-exported — DoubleFloats and
+# Quadmath are weak dependencies; `using DoubleFloats` / `using Quadmath` to access them.
+export RotZYZ, Arb, Acb
 
 end
