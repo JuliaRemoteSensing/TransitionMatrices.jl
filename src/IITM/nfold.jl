@@ -37,7 +37,7 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
     ϑ = acos.(x)
     Nϑ = has_symmetric_plane(s) ? Nϑ ÷ 2 : Nϑ
 
-    if CT <: ComplexF64
+    if _iitm_fft_capable(CT)
         xφ = range(0, 2 * T(π) / N, length = Nφ + 1)[1:(end - 1)]
         wφ = 2 * T(π) / (N * Nφ)
     else
@@ -46,8 +46,10 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
         @. wφ = π / N * wφ
     end
 
-    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) : nothing
-    fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ, N) : nothing
+    fourier_workspace = _iitm_fft_capable(CT) ?
+                        _azimuthal_fourier_workspace(CT, Nφ, Nϑ, nₘₐₓ;
+                            prec = CT === Acb ? Arblib.precision(s.m) : 0) : nothing
+    fourier_modes = _iitm_fft_capable(CT) ? _azimuthal_fourier_mode_bins(nₘₐₓ, N) : nothing
 
     it = collect(OrderDegreeIterator(nₘₐₓ))
     its = [collect(enumerate([x for x in it if (x[2] % N + N) % N == i]))
@@ -132,7 +134,7 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
         ε = [refractive_index(s,
                  (r * sin(ϑ[i]) * cos(φ), r * sin(ϑ[i]) * sin(φ),
                      r * x[i]))^2 for φ in xφ, i in 1:Nϑ]
-        fourier_coeffs = CT <: ComplexF64 ?
+        fourier_coeffs = _iitm_fft_capable(CT) ?
                          _azimuthal_fourier_coefficients(ε, nₘₐₓ, wφ,
             fourier_workspace,
             fourier_modes) : nothing
@@ -211,6 +213,58 @@ function transition_matrix_iitm(s::AbstractNFoldShape{N, T, CT}, λ, nₘₐₓ,
     end
 
     return TransitionMatrix{CT, nₘₐₓ, typeof(𝐓′)}(𝐓′)
+end
+
+@testitem "Generic FFT: Complex{Double64} Prism matches ComplexF64 reference" begin
+    using TransitionMatrices: Prism, calc_T_iitm, calc_Csca, calc_Cext, Double64
+
+    # Reference: ComplexF64 (FFTW path)
+    m_f64 = complex(1.5)
+    p_f64 = Prism(4, 1.0, 1.5, m_f64)
+    nₘₐₓ = 4
+    Nr = 20
+    Nϑ = 20
+    Nφ = 16
+    𝐓_ref = calc_T_iitm(p_f64, 2π, nₘₐₓ, Nr, Nϑ, Nφ)
+    Csca_ref = calc_Csca(𝐓_ref)
+    Cext_ref = calc_Cext(𝐓_ref)
+
+    # GenericFFT path: Complex{Double64}
+    m_d64 = complex(Double64(3) / 2)
+    p_d64 = Prism(4, Double64(1), Double64(3) / 2, m_d64)
+    𝐓_d64 = calc_T_iitm(p_d64, 2 * Double64(π), nₘₐₓ, Nr, Nϑ, Nφ)
+    Csca_d64 = Float64(calc_Csca(𝐓_d64))
+    Cext_d64 = Float64(calc_Cext(𝐓_d64))
+
+    @test abs(Csca_d64 - Csca_ref) < 1e-10 * abs(Csca_ref)
+    @test abs(Cext_d64 - Cext_ref) < 1e-10 * abs(Cext_ref)
+end
+
+@testitem "Generic FFT: Acb Prism matches ComplexF64 reference" begin
+    using TransitionMatrices: Prism, calc_T_iitm, calc_Csca, calc_Cext, Acb, Arb
+
+    # Reference: ComplexF64 (FFTW path)
+    m_f64 = complex(1.5)
+    p_f64 = Prism(4, 1.0, 1.5, m_f64)
+    nₘₐₓ = 4
+    Nr = 20
+    Nϑ = 20
+    Nφ = 16
+    𝐓_ref = calc_T_iitm(p_f64, 2π, nₘₐₓ, Nr, Nϑ, Nφ)
+    Csca_ref = calc_Csca(𝐓_ref)
+    Cext_ref = calc_Cext(𝐓_ref)
+
+    # Acb path: Arblib.dft!
+    prec = 128
+    m_acb = Acb(3, 0; prec = prec) / 2
+    p_acb = Prism(4, Arb(1; prec = prec), Arb(3; prec = prec) / 2, m_acb)
+    𝐓_acb = calc_T_iitm(p_acb, 2 * Arb(π; prec = prec), nₘₐₓ, Nr, Nϑ, Nφ)
+    # calc_Csca/calc_Cext return Arb for Acb T-matrices
+    Csca_acb = Float64(calc_Csca(𝐓_acb))
+    Cext_acb = Float64(calc_Cext(𝐓_acb))
+
+    @test abs(Csca_acb - Csca_ref) < 1e-8 * abs(Csca_ref)
+    @test abs(Cext_acb - Cext_ref) < 1e-8 * abs(Cext_ref)
 end
 
 @testitem "Spheroids can be solved by the nfold-shape solver" begin

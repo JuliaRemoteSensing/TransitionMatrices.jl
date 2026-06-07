@@ -39,7 +39,7 @@ function transition_matrix_iitm(s::AbstractShape{T, CT}, λ, nₘₐₓ, Nr, Nϑ
 
     xφ = range(0, 2 * T(π), length = Nφ + 1)[1:(end - 1)]
     wφ = 2 * T(π) / Nφ
-    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) : nothing
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ, nₘₐₓ) : nothing
     fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ) : nothing
 
     it = OrderDegreeIterator(nₘₐₓ)

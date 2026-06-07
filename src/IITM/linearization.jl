@@ -862,7 +862,7 @@ function _iitm_arbitrary_fixed_geometry_linearization(input, variables)
 
     xφ = range(zero(RT), 2 * RT(π), length = Nφ + 1)[1:(end - 1)]
     wφ = 2 * RT(π) / Nφ
-    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) :
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ, nₘₐₓ) :
                         nothing
     fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ) :
                     nothing
@@ -999,7 +999,7 @@ function _iitm_nfold_fixed_geometry_linearization(input, variables)
         @. xφ = (xφ + 1) * π / N
         @. wφ = π / N * wφ
     end
-    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ) :
+    fourier_workspace = CT <: ComplexF64 ? _azimuthal_fourier_workspace(Nφ, Nϑ, nₘₐₓ) :
                         nothing
     fourier_modes = CT <: ComplexF64 ? _azimuthal_fourier_mode_bins(nₘₐₓ, N) :
                     nothing
