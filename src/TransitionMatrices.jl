@@ -74,7 +74,8 @@ export calc_T, calc_T_iitm, calc_S, calc_Z, calc_F, calc_ω,
 # Shape related exports
 export AbstractShape, AbstractAxisymmetricShape, AbstractNFoldShape, volume,
        volume_equivalent_radius, has_symmetric_plane, refractive_index,
-       rmin, rmax, Spheroid, Cylinder, Chebyshev, Prism
+       rmin, rmax, Spheroid, Cylinder, Chebyshev, Prism,
+       SuperSpheroid, SuperEllipsoid, SuperSpheroidRevolved
 
 # Re-exports
 export RotZYZ, Double64, Float128, ComplexF128, Arb, Acb
