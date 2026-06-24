@@ -3,6 +3,7 @@
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaRemoteSensing.github.io/TransitionMatrices.jl/dev/)
 [![Build Status](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml?query=branch%3Amain)
 [![Coverage](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/JuliaRemoteSensing/TransitionMatrices.jl)
 
 The transition matrix method, or **T-Matrix method**, is one of the most powerful and widely used tools for rigorously computing electromagnetic scattering by single and compounded particles. `TransitionMatrices.jl` is a generic, arbitrary-precision Julia implementation focused on this method.
 
