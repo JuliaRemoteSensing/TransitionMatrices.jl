@@ -6,7 +6,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
-No unreleased changes yet.
+### Added
+
+- Citation for the accompanying paper, Y. Xiong and Z. Wu, *Comput. Phys.
+  Commun.* 110439 (2026),
+  [doi:10.1016/j.cpc.2026.110439](https://doi.org/10.1016/j.cpc.2026.110439),
+  in `CITATION.bib`, the README, and the documentation.
 
 ## [0.6.0] - 2026-06-10
 

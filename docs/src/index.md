@@ -6,6 +6,7 @@ CurrentModule = TransitionMatrices
 
 [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://JuliaRemoteSensing.github.io/TransitionMatrices.jl/dev/)
 [![Build Status](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/actions/workflows/CI.yml?query=branch%3Amain)
+[![DOI](https://img.shields.io/badge/DOI-10.1016%2Fj.cpc.2026.110439-blue.svg)](https://doi.org/10.1016/j.cpc.2026.110439)
 [![Coverage](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/JuliaRemoteSensing/TransitionMatrices.jl)
 
 The transition matrix method, or **T-Matrix method**, is one of the most powerful
@@ -111,7 +112,14 @@ package extensions.
 
 ## How to cite
 
-If you use `TransitionMatrices.jl` in your research, please cite it — a
-[`CITATION.bib`](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/main/CITATION.bib)
-is provided in the repository. Please also cite the original publication(s) for
-the specific method you use; see [Methods & references](@ref).
+If you use `TransitionMatrices.jl` in your research, please cite the accompanying
+paper:
+
+> Y. Xiong and Z. Wu, *TransitionMatrices.jl: An Open-Source IITM-Based Framework
+> for Electromagnetic Scattering Simulation of Nonspherical Atmospheric Particles
+> and Remote-Sensing Forward Modeling*, Comput. Phys. Commun. 110439 (2026),
+> [doi:10.1016/j.cpc.2026.110439](https://doi.org/10.1016/j.cpc.2026.110439)
+
+BibTeX entries for the paper and the software are provided in
+[`CITATION.bib`](https://github.com/JuliaRemoteSensing/TransitionMatrices.jl/blob/main/CITATION.bib).
+Please also cite the original publication(s) for the specific method you use; see [Methods & references](@ref).
